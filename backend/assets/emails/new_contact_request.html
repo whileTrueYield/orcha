@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New Contact Request</title>
+  </head>
+  <body>
+    <div
+      style="
+        font-family: Dejavu Sans, verdana, arial, ui-sans-serif, system-ui,
+          -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue,
+          Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji,
+          Segoe UI Symbol, Noto Color Emoji;
+        font-size: 16px;
+        line-height: 20px;
+        color: #1e293b;
+        max-width: 600px;
+      "
+    >
+      <p style="margin-bottom: 12px">Hello</p>
+
+      <p style="margin-bottom: 12px">
+        We have received a new contact request. 
+      </p>
+
+      <ul>
+        <li>email: {{email}}</li>
+        <li>Name: {{firstName}} {{lastName}}</li>
+        <li>Company Name: {{companyName}}</li>
+        <li>Phone Number: ({{countryCode}}) {{phoneNumber}}</li>
+        <li>topic: {{topic}}</li>
+        <li>companySize: {{companySize}}</li>
+        <li>department: {{department}}</li>
+      </ul>
+
+      <div style="font-size: 14px; font-weight: bold; margin-top: 12px; margin-bottom: 6px">
+        Message:
+      </div>
+
+      <div
+        style="
+          padding: 8px 16px;
+          border-radius: 12px;
+          background-color: #e0f2fe;
+          color: #334155;
+          font-size: 14px;
+        "
+      >
+        {{#each description}}
+        <p style="margin-bottom: 12px">{{this}}</p>
+        {{/each}}
+      </div>
+
+
+
+  </body>
+</html>

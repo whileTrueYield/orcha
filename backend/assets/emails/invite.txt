@@ -1,0 +1,14 @@
+Hi {{name}},
+
+{{fromName}} has invited you to join {{organizationName}} on Orcha.
+
+To start using Orcha, click the button below to finish setting up your account.
+
+{{acceptInviteUri}}
+
+If this request was sent to you in error, you may disregard this email.
+
+Things are only impossible until they are not.
+
+Orcha
+{{wwwUri}}

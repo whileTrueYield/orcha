@@ -1,0 +1,55 @@
+# --- secrets and local config ---
+.env
+.env.local
+.env.*.local
+!.env.example
+*.pem
+*.key
+
+# --- node ---
+node_modules/
+.yarn/cache
+.yarn/install-state.gz
+.pnp.*
+dist/
+build/
+.next/
+.vite/
+*.tsbuildinfo
+
+# --- python (ai service) ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.profile
+
+# --- generated artifacts ---
+# backend/src/generated/graphql.ts IS committed — it's the cross-package
+# contract between backend and frontend. Regenerate with `make types` after
+# changes. Other generated artifacts in this folder may be added later;
+# revisit this rule if so.
+backend/prisma/migrations/migration_lock.toml
+*.log
+
+# --- docker / runtime ---
+db-data/
+.docker/
+
+# --- editor / os ---
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# --- test artifacts ---
+coverage/
+cypress/videos/
+cypress/screenshots/

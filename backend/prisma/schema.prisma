@@ -1,0 +1,1899 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl"]
+}
+
+generator typegraphql {
+  provider = "typegraphql-prisma"
+  emitOnly = ["models", "enums"]
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "foreignKeys"
+}
+
+model PushSubscription {
+  id             Int      @id @default(autoincrement())
+  endpoint       String
+  expirationTime String?
+  JSONkeys       String
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  roleId Int
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([endpoint])
+  @@index([roleId])
+  @@map("push_subscription")
+}
+
+model Documentation {
+  // required fields
+  id          Int        @id @default(autoincrement())
+  name        String     @db.VarChar
+  description String?    @db.VarChar
+  stage       ModelStage @default(DRAFT)
+  logoUrl     String?    @db.VarChar
+
+  // timestamps
+  createdAt            DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(6)
+  lastPublishedAt      DateTime? @db.Timestamptz(6)
+  lastPublishRequestAt DateTime? @db.Timestamptz(6)
+
+  organizationId     Int
+  organization       Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentationPages DocumentationPage[]    @relation()
+  pois               DocumentationPagePOI[] @relation()
+
+  @@index([organizationId])
+  @@index([name])
+  @@index([createdAt])
+  @@map("documentation")
+}
+
+model DocumentationPage {
+  // required fields
+  id       Int     @id @default(autoincrement())
+  title    String  @db.VarChar
+  body     String  @db.VarChar
+  position Int     @default(1)
+  customId String? @db.VarChar // the uniq hashtag to reference this section
+
+  // We do not want to expose indexableContent, this is solely for search
+  /// @TypeGraphQL.omit(output: true, input: true)
+  indexableContent String @default("") @db.VarChar
+
+  /// @TypeGraphQL.omit(output: true, input: true)
+  urls     String @default("[]") @db.VarChar // which URLs are assocatiated with this page
+  /// @TypeGraphQL.omit(output: true, input: true)
+  keywords String @default("[]") @db.VarChar // which keywords are associated with this page
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  organizationId        Int
+  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentationId       Int
+  documentation         Documentation          @relation(fields: [documentationId], references: [id], onDelete: Cascade)
+  parentId              Int?
+  parent                DocumentationPage?     @relation("documentation_page_children", fields: [parentId], references: [id])
+  children              DocumentationPage[]    @relation("documentation_page_children")
+  pois                  DocumentationPagePOI[]
+  documentationPageData DocumentationPageData?
+  documentationPageText DocumentationPageText?
+
+  @@unique([documentationId, customId])
+  @@index([organizationId])
+  @@index([documentationId])
+  @@index([parentId])
+  @@map("documentation_page")
+}
+
+model DocumentationPageText {
+  // required fields
+  id Int @id @default(autoincrement())
+
+  documentationPageId Int               @unique
+  documentationPage   DocumentationPage @relation(fields: [documentationPageId], references: [id], onDelete: Cascade)
+
+  bytes Bytes?
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+}
+
+model DocumentationPageData {
+  // required fields
+  id Int @id @default(autoincrement())
+
+  documentationPageId Int               @unique
+  documentationPage   DocumentationPage @relation(fields: [documentationPageId], references: [id], onDelete: Cascade)
+
+  bytes Bytes?
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("documentation_page_data")
+}
+
+// Documentation Point of Interrest is used to associate
+// a documentation with a page
+model DocumentationPagePOI {
+  id Int @id @default(autoincrement())
+
+  urls     String @db.VarChar // which URLs are assocatiated with this page
+  keywords String @db.VarChar // which keywords are associated with this page
+  title    String @db.VarChar
+  hashtag  String @db.VarChar // the uniq hashtag to reference this section
+
+  documentationId     Int
+  documentation       Documentation     @relation(fields: [documentationId], references: [id], onDelete: Cascade)
+  documentationPageId Int
+  documentationPage   DocumentationPage @relation(fields: [documentationPageId], references: [id], onDelete: Cascade)
+
+  @@unique([documentationId, hashtag])
+  @@index([documentationId])
+  @@index([documentationPageId])
+  @@map("documentation_page_poi")
+}
+
+model Comment {
+  // required fields
+  id   Int    @id @default(autoincrement())
+  body String @db.VarChar
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  authorId Int
+  author   Role @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  acceptedReplyId Int?
+  acceptedReply   CommentReply? @relation("AcceptedCommentReply", fields: [acceptedReplyId], references: [id], onDelete: SetNull)
+
+  replies CommentReply[] @relation("CommentReplies")
+
+  // indices, table map and constraints
+  @@index([authorId])
+  @@index([organizationId])
+  @@index([ticketId])
+  @@index([acceptedReplyId])
+  @@index([createdAt])
+  @@map("comment")
+}
+
+model CommentReply {
+  // required fields
+  id   Int    @id @default(autoincrement())
+  body String @db.VarChar
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  authorId Int
+  author   Role @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  commentId Int
+  comment   Comment @relation("CommentReplies", fields: [commentId], references: [id], onDelete: Cascade)
+
+  Organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId Int?
+
+  /// This should contain between 0 and 1 comment because of a
+  /// qwirk of the relational mirroring logic of Prisma
+  acceptedReplyForComments Comment[] @relation("AcceptedCommentReply")
+
+  // indices, table map and constraints
+  @@index([authorId])
+  @@index([commentId])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("comment_reply")
+}
+
+model Report {
+  // required fields
+  id    Int        @id @default(autoincrement())
+  name  String     @db.VarChar
+  stage ModelStage @default(DRAFT)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  reportQueries ReportQuery[]
+
+  @@index([organizationId])
+  @@index([name])
+  @@index([createdAt])
+  @@map("report")
+}
+
+enum ReportGroupBy {
+  // following are relations
+  PRODUCT
+  WORKFLOW
+  WORKFLOW_STATE
+  TAG
+  ASSIGNEE
+
+  // following are dates
+  CREATED_AT
+  ETA
+  CLOSED_AT
+  SCHEDULED_AT
+  WORK_DAY
+}
+
+enum ReportAggregateField {
+  TICKET_COUNT
+  SUM_HOURS_WORKED
+}
+
+enum ReportDateGranularity {
+  AUTO
+  DAY
+  WEEK
+  MONTH
+}
+
+enum ReportWidgetType {
+  COMPARE_THROUGH_TIME
+  VALUES_THROUGH_TIME
+  VALUES_BROKEN_DOWN_NOW
+  VALUES_NOW
+  COMPARE_VALUES_NOW
+  CALENDAR
+}
+
+model ReportQuery {
+  id             Int                  @id @default(autoincrement())
+  title          String
+  position       Int                  @default(0)
+  rows           Int                  @default(1)
+  cols           Int                  @default(1)
+  noUnknowns     Boolean              @default(true)
+  cummulative    Boolean              @default(false)
+  widgetType     ReportWidgetType
+  aggregateField ReportAggregateField @default(TICKET_COUNT)
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reportId       Int
+  report         Report       @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // date window is global and only relevant on cases where
+  // the grouping is done using a date field or the metric
+  // is the sum of hours worked
+  fromDate    String?
+  untilDate   String?
+  granularity ReportDateGranularity @default(AUTO)
+
+  // primary breakdown
+  chartBy      ReportGroupBy  @default(PRODUCT)
+  chartByLabel String?
+  groupBy      ReportGroupBy?
+  groupByLabel String?
+
+  // primary filters for Tickets
+  byTags                   Tag[]           @relation("primaryTagFilter")
+  byProducts               Product[]       @relation("primaryProductFilter")
+  byWorkflows              Workflow[]      @relation("primaryWorkflowFilter")
+  byFeatures               Feature[]       @relation("primaryFeatureFilter")
+  byTickets                Ticket[]        @relation("primaryTicketFilter")
+  byOwners                 Role[]          @relation("primaryReportQueryOwners")
+  byAuthors                Role[]          @relation("primaryReportQueryAuthors")
+  byAssignees              Role[]          @relation("primaryReportQueryAssignees")
+  byWorkflowStateAssignees Role[]          @relation("primaryReportQueryWorkflowStateAssignees")
+  byWorkflowStates         WorkflowState[] @relation("primaryWorkflowStateFilter")
+
+  // A JSON string to be parsed that represents list of folders
+  /// @TypeGraphQL.omit(output: true, input: true)
+  byPaths String @default("[]") @db.VarChar
+
+  // Schedule Item filters, these are actually ternaries, for example:
+  // for isTicketDone:
+  // - null means ignore this filter
+  // - false means is not done
+  // - true means is done
+  isTicketDone       Boolean?
+  isTicketActive     Boolean?
+  isTicketStarted    Boolean?
+  isTicketNotStarted Boolean?
+
+  // optional secondary breakdown
+  secondaryChartBy      ReportGroupBy?
+  secondaryChartByLabel String?
+  secondaryGroupBy      ReportGroupBy?
+  secondaryGroupByLabel String?
+
+  // use the primary filter instead of the one defined below
+  sameAsPrimaryFilter Boolean @default(true)
+
+  // secondary filters for Tickets
+  secondaryByTags                   Tag[]           @relation("secondaryTagFilter")
+  secondaryByProducts               Product[]       @relation("secondaryProductFilter")
+  secondaryByWorkflows              Workflow[]      @relation("secondaryWorkflowFilter")
+  secondaryByFeatures               Feature[]       @relation("secondaryFeatureFilter")
+  secondaryByTickets                Ticket[]        @relation("secondaryTicketFilter")
+  secondaryByOwners                 Role[]          @relation("secondaryReportQueryOwners")
+  secondaryByAuthors                Role[]          @relation("secondaryReportQueryAuthors")
+  secondaryByAssignees              Role[]          @relation("secondaryReportQueryAssignees")
+  secondaryByWorkflowStateAssignees Role[]          @relation("secondaryReportQueryWorkflowStateAssignees")
+  secondaryByWorkflowStates         WorkflowState[] @relation("secondaryWorkflowStateFilter")
+
+  // Schedule Item filters, these are actually ternaries, for example:
+  // for isTicketDone:
+  // - null means ignore this filter
+  // - false means is not done
+  // - true means is done
+  secondaryIsTicketDone       Boolean?
+  secondaryIsTicketActive     Boolean?
+  secondaryIsTicketStarted    Boolean?
+  secondaryIsTicketNotStarted Boolean?
+
+  // A JSON string to be parsed that represents list of folders
+  /// @TypeGraphQL.omit(output: true, input: true)
+  secondaryByPaths String @default("[]") @db.VarChar
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([reportId])
+  @@map("report_query")
+}
+
+model Todo {
+  // required fields
+  id      Int     @id @default(autoincrement())
+  checked Boolean @default(false)
+  body    String  @db.VarChar
+
+  // timestamps
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  checkedAt DateTime? @db.Timestamptz(6)
+  dueDate   DateTime? @db.Timestamptz(6)
+
+  // relations
+  ownerId        Int
+  owner          Role         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([createdAt])
+  @@index([checkedAt])
+  @@index([checked])
+  @@map("todo")
+}
+
+enum NoteColor {
+  YELLOW
+  BLUE
+  PURPLE
+  GREEN
+  PINK
+  ORANGE
+}
+
+model Note {
+  // required fields
+  id    Int       @id @default(autoincrement())
+  body  String    @db.VarChar
+  color NoteColor @default(YELLOW)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  ownerId Int
+  owner   Role @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([ownerId])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("note")
+}
+
+enum NotificationTarget {
+  PROJECT
+  TICKET
+  QUESTION
+  COMMENT
+  REPLY
+}
+
+// When adding a new notification type, make sure you update the 
+// desktop notifications definitions and behaviors on these files:
+// - orcha-backend/src/notifications/endpoints.ts
+// - orcha-frontend/public/script/notification-worker.js 
+enum NotificationCategory {
+  MENTION // when you're being mentioned
+  REPLY // when someone replies
+  OWNED // when someone owned the document
+  WATCHED // when someone watch the document
+  ACCEPTED_REPLY // when someone accepts your reply
+  CLOSED_TICKET // when a ticket is closed
+  READY_TO_SCHEDULE // when a ticket is ready to be scheduled 
+}
+
+model Notification {
+  id       Int                  @id @default(autoincrement())
+  isRead   Boolean              @default(false)
+  title    String
+  category NotificationCategory
+  target   NotificationTarget
+  targetId Int
+
+  // optional
+  description String?
+  ancestry    String?
+
+  // relations
+  roleId Int
+  role   Role @relation("NotificationRole", fields: [roleId], references: [id], onDelete: Cascade)
+
+  // relations
+  actorId Int
+  actor   Role @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  // indices, table map and constraints
+  @@index([roleId])
+  @@index([actorId])
+  @@index([organizationId])
+  @@index([target, targetId, category])
+  @@index([createdAt])
+  @@index([isRead])
+  @@map("notification")
+}
+
+model EmailConfirmation {
+  // required fields
+  id     Int    @id @default(autoincrement())
+  email  String @unique @db.VarChar
+  secret String @db.VarChar
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // indices, table map and constraints
+  @@index([email])
+  @@map("email_confirmation")
+}
+
+model Feature {
+  // required fields
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  featureGroupId Int
+  featureGroup   FeatureGroup @relation(fields: [featureGroupId], references: [id], onDelete: Cascade)
+
+  skills                 Skill[]
+  tickets                Ticket[]
+  scheduleConfigs        ScheduleConfig[]
+  pages                  Page[]
+  reportQueries          ReportQuery[]    @relation("primaryFeatureFilter")
+  reportSecondaryQueries ReportQuery[]    @relation("secondaryFeatureFilter")
+
+  // indices, table map and constraints
+  @@index([featureGroupId])
+  @@map("feature")
+}
+
+enum FeatureGroupStatus {
+  ACTIVE
+  DEPRECATED
+}
+
+model FeatureGroup {
+  // required fields
+  id       Int     @id @default(autoincrement())
+  name     String  @db.VarChar
+  isActive Boolean @default(false) @db.Boolean
+
+  // Optional fields
+  description String? @db.VarChar
+
+  // Enums
+  status FeatureGroupStatus @default(ACTIVE)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  features Feature[]
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([productId])
+  @@map("feature_group")
+}
+
+model migrations {
+  id        Int    @id @default(autoincrement())
+  timestamp BigInt
+  name      String @db.VarChar
+}
+
+model OrganizationAddress {
+  // required and optional fields
+  id       Int     @id @default(autoincrement())
+  address1 String  @db.VarChar
+  address2 String? @db.VarChar
+  zipcode  String  @db.VarChar
+  city     String  @db.VarChar
+  state    String? @db.VarChar
+  country  String  @db.VarChar
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  mailingAddressFor Organization[] @relation("MailingAddress")
+  billingAddressFor Organization[] @relation("BillingAddress")
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@map("organization_address")
+}
+
+enum IssueStatus {
+  NEW
+  PROCESSING
+  RESOLVED
+}
+
+model Issue {
+  id      Int @id @default(autoincrement())
+  localId Int
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ticketId       Int?
+  ticket         Ticket?      @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  productId      Int
+  product        Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  assigneeId     Int?
+  assignee       Role?        @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  unread         Boolean      @default(true)
+  archived       Boolean      @default(false)
+
+  email       String @db.VarChar
+  name        String @db.VarChar
+  url         String @db.VarChar
+  metaData    String @db.VarChar
+  description String @db.VarChar
+  userAgent   String @db.VarChar
+  token       String @unique @db.VarChar
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // if ticket is still open, mark it as resolved
+  resolveAfterDate DateTime? @db.Timestamptz(6)
+
+  // enums
+  status IssueStatus @default(NEW)
+
+  // relations
+  issueActions IssueAction[]
+
+  @@unique([localId, organizationId])
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([ticketId])
+  @@index([productId])
+  @@index([assigneeId])
+  @@index([localId, organizationId])
+  @@index([token])
+  @@index([unread])
+  @@index([resolveAfterDate, status])
+  @@map("issue")
+}
+
+enum IssueActionCategory {
+  CLIENT_MESSAGE
+  SUPPORT_MESSAGE
+  SUPPORT_NOTE
+  CHANGE_STATUS
+  SET_ASSIGNEE
+  SET_TICKET
+  AUTO_RESOLVED
+  CLIENT_IMAGE
+  SUPPORT_IMAGE
+}
+
+model IssueAction {
+  id    Int     @id @default(autoincrement())
+  title String  @db.VarChar
+  body  String? @db.VarChar
+
+  // enums
+  category IssueActionCategory
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  issueId        Int
+  issue          Issue        @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  authorId       Int?
+  author         Role?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([issueId])
+  @@index([authorId])
+  @@map("issue_action")
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  DELETED
+  SUSPENDED
+}
+
+model FeatureFlag {
+  id            Int     @id @default(autoincrement())
+  documentation Boolean @default(false)
+  support       Boolean @default(false)
+  report        Boolean @default(false)
+
+  organizationId Int          @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([organizationId])
+}
+
+enum ScheduleStatus {
+  OK
+  BLOCKED // when a ticket is marked as blocked
+  ASSIGNEE_DEACTIVATED // when at least one ticket has a deactivated assignee
+}
+
+model Organization {
+  // required fields
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar
+
+  // if there is a problem in the schedule, this flag should be set to true
+  scheduleStatus ScheduleStatus @default(OK)
+
+  /// @TypeGraphQL.omit(output: true, input: true)
+  preferences String @default("{}") @db.VarChar
+
+  // Optional fields
+  about    String? @db.VarChar
+  coverUrl String? @db.VarChar
+
+  // enums
+  status OrganizationStatus @default(ACTIVE)
+
+  // timestamps
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  estimatedAt DateTime @default(now())
+
+  // relations
+  mailingAddressId Int?
+  mailingAddress   OrganizationAddress? @relation("MailingAddress", fields: [mailingAddressId], references: [id], onDelete: SetNull)
+  billingAddressId Int?
+  billingAddress   OrganizationAddress? @relation("BillingAddress", fields: [billingAddressId], references: [id], onDelete: SetNull)
+  featureFlag      FeatureFlag?
+
+  // relations
+  addresses              OrganizationAddress[]
+  commentReplies         CommentReply[]
+  comments               Comment[]
+  documentationPages     DocumentationPage[]
+  documentations         Documentation[]
+  featureGroups          FeatureGroup[]
+  folders                Folder[]
+  projects               Project[]
+  issueActions           IssueAction[]
+  notes                  Note[]
+  notifications          Notification[]
+  organizationUploads    OrganizationUpload[]
+  pages                  Page[]
+  personalTags           PersonalTag[]
+  products               Product[]
+  questionReplies        QuestionReply[]
+  questions              Question[]
+  reportQuery            ReportQuery[]
+  reports                Report[]
+  roles                  Role[]
+  scheduleConfigs        ScheduleConfig[]
+  scheduleItems          ScheduleItem[]
+  skills                 Skill[]
+  supportTickets         Issue[]
+  tags                   Tag[]
+  teams                  Team[]
+  tickets                Ticket[]
+  timeOffs               TimeOff[]
+  todos                  Todo[]
+  workflows              Workflow[]
+  workflowStates         WorkflowState[]
+  blackoutTimes          BlackoutTime[]
+  recurringBlackoutTimes RecurringBlackoutTime[]
+  drawings               Drawing[]
+
+  // settings
+  showOnboarding Boolean @default(true)
+
+  // indices, table map and constraints
+  @@index([estimatedAt])
+  @@index([mailingAddressId])
+  @@index([billingAddressId])
+  @@map("organization")
+}
+
+model OrganizationUpload {
+  // required fields
+  id   Int    @id @default(autoincrement())
+  path String @db.VarChar
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  roleId         Int?
+  role           Role?        @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([roleId])
+  @@map("organization_upload")
+}
+
+model PasswordLost {
+  // required fields
+  id     Int    @id @default(autoincrement())
+  email  String @db.VarChar
+  secret String @db.VarChar
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // indices, table map and constraints
+  @@index([email])
+  @@map("password_lost")
+}
+
+model PersonalTag {
+  // required fields
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  organizationId  Int
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ownerId         Int
+  owner           Role          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  replacedByTagId Int?
+  replacedBy      PersonalTag?  @relation("PersonalTagDeprecation", fields: [replacedByTagId], references: [id], onDelete: Cascade)
+  replacesTags    PersonalTag[] @relation("PersonalTagDeprecation")
+
+  tickets Ticket[]
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([replacedByTagId])
+  @@index([name])
+  @@map("personal_tag")
+}
+
+model Product {
+  // required fields
+  id                      Int     @id @default(autoincrement())
+  name                    String  @db.VarChar
+  code                    String  @db.VarChar
+  isSupportActive         Boolean @default(false)
+  isUsingDefaultWorkflows Boolean @default(true)
+
+  // Optional fields
+  description String? @db.VarChar
+  coverUrl    String? @db.VarChar
+
+  // Enums
+  stage ModelStage @default(PUBLISHED)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  featureGroups          FeatureGroup[]
+  workflows              Workflow[]
+  tickets                Ticket[]
+  scheduleConfigs        ScheduleConfig[]
+  pages                  Page[]
+  cases                  Issue[]
+  reportQueries          ReportQuery[]    @relation("primaryProductFilter")
+  reportSecondaryQueries ReportQuery[]    @relation("secondaryProductFilter")
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([stage])
+  @@index([code])
+  @@map("product")
+}
+
+enum EstimateType {
+  TicketWorkflowState
+}
+
+model Estimate {
+  id             Int
+  organizationId Int
+  type           EstimateType
+  epoch          Int
+  updatedEpoch   Int
+
+  assigneeId Int
+  assignee   Role @relation(fields: [assigneeId], references: [id], onDelete: Cascade)
+
+  end_p50   Int
+  end_p70   Int
+  end_p80   Int
+  end_p90   Int
+  end_p95   Int
+  end_min   Int @default(0)
+  end_max   Int @default(0)
+  start_p50 Int
+  start_p70 Int
+  start_p80 Int
+  start_p90 Int
+  start_p95 Int
+  start     Int
+  end       Int
+  start_min Int @default(0)
+  start_max Int @default(0)
+
+  // indices, table map and constraints
+  @@id([id, epoch, type, organizationId])
+  @@unique([id, type, epoch, organizationId])
+  @@index([organizationId])
+  @@index([assigneeId])
+  @@index([id])
+  @@index([start_p80])
+  @@index([epoch])
+}
+
+enum ModelStage {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  DELETED
+}
+
+model Page {
+  // required fields
+  id       Int    @id @default(autoincrement())
+  title    String @db.VarChar
+  duration Int
+
+  // JSON fields
+  /// @TypeGraphQL.omit(output: true, input: true)
+  checklist String @default("[]") @db.VarChar
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  tags      Tag[]      @relation("PageTags")
+  products  Product[]
+  workflows Workflow[]
+  features  Feature[]
+  owners    Role[]
+  path      String?
+
+  // A JSON string to be parsed that represents list of folders
+  // to prioritize
+  /// @TypeGraphQL.omit(output: true, input: true)
+  paths String @default("[]") @db.VarChar
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@map("page")
+}
+
+model Folder {
+  // required fields
+  id       Int    @id @default(autoincrement())
+  path     String @db.VarChar
+  duration Int    @default(14)
+
+  // JSON fields
+  /// @TypeGraphQL.omit(output: true, input: true)
+  checklist String @default("[]") @db.VarChar
+
+  // relations
+  organizationId Int
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tickets        Ticket[]          @relation
+  blocks         FolderDataBlock[] @relation
+
+  // optional fields
+  description   String? @db.VarChar
+  ownerId       Int?
+  owner         Role?   @relation("FolderOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  authorId      Int?
+  author        Role?   @relation("FolderAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  pinnedByRoles Role[]  @relation("PinnedFolders")
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // indices, table map and constraints
+  @@unique([organizationId, path], map: "uniq_path_per_organization")
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([authorId])
+  @@index([path])
+  @@index([createdAt])
+  @@map("folder")
+}
+
+model FolderDataBlock {
+  // required fields
+  id       Int    @id @default(autoincrement())
+  type     String
+  data     String
+  position Int
+
+  folderId Int?
+  folder   Folder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // indices, table map and constraints
+  @@index([folderId])
+}
+
+model Drawing {
+  // required fields
+  id   Int    @id @default(autoincrement())
+  data String
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  roleId         Int?
+  role           Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  lockExpiration DateTime?
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@map("drawing")
+}
+
+model Project {
+  // required fields
+  id       Int        @id @default(autoincrement())
+  name     String     @default("") @db.VarChar
+  duration Int        @default(14)
+  stage    ModelStage @default(DRAFT)
+
+  // We do not want to expose indexableContent, this is solely for search
+  /// @TypeGraphQL.omit(output: true, input: true)
+  indexableContent String @default("") @db.VarChar
+
+  // This stage value is being set by a postgres event function
+  // it is set when the parent project is set
+  ancestorIsArchived Boolean @default(false)
+
+  // JSON fields
+  /// @TypeGraphQL.omit(output: true, input: true)
+  checklist String @default("[]") @db.VarChar
+
+  // relations
+  organizationId  Int
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tickets         Ticket[]         @relation
+  ownerId         Int?
+  owner           Role?            @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  authorId        Int?
+  author          Role?            @relation("ProjectAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  pinnedByRoles   Role[]           @relation("PinnedProjects")
+  scheduleConfigs ScheduleConfig[]
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  parentId    Int?
+  parent      Project?     @relation("ProjectParentChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Project[]    @relation("ProjectParentChildren")
+  projectData ProjectData?
+  projectText ProjectText?
+
+  // indices, table map and constraints
+  @@unique([organizationId, name, parentId], map: "uniq_project_name_per_parent_and_organization")
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@index([stage])
+  @@index([ancestorIsArchived])
+  @@map("project")
+}
+
+model ProjectData {
+  // required fields
+  id Int @id @default(autoincrement())
+
+  projectId Int     @unique
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  bytes Bytes?
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+}
+
+model ProjectText {
+  // required fields
+  id Int @id @default(autoincrement())
+
+  projectId Int     @unique
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  bytes Bytes?
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+}
+
+model Question {
+  // required fields
+  id   Int    @id @default(autoincrement())
+  body String @db.VarChar
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  authorId        Int
+  author          Role           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  organizationId  Int
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ticketId        Int
+  ticket          Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  acceptedReplyId Int?
+  acceptedReply   QuestionReply? @relation("AcceptedReply", fields: [acceptedReplyId], references: [id], onDelete: Cascade)
+
+  replies QuestionReply[] @relation("QuestionReplies")
+
+  // indices, table map and constraints
+  @@index([authorId])
+  @@index([organizationId])
+  @@index([ticketId])
+  @@index([acceptedReplyId])
+  @@index([createdAt])
+  @@map("question")
+}
+
+model QuestionReply {
+  // required fields
+  id   Int    @id @default(autoincrement())
+  body String @db.VarChar
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  authorId       Int
+  author         Role          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  questionId     Int
+  question       Question      @relation("QuestionReplies", fields: [questionId], references: [id], onDelete: Cascade)
+  Organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId Int?
+
+  /// This should contain between 0 and 1 question because of a
+  /// qwirk of the relational mirroring logic of Prisma
+  acceptedReplyForQuestions Question[] @relation("AcceptedReply")
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([questionId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("question_reply")
+}
+
+enum RoleStatus {
+  INVITED
+  ACCEPTED
+  REJECTED
+  DEACTIVATED
+}
+
+enum RoleType {
+  VISITOR
+  MEMBER
+  ADMIN
+  OWNER
+}
+
+// this table manages the email opt-out, schedule and config for
+// email communication for an organization's role
+model RoleEmail {
+  id     Int  @id @default(autoincrement())
+  roleId Int  @unique
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  nextWorkDayNotificationDate   DateTime @db.Timestamptz(6)
+  nextWorkDayNotificationOffset Int      @default(3)
+  nextWorkDayNotificationOptOut Boolean  @default(false)
+
+  // indices, table map and constraints
+  @@index([roleId])
+  @@index([nextWorkDayNotificationDate, nextWorkDayNotificationOptOut])
+  @@map("role_email")
+}
+
+// this table manages the email opt-out, schedule and config for
+// email communication for an organization's role
+model RoleStartReminder {
+  id     Int  @id @default(autoincrement())
+  roleId Int  @unique
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  nextStartNotificationDate   DateTime @db.Timestamptz(6)
+  nextStartNotificationOffset Int      @default(10)
+  nextStartNotificationOptOut Boolean  @default(false)
+
+  // indices, table map and constraints
+  @@index([roleId])
+  @@index([nextStartNotificationDate, nextStartNotificationOptOut])
+  @@map("role_start_reminder")
+}
+
+// this table manages the auto resume setting and reminder for every role
+model RoleAutoResume {
+  id     Int  @id @default(autoincrement())
+  roleId Int  @unique
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  nextStartNotificationDate   DateTime @db.Timestamptz(6)
+  nextStartNotificationOptOut Boolean  @default(false)
+
+  // indices, table map and constraints
+  @@index([roleId])
+  @@index([nextStartNotificationDate, nextStartNotificationOptOut])
+  @@map("role_auto_resume")
+}
+
+model Role {
+  // required fields
+  id       Int    @id @default(autoincrement())
+  timeZone String @default("Etc/UTC") @db.VarChar
+  name     String @db.VarChar
+
+  /// @TypeGraphQL.omit(output: true, input: true)
+  preferences String @default("{}") @db.VarChar
+
+  // Optional fields
+  title       String? @db.VarChar
+  description String? @db.VarChar
+  avatarUrl   String? @db.VarChar
+  coverUrl    String? @db.VarChar
+
+  /// A JSON string to be parsed that represents the work week
+  /// hour blocks from Monday to Sunday
+  /// @TypeGraphQL.omit(output: true, input: true)
+  workWeek String @default("{}") @db.VarChar
+
+  // enums
+  status RoleStatus @default(INVITED)
+  type   RoleType   @default(MEMBER)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  userId              Int
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationUploads OrganizationUpload[]
+  organizationId      Int
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  scheduleItems                                 ScheduleItem[]
+  personalTags                                  PersonalTag[]
+  questions                                     Question[]
+  questionReplies                               QuestionReply[]
+  comments                                      Comment[]
+  commentReplies                                CommentReply[]
+  skills                                        Skill[]
+  teams                                         Team[]
+  ticketsAuthored                               Ticket[]                  @relation("TicketAuthor")
+  ticketsOwned                                  Ticket[]                  @relation("TicketOwner")
+  ticketsWatched                                Ticket[]                  @relation("WatchedTicket")
+  tags                                          Tag[]
+  assignments                                   TicketWorkflowState[]
+  estimates                                     Estimate[]
+  notes                                         Note[]
+  checklists                                    Todo[]
+  ticketWorkflowStateNotes                      TicketWorkflowStateNote[]
+  notifications                                 Notification[]            @relation("NotificationRole")
+  notificationsAsActor                          Notification[]            @relation("NotificationActor")
+  pages                                         Page[]
+  foldersAuthored                               Folder[]                  @relation("FolderAuthor")
+  foldersOwned                                  Folder[]                  @relation("FolderOwner")
+  pinnedFolders                                 Folder[]                  @relation("PinnedFolders")
+  projectsAuthored                              Project[]                 @relation("ProjectAuthor")
+  projectsOwned                                 Project[]                 @relation("ProjectOwner")
+  pinnedProjects                                Project[]                 @relation("PinnedProjects")
+  roleEmail                                     RoleEmail?
+  roleStartReminder                             RoleStartReminder?
+  roleAutoResume                                RoleAutoResume?
+  issues                                        Issue[]
+  issueActions                                  IssueAction[]
+  reportQueriesAsOwner                          ReportQuery[]             @relation("primaryReportQueryOwners")
+  reportQueriesAsAuthor                         ReportQuery[]             @relation("primaryReportQueryAuthors")
+  reportQueriesAsWorkflowStateAssignee          ReportQuery[]             @relation("primaryReportQueryWorkflowStateAssignees")
+  reportQueriesAsAssignee                       ReportQuery[]             @relation("primaryReportQueryAssignees")
+  reportSecondaryQueriesAsOwner                 ReportQuery[]             @relation("secondaryReportQueryOwners")
+  reportSecondaryQueriesAsAuthor                ReportQuery[]             @relation("secondaryReportQueryAuthors")
+  reportSecondaryQueriesAsWorkflowStateAssignee ReportQuery[]             @relation("secondaryReportQueryWorkflowStateAssignees")
+  reportSecondaryQueriesAsAssignee              ReportQuery[]             @relation("secondaryReportQueryAssignees")
+  pushSubscriptions                             PushSubscription[]        @relation()
+  recurringBlackoutTime                         RecurringBlackoutTime[]
+  blackoutTime                                  BlackoutTime[]
+  TimeOffs                                      TimeOff[]
+  drawingLocks                                  Drawing[]
+
+  // indices, table map and constraints
+  @@unique([organizationId, userId], map: "one_role_per_user_and_organization")
+  @@index([userId])
+  @@index([organizationId])
+  @@map("role")
+}
+
+model ScheduleItem {
+  // required fields
+  id        Int      @id @default(autoincrement())
+  done      Boolean  @default(false)
+  startedAt DateTime @db.Timestamptz(6)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // optional fields
+  stoppedAt   DateTime? @db.Timestamptz(6)
+  extendedAt  DateTime? @db.Timestamptz(6)
+  autoStopped Boolean   @default(false)
+  autoStarted Boolean   @default(false)
+
+  // relations
+  ticketWorkflowStateId Int
+  ticketWorkflowState   TicketWorkflowState @relation("ActiveWorkflowState", fields: [ticketWorkflowStateId], references: [id], onDelete: Cascade)
+
+  nextTicketWorkflowStateId Int?
+  nextTicketWorkflowState   TicketWorkflowState? @relation("NextWorkflowStates", fields: [nextTicketWorkflowStateId], references: [id], onDelete: SetNull)
+
+  roleId Int
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([ticketWorkflowStateId])
+  @@index([nextTicketWorkflowStateId])
+  @@index([roleId])
+  @@index([organizationId])
+  @@index([ticketId])
+  @@index([startedAt])
+  @@index([stoppedAt])
+  @@map("schedule_item")
+}
+
+model TimeOff {
+  id      Int      @id @default(autoincrement())
+  startAt DateTime @db.Timestamptz(6)
+  stopAt  DateTime @db.Timestamptz(6)
+
+  // relations
+  roleId Int
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([roleId])
+  @@index([startAt])
+  @@index([stopAt])
+  @@map("time_off")
+}
+
+model BlackoutTime {
+  id       Int      @id @default(autoincrement())
+  name     String
+  startAt  DateTime @db.Timestamptz(6)
+  stopAt   DateTime @db.Timestamptz(6)
+  disabled Boolean  @default(false)
+
+  // relations
+  roles Role[] @relation()
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([startAt])
+  @@index([stopAt])
+  @@map("blackout_time")
+}
+
+model RecurringBlackoutTime {
+  id        Int     @id @default(autoincrement())
+  startTime String // military time e.g. 07:02
+  stopTime  String // military time e.g. 16:45
+  timeZone  String  @default("Etc/UTC") @db.VarChar
+  disabled  Boolean @default(false)
+  name      String
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  monday    Boolean @default(false)
+  tuesday   Boolean @default(false)
+  wednesday Boolean @default(false)
+  thursday  Boolean @default(false)
+  friday    Boolean @default(false)
+  saturday  Boolean @default(false)
+  sunday    Boolean @default(false)
+
+  // relations
+  roles Role[] @relation()
+
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([organizationId, disabled])
+  @@map("recurring_blackout_time")
+}
+
+model Skill {
+  // required fields
+  id    Int   @id @default(autoincrement())
+  value Float
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  featureId      Int
+  feature        Feature      @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  roleId         Int
+  role           Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  ratings SkillRating[]
+
+  // indices, table map and constraints
+  @@unique([roleId, featureId], map: "one_skill_per_role_and_feature")
+  @@index([organizationId])
+  @@index([featureId])
+  @@index([roleId])
+  @@map("skill")
+}
+
+model SkillRating {
+  // required fields
+  id    Int   @id @default(autoincrement())
+  value Float
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  // relations
+  skillId Int
+  skill   Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([skillId])
+  @@map("skill_rating")
+}
+
+model Tag {
+  id    Int    @id @default(autoincrement())
+  name  String @db.VarChar
+  color String @default("blue") @db.VarChar
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  organizationId  Int
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  replacedByTagId Int?
+  replacedBy      Tag?         @relation("TagDeprecation", fields: [replacedByTagId], references: [id], onDelete: Cascade)
+  replacesTags    Tag[]        @relation("TagDeprecation")
+  authorId        Int?
+  author          Role?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  tickets                Ticket[]
+  scheduleConfigs        ScheduleConfig[]
+  pages                  Page[]           @relation("PageTags")
+  reportQueries          ReportQuery[]    @relation("primaryTagFilter")
+  reportSecondaryQueries ReportQuery[]    @relation("secondaryTagFilter")
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([replacedByTagId])
+  @@index([authorId])
+  @@index([name])
+  @@map("tag")
+}
+
+model Team {
+  // required fields
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar
+  code String @db.VarChar
+
+  // Optional fields
+  coverUrl    String? @db.VarChar
+  description String? @db.VarChar
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  members                Role[]
+  workflowStates         WorkflowState[] @relation("PrimaryTeam")
+  workflowStatesAsBackup WorkflowState[] @relation("BackupTeam")
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([code])
+  @@map("team")
+}
+
+enum TicketStatus {
+  UNSCHEDULED
+  SCHEDULED
+  DONE
+  CANCELLED
+}
+
+model Ticket {
+  // required fields
+  id       Int    @id @default(autoincrement())
+  title    String @db.VarChar
+  progress Float  @default(0.0)
+  estimate Int    @default(3600)
+
+  // This represent the ID of the ticket within its product
+  localId    Int?
+  milestone  Boolean @default(false)
+  estimating Boolean @default(false)
+
+  // timestamps
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(6)
+  eta         DateTime? @db.Timestamptz(6)
+  closedAt    DateTime? @db.Timestamptz(6)
+  scheduledAt DateTime? @db.Timestamptz(6)
+  archivedAt  DateTime? @db.Timestamptz(6)
+  deletedAt   DateTime? @db.Timestamptz(6)
+
+  // enums
+  status TicketStatus @default(UNSCHEDULED)
+  stage  ModelStage   @default(DRAFT)
+
+  // optional fields
+  description String? @db.VarChar
+  difficulty  Int?
+  closingNote String? @db.VarChar
+  foreignId   String? @db.VarChar
+
+  // We do not want to expose indexableContent, this is solely for search
+  /// @TypeGraphQL.omit(output: true, input: true)
+  indexableContent String @default("") @db.VarChar
+
+  // relations
+  authorId       Int?
+  author         Role?        @relation("TicketAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  ownerId        Int?
+  owner          Role?        @relation("TicketOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  productId      Int?
+  product        Product?     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  workflowId     Int?
+  workflow       Workflow?    @relation(fields: [workflowId], references: [id], onDelete: SetNull)
+  folderId       Int?
+  folder         Folder?      @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  projectId      Int
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  ancestors  Ticket[] @relation("TicketAncestry")
+  successors Ticket[] @relation("TicketAncestry")
+
+  ticketText             TicketText?
+  comments               Comment[]
+  questions              Question[]
+  tags                   Tag[]
+  watchers               Role[]                @relation("WatchedTicket")
+  personalTags           PersonalTag[]
+  features               Feature[]
+  ticketWorkflowStates   TicketWorkflowState[]
+  scheduleItems          ScheduleItem[]
+  scheduleConfigs        ScheduleConfig[]
+  cases                  Issue[]
+  reportQueries          ReportQuery[]         @relation("primaryTicketFilter")
+  reportSecondaryQueries ReportQuery[]         @relation("secondaryTicketFilter")
+
+  // indices, table map and constraints
+  @@unique([localId, productId])
+  @@index([authorId])
+  @@index([ownerId])
+  @@index([productId])
+  @@index([workflowId])
+  @@index([folderId])
+  @@index([organizationId])
+  @@index([stage])
+  @@index([status])
+  @@index([estimating])
+  @@index([localId])
+  @@index([foreignId])
+  @@index([closedAt])
+  @@index([eta])
+  @@map("ticket")
+}
+
+model TicketText {
+  // required fields
+  id Int @id @default(autoincrement())
+
+  ticketId Int    @unique
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  bytes Bytes?
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+}
+
+model ScheduleConfig {
+  id       Int @id @default(autoincrement())
+  priority Int
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  tags      Tag[]
+  products  Product[]
+  projects  Project[]
+  workflows Workflow[]
+  features  Feature[]
+  tickets   Ticket[]
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@map("schedule_config")
+}
+
+enum TicketWorkflowStateNoteCategory {
+  STATE_NOTE
+  BLOCK_NOTE
+  UNBLOCK_NOTE
+  CLOSE_NOTE
+}
+
+model TicketWorkflowStateNote {
+  // required fields
+  id   Int    @id @default(autoincrement())
+  body String
+
+  category TicketWorkflowStateNoteCategory @default(STATE_NOTE)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  ticketWorkflowStateId     Int
+  ticketWorkflowState       TicketWorkflowState @relation("ticketWorkflowState", fields: [ticketWorkflowStateId], references: [id], onDelete: Cascade)
+  authorId                  Int
+  author                    Role                @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  fromTicketWorkflowStateId Int
+  fromTicketWorkflowState   TicketWorkflowState @relation("fromTicketWorkflowState", fields: [fromTicketWorkflowStateId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([createdAt])
+  @@index([ticketWorkflowStateId])
+  @@index([fromTicketWorkflowStateId])
+  @@index([authorId])
+  @@map("ticket_workflow_state_note")
+}
+
+model TicketWorkflowState {
+  // required fields
+  id           Int     @id @default(autoincrement())
+  name         String
+  isActive     Boolean @default(true)
+  isBlocked    Boolean @default(false)
+  complete     Int     @default(0)
+  todo         Int     @default(0)
+  fractionable Boolean @default(false)
+  position     Int     @default(0)
+
+  // JSON fields
+  /// @TypeGraphQL.omit(output: true, input: true)
+  checklist String @default("[]") @db.VarChar
+
+  // Optional fields
+  estimateMinimum    Int?
+  estimateMostLikely Int?
+  estimateMaximum    Int?
+  estimate           DateTime? @db.Timestamptz(6)
+
+  // relations
+  assigneeId Int?
+  assignee   Role?  @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  ticketId   Int
+  ticket     Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  // if we were to delete the workflow state, we still want to keep its copy
+  // if this link is maintained we can then use it for statistical analysis
+  workflowStateId Int?
+  workflowState   WorkflowState? @relation(fields: [workflowStateId], references: [id], onDelete: SetNull)
+
+  scheduleItems                ScheduleItem[]            @relation("ActiveWorkflowState")
+  nextScheduleItems            ScheduleItem[]            @relation("NextWorkflowStates")
+  ticketWorkflowStateNotes     TicketWorkflowStateNote[] @relation("ticketWorkflowState")
+  fromTicketWorkflowStateNotes TicketWorkflowStateNote[] @relation("fromTicketWorkflowState")
+
+  // indices, table map and constraints
+  @@index([assigneeId])
+  @@index([ticketId])
+  @@index([workflowStateId])
+  @@map("ticket_workflow_state")
+}
+
+enum UserStatus {
+  INVITED
+  UNCONFIRMED
+  ACTIVE
+  DELETED
+  SUSPENDED
+}
+
+model User {
+  // required fields
+  id       Int     @id @default(autoincrement())
+  email    String  @unique @db.VarChar
+  isStaff  Boolean @default(false)
+  /// @TypeGraphQL.omit(output: true)
+  password String  @db.VarChar
+
+  /// @TypeGraphQL.omit(output: true, input: true)
+  preferences String @default("{}") @db.VarChar
+
+  // enums
+  status UserStatus @default(INVITED)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  roles Role[]
+
+  // indices, table map and constraints
+  @@map("user")
+}
+
+model UserEmailChange {
+  // required fields
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  previousEmail String   @db.VarChar
+  newEmail      String   @db.VarChar
+  ipAddress     String   @db.VarChar
+
+  // indices, table map and constraints
+  @@map("user_email_change")
+}
+
+model Workflow {
+  // required fields
+  id                Int     @id @default(autoincrement())
+  name              String  @db.VarChar
+  color             String  @default("lightGray") @db.VarChar
+  isDefaultWorkflow Boolean @default(true)
+
+  // Optional fields
+  description String? @db.VarChar
+
+  // enums
+  stage ModelStage @default(PUBLISHED)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  products               Product[]
+  tickets                Ticket[]
+  workflowStates         WorkflowState[]
+  scheduleConfigs        ScheduleConfig[]
+  pages                  Page[]
+  reportQueries          ReportQuery[]    @relation("primaryWorkflowFilter")
+  reportSecondaryQueries ReportQuery[]    @relation("secondaryWorkflowFilter")
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([stage])
+  @@index([name])
+  @@map("workflow")
+}
+
+model WorkflowState {
+  // required fields
+  id       Int    @id @default(autoincrement())
+  name     String @db.VarChar
+  position Int    @default(0)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflowId     Int
+  workflow       Workflow     @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  reportQueries          ReportQuery[]         @relation("primaryWorkflowStateFilter")
+  reportSecondaryQueries ReportQuery[]         @relation("secondaryWorkflowStateFilter")
+  teams                  Team[]                @relation("PrimaryTeam")
+  backupTeams            Team[]                @relation("BackupTeam")
+  TicketWorkflowState    TicketWorkflowState[]
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@index([workflowId])
+  @@index([name])
+  @@map("workflow_state")
+}
+
+enum DemoStatus {
+  QUEUED
+  PROCESSING
+  READY
+  FAILED
+}
+
+model DemoRequest {
+  id         String     @id @unique
+  email      String     @unique
+  ip_address String
+  createdAt  DateTime   @default(now()) @db.Timestamptz(6)
+  status     DemoStatus @default(QUEUED)
+  config     String     @default("{}")
+  confirmed  Boolean    @default(false)
+
+  @@index([id])
+  @@index([email])
+  @@index([ip_address])
+  @@map("demo_request")
+}

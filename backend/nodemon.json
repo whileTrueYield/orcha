@@ -1,0 +1,10 @@
+{
+  "events": {
+    "start": "clear"
+  },
+  "watch": ["src/"],
+  "ext": "ts, json, js",
+  "execMap": {
+    "ts": "ts-node"
+  }
+}

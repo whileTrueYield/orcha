@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="48"
+   height="32"
+   viewBox="0 0 12.7 8.4666666"
+   version="1.1"
+   id="svg8320"
+   inkscape:version="1.2.1 (0f2f062aeb, 2022-09-21, custom)"
+   sodipodi:docname="line-chart.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview8322"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     showgrid="true"
+     inkscape:zoom="20.70196"
+     inkscape:cx="35.624647"
+     inkscape:cy="14.467229"
+     inkscape:window-width="1452"
+     inkscape:window-height="1230"
+     inkscape:window-x="1423"
+     inkscape:window-y="702"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1">
+    <inkscape:grid
+       type="xygrid"
+       id="grid39892"
+       originx="4.0616989e-09"
+       originy="4.0616989e-09" />
+  </sodipodi:namedview>
+  <defs
+     id="defs8317" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       style="fill:none;stroke:#cbd5e1;stroke-width:0.529167;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+       d="M 0.26458332,0.26458333 V 8.2020832 H 12.435416"
+       id="path9049" />
+    <path
+       style="fill:none;stroke:#1e293b;stroke-width:0.529167;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+       d="M 1.1065907,7.4083334 3.1308739,4.885159 4.683721,5.4706666 6.2990967,3.3699032 7.8301273,2.0820466 9.1979167,3.4739902 10.517846,1.4872459 12.170833,0.52916687"
+       id="path9105"
+       sodipodi:nodetypes="cccccccc" />
+    <path
+       style="fill:none;stroke:#475569;stroke-width:0.529167;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+       d="M 1.0583335,0.79375016 2.9048686,1.52922 4.5003711,1.2430427 6.1305223,3.1820424 7.9375,6.35 8.9958333,4.7625 l 1.5874997,1.3229166 1.5875,-0.5817204"
+       id="path9107"
+       sodipodi:nodetypes="cccccccc" />
+  </g>
+</svg>

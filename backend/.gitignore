@@ -1,0 +1,15 @@
+node_modules
+.DS_Store
+# Keep environment variables out of version control
+.env
+*.log
+dist
+coverage
+.nyc_output
+*.gql
+*.old
+
+_upload
+
+*.key
+*.key.*

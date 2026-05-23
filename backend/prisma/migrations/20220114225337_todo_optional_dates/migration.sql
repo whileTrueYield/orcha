@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "todo" ALTER COLUMN "checkedAt" DROP NOT NULL,
+ALTER COLUMN "dueDate" DROP NOT NULL;

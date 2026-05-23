@@ -1,0 +1,394 @@
+services:
+  db:
+    container_name: postgres
+    image: postgres:13
+    healthcheck:
+      test: pg_isready -U ${__DOCKER_POSTGRES_USER} -d ${__DOCKER_POSTGRES_DB}
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    volumes:
+      - db-data:/var/lib/postgres
+    environment:
+      - POSTGRES_PASSWORD=${__DOCKER_POSTGRES_PASSWORD}
+      - POSTGRES_USER=${__DOCKER_POSTGRES_USER}
+      - POSTGRES_DB=${__DOCKER_POSTGRES_DB}
+    expose:
+      - 5432
+    ports:
+      - 5432:5432
+
+  redis:
+    container_name: redis
+    image: redis:7-alpine
+    expose:
+      - 6379
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+
+  minio:
+    container_name: orcha-minio
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+    ports:
+      - 9000:9000
+      - 9001:9001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 10s
+
+  minio-init:
+    container_name: orcha-minio-init
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set orcha http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
+      mc mb --ignore-existing orcha/${__DOCKER_UPLOAD_S3_BUCKET};
+      mc anonymous set download orcha/${__DOCKER_UPLOAD_S3_BUCKET};
+      mc mb --ignore-existing orcha/${__DOCKER_DOCUMENTATION_S3_BUCKET};
+      mc anonymous set download orcha/${__DOCKER_DOCUMENTATION_S3_BUCKET};
+      exit 0;
+      "
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+
+  db-migrate:
+    container_name: orcha-db-migrate
+    build:
+      context: ./backend
+      dockerfile: Dockerfile-dev
+      target: prisma
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
+    command: ["yarn", "prisma", "migrate", "deploy"]
+
+  backend:
+    container_name: orcha-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile-dev
+      target: backend
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:${__DOCKER_ORCHA_BACKEND_PORT}/alive || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      ai:
+        condition: service_started
+      redis:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
+      - NODE_ENV=development
+      - APOLLO_GRAPH_REF=orcha@current
+      - ORCHA_WS_BACKEND_PORT=${__DOCKER_ORCHA_WS_BACKEND_PORT}
+      - ORCHA_BACKEND_PORT=${__DOCKER_ORCHA_BACKEND_PORT}
+      - ORCHA_HOSTNAME=localhost
+      - ORCHA_WEBAPP_URI=http://localhost:${__DOCKER_ORCHA_FRONTEND_PORT}
+      - ORCHA_SUPPORT_URI=http://localhost:${__DOCKER_ORCHA_SUPPORT_PORT}
+      - ORCHA_SESSION_SECRET=${__DOCKER_ORCHA_SESSION_SECRET}
+      - ORCHA_TEST_INTERFACE=${__DOCKER_ORCHA_TEST_INTERFACE}
+      - ORCHA_DOMAIN=localhost
+      - ORCHA_API_URI=http://localhost:${__DOCKER_ORCHA_BACKEND_PORT}
+      - ORCHA_API_WS_URI=ws://localhost:${__DOCKER_ORCHA_WS_BACKEND_PORT}
+      - ORCHA_AI_URI=http://ai:${__DOCKER_ORCHA_AI_PORT}
+      - ORCHA_WWW_URI=http://localhost:${__DOCKER_ORCHA_WWW_PORT}
+      - UPLOAD_S3_BUCKET=${__DOCKER_UPLOAD_S3_BUCKET}
+      - DOCUMENTATION_S3_BUCKET=${__DOCKER_DOCUMENTATION_S3_BUCKET}
+      - DOCUMENTATION_DISTRIBUTION_ID=${__DOCKER_DOCUMENTATION_DISTRIBUTION_ID:-}
+      - ORCHA_UPLOAD_CDN_URI=${__DOCKER_ORCHA_UPLOAD_CDN_URI}
+      - ORCHA_S3_ENDPOINT=http://minio:9000
+      - ORCHA_S3_PUBLIC_ENDPOINT=http://localhost:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - AWS_REGION=us-west-1
+      - NO_COLOR=true
+      - VAPID_PUBLIC_KEY=${__DOCKER_VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${__DOCKER_VAPID_PRIVATE_KEY}
+      - REDIS_HOSTNAME=${__DOCKER_REDIS_HOSTNAME}
+      - REDIS_PORT=${__DOCKER_REDIS_PORT}
+      - DEMO_MODE=true
+    ports:
+      - 4000:4000
+      - 38266:38266
+    develop:
+      watch:
+        - action: sync
+          path: ./backend/src
+          target: /orcha/src
+        - action: sync
+          path: ./backend/templates
+          target: /orcha/templates
+        - action: sync
+          path: ./backend/assets
+          target: /orcha/assets
+        - action: rebuild
+          path: ./backend/yarn.lock
+        - action: rebuild
+          path: ./backend/prisma
+
+  cron:
+    container_name: orcha-cron
+    build:
+      context: ./backend
+      dockerfile: Dockerfile-dev
+      target: cron
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      ai:
+        condition: service_started
+      redis:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
+      - NODE_ENV=development
+      - APOLLO_GRAPH_REF=orcha@current
+      - ORCHA_WS_BACKEND_PORT=${__DOCKER_ORCHA_WS_BACKEND_PORT}
+      - ORCHA_BACKEND_PORT=${__DOCKER_ORCHA_BACKEND_PORT}
+      - ORCHA_HOSTNAME=localhost
+      - ORCHA_WEBAPP_URI=http://localhost:${__DOCKER_ORCHA_FRONTEND_PORT}
+      - ORCHA_SUPPORT_URI=http://localhost:${__DOCKER_ORCHA_SUPPORT_PORT}
+      - ORCHA_SESSION_SECRET=${__DOCKER_ORCHA_SESSION_SECRET}
+      - ORCHA_TEST_INTERFACE=${__DOCKER_ORCHA_TEST_INTERFACE}
+      - ORCHA_DOMAIN=localhost
+      - ORCHA_API_URI=http://localhost:${__DOCKER_ORCHA_BACKEND_PORT}
+      - ORCHA_API_WS_URI=ws://localhost:${__DOCKER_ORCHA_WS_BACKEND_PORT}
+      - ORCHA_AI_URI=http://ai:${__DOCKER_ORCHA_AI_PORT}
+      - ORCHA_WWW_URI=http://localhost:${__DOCKER_ORCHA_WWW_PORT}
+      - UPLOAD_S3_BUCKET=${__DOCKER_UPLOAD_S3_BUCKET}
+      - DOCUMENTATION_S3_BUCKET=${__DOCKER_DOCUMENTATION_S3_BUCKET}
+      - DOCUMENTATION_DISTRIBUTION_ID=${__DOCKER_DOCUMENTATION_DISTRIBUTION_ID:-}
+      - ORCHA_UPLOAD_CDN_URI=${__DOCKER_ORCHA_UPLOAD_CDN_URI}
+      - ORCHA_S3_ENDPOINT=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - AWS_REGION=us-west-1
+      - NO_COLOR=true
+      - VAPID_PUBLIC_KEY=${__DOCKER_VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${__DOCKER_VAPID_PRIVATE_KEY}
+      - REDIS_HOSTNAME=${__DOCKER_REDIS_HOSTNAME}
+      - REDIS_PORT=${__DOCKER_REDIS_PORT}
+      - DEMO_MODE=true
+    develop:
+      watch:
+        - action: sync
+          path: ./backend/src
+          target: /orcha/src
+        - action: sync
+          path: ./backend/templates
+          target: /orcha/templates
+        - action: sync
+          path: ./backend/assets
+          target: /orcha/assets
+        - action: rebuild
+          path: ./backend/yarn.lock
+        - action: rebuild
+          path: ./backend/prisma
+
+  studio:
+    container_name: orcha-studio
+    build:
+      context: ./backend
+      dockerfile: Dockerfile-dev
+      target: studio
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:5555 || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
+    ports:
+      - 5555:5555
+    develop:
+      watch:
+        - action: rebuild
+          path: ./backend/yarn.lock
+        - action: rebuild
+          path: ./backend/prisma
+
+  ai:
+    container_name: orcha-ai
+    build:
+      context: ./ai
+    healthcheck:
+      test: wget --tries=1 --method=GET http://127.0.0.1:${__DOCKER_ORCHA_AI_PORT}/alive -O /dev/null
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    expose:
+      - 8000
+    develop:
+      watch:
+        - action: sync
+          path: ./ai/app
+          target: /orcha-ai/app
+        - action: rebuild
+          path: ./ai/requirements.txt
+
+  hocuspocus:
+    container_name: orcha-hocuspocus
+    build:
+      context: ./backend
+      dockerfile: Dockerfile-dev
+      target: hocuspocus
+    depends_on:
+      - db
+      - redis
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:${__DOCKER_ORCHA_WS_BACKEND_PORT}/ || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    environment:
+      - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
+      - NODE_ENV=development
+      - ORCHA_WS_BACKEND_PORT=${__DOCKER_ORCHA_WS_BACKEND_PORT}
+      - ORCHA_HOSTNAME=localhost
+      - ORCHA_SESSION_SECRET=${__DOCKER_ORCHA_SESSION_SECRET}
+      - ORCHA_DOMAIN=localhost
+      - ORCHA_API_WS_URI=ws://localhost:${__DOCKER_ORCHA_WS_BACKEND_PORT}
+      - REDIS_HOSTNAME=${__DOCKER_REDIS_HOSTNAME}
+      - VAPID_PUBLIC_KEY=${__DOCKER_VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${__DOCKER_VAPID_PRIVATE_KEY}
+    ports:
+      - 38268:38268
+    develop:
+      watch:
+        - action: sync
+          path: ./backend/src/hocuspocus
+          target: /orcha/src/hocuspocus
+        - action: sync
+          path: ./backend/templates
+          target: /orcha/templates
+        - action: sync
+          path: ./backend/assets
+          target: /orcha/assets
+        - action: rebuild
+          path: ./backend/yarn.lock
+        - action: rebuild
+          path: ./backend/prisma
+
+  support:
+    container_name: orcha-support
+    build:
+      context: ./support
+      target: dev
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:${__DOCKER_ORCHA_SUPPORT_PORT}/orcha-support.js || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    environment:
+      - NODE_ENV=development
+      - PORT=${__DOCKER_ORCHA_SUPPORT_PORT}
+      - VITE_WEBSITE_NAME=Orcha Support
+      - VITE_SUPPORT_URI=http://localhost:${__DOCKER_ORCHA_SUPPORT_PORT}
+      - VITE_API_URI=http://localhost:${__DOCKER_ORCHA_BACKEND_PORT}
+      - VITE_DOCUMENTATION_URI=http://localhost:${__DOCKER_ORCHA_BACKEND_PORT}
+      - VITE_UPLOAD_CDN_URI=${__DOCKER_ORCHA_UPLOAD_CDN_URI}
+    ports:
+      - 3001:3001
+    develop:
+      watch:
+        - action: sync
+          path: ./support/src
+          target: /orcha/src
+        - action: sync
+          path: ./support/public
+          target: /orcha/public
+        - action: rebuild
+          path: ./support/lib/orcha-support.ts
+        - action: rebuild
+          path: ./support/yarn.lock
+
+  frontend:
+    container_name: orcha-frontend
+    build:
+      context: ./frontend
+      target: dev
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:${__DOCKER_ORCHA_FRONTEND_PORT}/index.html || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    volumes:
+      - ./backend/src/generated:/backend/src/generated:ro
+    environment:
+      - PORT=${__DOCKER_ORCHA_FRONTEND_PORT}
+      - NODE_ENV=development
+      - VITE_WEBSITE_NAME=Orcha
+      - VITE_API_URI=http://localhost:${__DOCKER_ORCHA_BACKEND_PORT}
+      - VITE_API_WS_URI=ws://localhost:${__DOCKER_ORCHA_WS_BACKEND_PORT}
+      - VITE_GRAPHQL_URI=http://localhost:${__DOCKER_ORCHA_BACKEND_PORT}/graphql
+      - VITE_UPLOAD_CDN_URI=${__DOCKER_ORCHA_UPLOAD_CDN_URI}
+      - VITE_WEBSITE_DOMAIN=localhost
+      - VITE_SUPPORT_URI=http://localhost:${__DOCKER_ORCHA_SUPPORT_PORT}
+      - VITE_DOCUMENTATION_URI=http://localhost:${__DOCKER_ORCHA_BACKEND_PORT}
+      - VITE_VAPID_PUBLIC_KEY=${__DOCKER_VAPID_PUBLIC_KEY}
+      - VITE_DEMO_MODE=true
+    ports:
+      - 3000:3000
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend/src
+          target: /orcha/src
+        - action: sync
+          path: ./frontend/index.html
+          target: /orcha/index.html
+        - action: sync
+          path: ./frontend/public
+          target: /orcha/public
+        - action: rebuild
+          path: ./frontend/yarn.lock
+
+  dozzle:
+    container_name: dozzle
+    image: amir20/dozzle:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 10350:8080
+
+volumes:
+  db-data:
+  minio-data:

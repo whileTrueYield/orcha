@@ -1,0 +1,11 @@
+Welcome to Orcha!
+
+Please verify your email address {{email}} by clicking the button below to confirm your account creation.
+
+{{emailConfirmUri}}
+
+If you did not subscribe to our service, you may disregard this message and your email address will not be granted access to our services.
+Thank you,
+
+The Orcha team
+{{wwwUri}}

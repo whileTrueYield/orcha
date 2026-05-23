@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Search</title>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      media="screen"
+      href="/css/font/font.css"
+    />
+    <link href="/doc/{{documentation.id}}/style.css" rel="stylesheet" />
+    <script src="/script/lunr.js"></script>
+    <script src="/doc/{{documentation.id}}/search.js"></script>
+    <script>
+      function search(query) {
+        const resultContainer = document.getElementById("results");
+        resultContainer.innerHTML = "";
+
+        if (!query.trim()) {
+          return;
+        }
+
+        var results = idx.search(query).slice(0, 10);
+
+        if (results && results.length) {
+          results.forEach(function (result) {
+            const doc = documentsById[result.ref];
+            resultContainer.appendChild(htmlResult(doc));
+          });
+        } else {
+          resultContainer.innerHTML = `<li class="h-full flex bg-gray-50 flex-col items-center justify-center space-y-2 py-12"><div class="text-base font-medium text-gray-700">
+            No Results found
+            </div><div class="text-sm text-gray-500 text-center leading-6 font-normal">
+            We couldn't find what you search for.<br />Perhaps try different keywords?
+            </div></li>`;
+        }
+      }
+
+      function htmlResult(doc) {
+        var ref = doc.id.split("#");
+        var url = `${ref[0]}.html#${ref[1]}`;
+        container = document.createElement("div");
+        container.innerHTML = `<li><a
+          onclick="parent.delayHideSearch()" target="_parent" href="${url}" class="focus:outline-none block py-2 px-4 space-y-1 cursor-pointer hover:bg-gray-50 group">
+          
+  <div class="text-gray-700 font-medium group-hover:text-sky-700">
+    ${doc.pageTitle ? doc.pageTitle + " > " : ""}${doc.title}
+  </div>
+  <div class="truncate text-sm text-gray-500 group-hover:text-gray-600">
+    ${doc.body.replaceAll(/<\/?[^>]+(>|$)/gi, "")}
+  </div></a>
+</li>`;
+        return container;
+      }
+    </script>
+  </head>
+  <body class="overflow-y-none">
+    <div class="max-w-xl mx-auto rounded-lg overflow-hidden bg-white divide-y">
+      <div class="relative">
+        <input
+          type="text"
+          id="search"
+          class="block w-full text-sm appearance-none rounded-t-lg bg-transparent autofill:bg-transparent!important ring-0 focus:ring-0 focus:shadow-none rounded-lg focus:border-0 border-0 py-4 pl-4 pr-12 text-gray-900 placeholder:text-gray-600 focus:outline-none sm:leading-6"
+          placeholder="Search documentation..."
+          autocomplete="off"
+        />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-6 w-6 absolute right-4 top-4 text-gray-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="1.5"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+      </div>
+      <ul
+        class="divide-y overflow-y-auto max-h-80 empty:hidden rounded-b-lg"
+        id="results"
+      ></ul>
+    </div>
+  </body>
+  <script>
+    var searchInput = document.getElementById("search");
+
+    searchInput.focus();
+
+    searchInput.addEventListener("keydown", (event) => {
+      if (event.code === "Escape") {
+        window.parent.hideSearch();
+      }
+    });
+
+    searchInput.addEventListener("input", (event) => {
+      search(event.currentTarget.value);
+    });
+  </script>
+</html>

@@ -1,0 +1,65 @@
+FROM node:20-alpine as base
+
+ARG node_env=development
+ENV NODE_ENV $node_env
+
+WORKDIR /orcha
+# for Apple Silicon, we need to compile bcrypt, so we need to install 
+# some more dependencies not necessary for production
+RUN apk --no-cache add git make cmake g++ python3 openssl
+COPY package.json yarn.lock ./
+ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
+RUN yarn --pure-lockfile
+
+FROM base as prisma
+COPY prisma prisma/
+ENV NODE_OPTIONS --max-old-space-size=4096
+RUN yarn prisma generate
+
+FROM prisma as studio
+ADD nodemon.json nodemon.json
+ADD tsconfig.json tsconfig.json
+COPY prisma prisma/
+
+EXPOSE 5555
+
+CMD ["yarn", "prisma", "studio", "--browser", "none"]
+
+FROM prisma as backend
+ADD nodemon.json nodemon.json
+ADD tsconfig.json tsconfig.json
+COPY assets assets/
+COPY src src/
+
+# generate the styles for the documentation
+COPY templates templates/
+COPY tailwind.config.js tailwind.config.js
+RUN yarn tailwindcss -i ./templates/input.css -o ./templates/css/style.css
+
+EXPOSE 8000
+
+CMD ["yarn", "run", "nodemon", "src/server.ts"]
+
+
+FROM prisma as cron
+ADD nodemon.json nodemon.json
+ADD tsconfig.json tsconfig.json
+COPY assets assets/
+COPY src src/
+
+# generate the styles for the documentation
+COPY templates templates/
+COPY tailwind.config.js tailwind.config.js
+RUN yarn tailwindcss -i ./templates/input.css -o ./templates/css/style.css
+
+CMD ["yarn", "run", "nodemon", "src/cron.ts"]
+
+
+FROM prisma as hocuspocus
+ADD nodemon.json nodemon.json
+ADD tsconfig.json tsconfig.json
+COPY src src/
+
+EXPOSE 38268
+
+CMD ["yarn", "run", "nodemon", "src/hocuspocus/server.ts"]

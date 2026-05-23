@@ -1,0 +1,16 @@
+---
+products:
+  - name: GrooveStream
+    code: GSM
+    description: GrooveStream is an online music player platform that enables users to stream their favorite music online. The GrooveStream product includes a user-friendly interface that allows users to search for and play their preferred tunes easily. The platform also includes personalized playlists, recommendations based on user listening habits, and social sharing features, which allow users to share their favorite songs with friends and family.
+    coverUrl: https://upload.beta-orcha.com/demo/groove-stream.jpg
+
+  - name: StreetBeats
+    code: STBTS
+    description: Street concerts.
+    coverUrl: https://upload.beta-orcha.com/demo/groove-stream.jpg
+
+  - name: Garage Clean Up
+    code: GCU
+    description: The Garage Clean Up commences! If we can complete this initiative, we'll get a new beverage fridge so we'll never run out of cold sparkling water.
+    coverUrl: 

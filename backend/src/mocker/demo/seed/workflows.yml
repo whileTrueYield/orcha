@@ -1,0 +1,219 @@
+---
+- name: to do
+  description: "A one-step workflow for things that just need to get done."
+  color: lightPurple
+  states:
+    - name: Working on it
+      roles:
+        - project manager
+        - vp of engineering
+        - lead software engineer
+        - cto
+        - software engineer
+        - quality asssurance
+        - designer
+      eta:
+        - 6
+        - 6
+        - 12
+        - 12
+        - 12
+        - 12
+        - 18
+        - 24
+        - 42
+- name: bug
+  description: "Malfunctions to fix, user-reported or otherwise."
+  color: lightRed
+  states:
+    - name: Investigate
+      roles:
+        - quality assurance
+      eta:
+        - 0.5
+        - 0.5
+        - 0.75
+        - 0.75
+        - 0.75
+        - 0.75
+        - 1.5
+        - 1.5
+    - name: Development
+      roles:
+        - software engineer
+        - lead software engineer
+      eta:
+        - 3
+        - 3
+        - 5
+        - 5
+        - 5
+        - 5
+        - 6
+        - 6
+        - 6
+        - 6
+        - 7
+        - 9
+    - name: Peer Review
+      roles:
+        - software engineer
+        - lead software engineer
+      eta:
+        - 1.5
+        - 1.5
+        - 1.5
+        - 3
+        - 3
+        - 3
+        - 6
+    - name: QA
+      roles:
+        - quality assurance
+      eta:
+        - 1.5
+        - 1.5
+        - 1.5
+        - 3
+        - 3
+        - 3
+        - 6
+- name: feature
+  description: "Discrete areas of new and upgraded functionality that deliver value to our customers."
+  color: lightBlue
+  states:
+    - name: Development
+      roles:
+        - software engineer
+        - lead software engineer
+      eta:
+        - 2
+        - 2
+        - 3
+        - 3
+        - 3
+        - 3
+        - 4
+        - 4
+        - 4
+        - 4
+        - 4
+        - 7
+    - name: Documentation
+      roles:
+        - software engineer
+      eta:
+        - 1.5
+        - 1.5
+        - 1.5
+        - 3
+        - 3
+        - 3
+        - 6
+    - name: Peer Review
+      roles:
+        - vp of engineering
+        - software engineer
+        - lead software engineer
+        - cto
+      eta:
+        - 1.5
+        - 1.5
+        - 1.5
+        - 3
+        - 3
+        - 3
+        - 6
+    - name: QA
+      roles:
+        - quality assurance
+      eta:
+        - 1.5
+        - 1.5
+        - 1.5
+        - 3
+        - 3
+        - 3
+        - 6
+
+- name: Garage Clean Up
+  description: "Everyone pitches in"
+  color: lightGreen
+  states:
+    - name: Sort and discard
+      roles:
+        - software engineer
+        - lead software engineer
+        - project manager
+        - ceo
+        - cto
+        - designer
+        - dev ops
+        - quality assuarance
+      eta:
+        - 2
+        - 2
+        - 3
+        - 3
+        - 3
+        - 3
+        - 4
+        - 4
+        - 4
+        - 4
+        - 4
+        - 7
+    - name: Organize
+      roles:
+        - software engineer
+        - lead software engineer
+        - project manager
+        - ceo
+        - cto
+        - designer
+        - dev ops
+        - quality assuarance
+      eta:
+        - 1.5
+        - 1.5
+        - 1.5
+        - 3
+        - 3
+        - 3
+        - 6
+    - name: Clean
+      roles:
+        - software engineer
+        - lead software engineer
+        - project manager
+        - ceo
+        - cto
+        - designer
+        - dev ops
+        - quality assuarance
+      eta:
+        - 1.5
+        - 1.5
+        - 1.5
+        - 3
+        - 3
+        - 3
+        - 6
+    - name: Stage for moving back in
+      roles:
+        - software engineer
+        - lead software engineer
+        - project manager
+        - ceo
+        - cto
+        - designer
+        - dev ops
+        - quality assuarance
+      eta:
+        - 1.5
+        - 1.5
+        - 1.5
+        - 3
+        - 3
+        - 3
+        - 6

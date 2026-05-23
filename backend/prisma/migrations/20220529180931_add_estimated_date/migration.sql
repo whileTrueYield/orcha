@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "organization" ADD COLUMN     "estimatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

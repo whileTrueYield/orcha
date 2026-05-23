@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Schedule</title>
+    <style>
+      .row {
+        position: relative;
+        margin-top: 1rem;
+        height: 50px;
+        background-color: lightgray;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .note {
+        margin: 1rem;
+      }
+
+      .box {
+        height: 48px;
+        position: absolute;
+        border: 1px solid gray;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: monospace;
+      }
+      .node {
+        margin: 0.5rem 1rem;
+        font-family: monospace;
+      }
+      .task {
+        margin: 0.5rem 1rem;
+        font-family: monospace;
+      }
+      .task.late {
+        color: "red";
+      }
+      .task.ontime {
+        color: green;
+      }
+      .sub_container {
+        display: flex;
+        flex-direction: row;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">HTML_SCHEDULE</div>
+  </body>
+</html>

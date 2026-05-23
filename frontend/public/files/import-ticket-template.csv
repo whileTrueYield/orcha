@@ -1,0 +1,2 @@
+id,title,description,owner_email,author_email,tags
+ticket-123,example ticket,"This is an example, notice the date format. You should delete this row prior to import","owner@example.com","author@example.com","backend,billing"

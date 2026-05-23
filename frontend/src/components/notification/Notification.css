@@ -1,0 +1,34 @@
+@keyframes progress-move {
+  0% {
+    width: 100%;
+    display: block;
+  }
+  100% {
+    width: 0%;
+  }
+}
+
+.animate-notification-info {
+  animation: progress-move 2s linear;
+  animation-fill-mode: forwards;
+}
+
+.animate-notification-success {
+  animation: progress-move 1s linear;
+  animation-fill-mode: forwards;
+}
+
+.animate-notification-warning {
+  animation: progress-move 4s linear;
+  animation-fill-mode: forwards;
+}
+
+.animate-notification-error {
+  animation: progress-move 8s linear;
+  animation-fill-mode: forwards;
+}
+
+.animate-notification-version {
+  animation: progress-move 8s linear;
+  animation-fill-mode: forwards;
+}

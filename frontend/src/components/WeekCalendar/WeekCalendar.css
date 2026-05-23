@@ -1,0 +1,9 @@
+.timeline-container {
+  background-image: repeating-linear-gradient(
+    180deg,
+    #f3f4f6,
+    #f3f4f6 4.1666%,
+    #f9fafb 4.1666%,
+    #f9fafb 8.33333%
+  );
+}

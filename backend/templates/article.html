@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+{% import "leftMenu.html" as leftMenu %}
+
+<html class="scroll-smooth antialiased">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="{{documentation.logo}}" />
+    <link href="/doc/{{documentation.id}}/style.css" rel="stylesheet" />
+    <link rel="apple-touch-icon" href="{{documentation.logo}}" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>{{page.title}} | {{ documentation.name }}</title>
+
+    <meta property="og:title" content="{{ documentation.name }}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="{{ documentation.name }}" />
+    <meta property="og:description" content="{{page.title}}" />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      media="screen"
+      href="/css/font/font.css"
+    />
+  </head>
+  <body class="bg-white dark:bg-slate-900 relative">
+    <article class="max-w-2xl mx-auto px-4 md:px-6 lg:px-0 my-6">
+      <header class="mb-10 space-y-1">
+        <h1 class="text-3xl tracking-wide font-bold text-slate-800">
+          {{page.title}}
+        </h1>
+      </header>
+
+      <div
+        class="max-w-none prose-pre:shadow-lg prose mb-6 prose-slate prose-h2:tracking-wide prose-h3:tracking-wide prose-pre:bg-slate-700"
+      >
+        {{page.htmlBody | safe}}
+      </div>
+    </article>
+    <script>
+      setTimeout(function () {
+        if (window.location.hash) {
+          const target = document.getElementById(window.location.hash.slice(1));
+          if (target) {
+            window.scrollTo(0, target.offsetTop);
+          }
+        }
+      }, 500);
+    </script>
+  </body>
+</html>

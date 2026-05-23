@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "product" ALTER COLUMN "stage" SET DEFAULT E'PUBLISHED';
+
+-- AlterTable
+ALTER TABLE "workflow" ALTER COLUMN "stage" SET DEFAULT E'PUBLISHED';

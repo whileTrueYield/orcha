@@ -1,0 +1,21 @@
+# Set the version of docker compose to use
+version: "3"
+
+# The containers that compose the project
+services:
+  db:
+    image: postgres:13
+    container_name: integration-tests-prisma
+    restart: always
+    ports:
+      - 2345:5432
+    environment:
+      - POSTGRES_PASSWORD=testy-mc-testface
+      - POSTGRES_USER=jester
+      - POSTGRES_DATABASE=tests
+    volumes:
+      - db:/var/lib/postgresql/data
+
+volumes:
+  db:
+    driver: local

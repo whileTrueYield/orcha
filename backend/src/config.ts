@@ -1,0 +1,211 @@
+import { randomUUID } from "crypto";
+import { resolve } from "path";
+import { logger } from "./logger";
+
+console.log(`NODE_ENV is ${process.env.NODE_ENV}`);
+
+interface Config {
+  instanceId: string;
+  port: number;
+  isDev: boolean;
+  isProd: boolean;
+  isTest: boolean;
+  isDemo: boolean;
+  isStaging: boolean;
+  hostname: string;
+  allowOrigin: string[];
+  allowedEmails: string[];
+  allowedEmailDomains: string[];
+  sessionSecret: string;
+  assetRoot: string;
+  webAppUri: string;
+  supportUri: string;
+  apiUri: string;
+  apiWsUri: string;
+  apiWsPort: number;
+  aiUri: string;
+  uploadS3Bucket: string;
+  documentationS3Bucket: string;
+  documentationDistributionId: string | undefined;
+  uploadCdnUri: string;
+  wwwUri: string;
+  region: string;
+  uploadPrefix: string;
+  email: {
+    noReplyAddress: string;
+    unsubscribeUri: string;
+    confirmLinkExpiration: number;
+  };
+  upload: {
+    multiples: boolean;
+    uploadDir: string;
+    keepExtensions: boolean;
+  };
+  password_lost_token_expiration: number;
+  pow_difficulty: number;
+
+  // number of days without a customer reply after which the issue is
+  // automatically marked as resolved
+  autoResolveIssueAfter: number;
+
+  // work reminder delay in minutes
+  workReminderOffset: number;
+
+  // add unprotected rest test interfaces for e2e tests
+  testInterfaces: boolean;
+}
+
+const isDev = process.env.NODE_ENV === "development";
+const isProd = process.env.NODE_ENV === "production";
+const isTest = process.env.NODE_ENV === "test";
+const isDemo = process.env.DEMO_MODE === "true";
+const isStaging = process.env.ENV_NAME === "staging";
+
+const testEnv = {
+  ORCHA_WS_BACKEND_PORT: "38268",
+  ORCHA_BACKEND_PORT: "4000",
+  ORCHA_HOSTNAME: "example.com",
+  ORCHA_WEBAPP_URI: "http://app.example.com:3000",
+  ORCHA_SUPPORT_URI: "http://support.example.com:3000",
+  ORCHA_SESSION_SECRET: "what-evs",
+  ORCHA_DOMAIN: "example.com",
+  ORCHA_API_WS_URI: "ws://api.example.com:38268",
+  ORCHA_API_URI: "http://api.example.com:4000",
+  ORCHA_AI_URI: "http://api.example.com:8000",
+  ORCHA_WWW_URI: "http://www.example.com:3030",
+  UPLOAD_S3_BUCKET: "upload.example.com",
+  DOCUMENTATION_DISTRIBUTION_ID: "MY_AWS_DISTRIBUTION_ID",
+  DOCUMENTATION_S3_BUCKET: "documentation.example.com",
+  ORCHA_UPLOAD_CDN_URI: "https://upload.example.com",
+  AWS_REGION: "us-west-1",
+  DATABASE_URL: process.env.DATABASE_URL,
+};
+
+// default to test environment variable if in test mode
+const env = isTest
+  ? testEnv
+  : {
+      ORCHA_BACKEND_PORT: process.env.ORCHA_BACKEND_PORT || "4000",
+      ORCHA_WS_BACKEND_PORT: process.env.ORCHA_WS_BACKEND_PORT || "38268",
+      ORCHA_HOSTNAME: process.env.ORCHA_HOSTNAME,
+      ORCHA_WEBAPP_URI: process.env.ORCHA_WEBAPP_URI,
+      ORCHA_SUPPORT_URI: process.env.ORCHA_SUPPORT_URI,
+      ORCHA_SESSION_SECRET: process.env.ORCHA_SESSION_SECRET,
+      ORCHA_DOMAIN: process.env.ORCHA_DOMAIN,
+      ORCHA_API_URI: process.env.ORCHA_API_URI,
+      ORCHA_API_WS_URI: process.env.ORCHA_API_WS_URI,
+      ORCHA_AI_URI: process.env.ORCHA_AI_URI,
+      ORCHA_WWW_URI: process.env.ORCHA_WWW_URI,
+      UPLOAD_S3_BUCKET: process.env.UPLOAD_S3_BUCKET,
+      DOCUMENTATION_S3_BUCKET: process.env.DOCUMENTATION_S3_BUCKET,
+      DOCUMENTATION_DISTRIBUTION_ID: process.env.DOCUMENTATION_DISTRIBUTION_ID,
+      ORCHA_UPLOAD_CDN_URI: process.env.ORCHA_UPLOAD_CDN_URI,
+      AWS_REGION: process.env.AWS_REGION,
+      VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
+      VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+    };
+
+if (!env.ORCHA_HOSTNAME) {
+  throw Error("ORCHA_HOSTNAME env variable is undefined");
+}
+
+if (!env.ORCHA_SUPPORT_URI) {
+  throw Error("ORCHA_SUPPORT_URI env variable is undefined");
+}
+
+if (!env.ORCHA_WEBAPP_URI) {
+  throw Error("ORCHA_WEBAPP_URI env variable is undefined");
+}
+
+if (!env.ORCHA_SESSION_SECRET) {
+  throw Error("ORCHA_SESSION_SECRET env variable is undefined");
+}
+
+if (!env.ORCHA_DOMAIN) {
+  throw Error("ORCHA_DOMAIN env variable is undefined");
+}
+
+if (!env.ORCHA_API_URI) {
+  throw Error("ORCHA_API_URI env variable is undefined");
+}
+
+if (!env.ORCHA_WS_BACKEND_PORT) {
+  throw Error("ORCHA_WS_BACKEND_PORT env variable is undefined");
+}
+
+if (!env.ORCHA_API_WS_URI) {
+  throw Error("ORCHA_API_WS_URI env variable is undefined");
+}
+
+if (!env.ORCHA_AI_URI) {
+  throw Error("ORCHA_AI_URI env variable is undefined");
+}
+
+if (!env.ORCHA_WWW_URI) {
+  throw Error("ORCHA_WWW_URI env variable is undefined");
+}
+
+if (!env.UPLOAD_S3_BUCKET) {
+  throw Error("UPLOAD_S3_BUCKET env variable is undefined");
+}
+
+if (!env.DOCUMENTATION_S3_BUCKET) {
+  throw Error("DOCUMENTATION_S3_BUCKET env variable is undefined");
+}
+
+if (!env.ORCHA_UPLOAD_CDN_URI) {
+  throw Error("ORCHA_UPLOAD_CDN_URI env variable is undefined");
+}
+
+if (!env.AWS_REGION) {
+  throw Error("AWS_REGION env variable is undefined");
+}
+
+export const config: Config = {
+  instanceId: randomUUID(),
+  port: parseInt(env.ORCHA_BACKEND_PORT),
+  isDev,
+  isProd,
+  isTest,
+  isDemo,
+  isStaging,
+  // in the frontend repo, use: git rev-parse --short HEAD
+  sessionSecret: env.ORCHA_SESSION_SECRET,
+  hostname: env.ORCHA_HOSTNAME,
+  allowOrigin: [env.ORCHA_WEBAPP_URI, env.ORCHA_SUPPORT_URI, env.ORCHA_WWW_URI],
+  allowedEmails: ["kerbyferris@gmail.com"],
+  allowedEmailDomains: ["orchalabs.com", "jeeny.com"],
+  webAppUri: env.ORCHA_WEBAPP_URI,
+  supportUri: env.ORCHA_SUPPORT_URI,
+  wwwUri: env.ORCHA_WWW_URI,
+  aiUri: env.ORCHA_AI_URI,
+  apiUri: env.ORCHA_API_URI,
+  apiWsUri: env.ORCHA_API_WS_URI,
+  apiWsPort: parseInt(env.ORCHA_WS_BACKEND_PORT),
+  uploadS3Bucket: env.UPLOAD_S3_BUCKET,
+  documentationS3Bucket: env.DOCUMENTATION_S3_BUCKET,
+  documentationDistributionId: env.DOCUMENTATION_DISTRIBUTION_ID || undefined,
+  uploadCdnUri: env.ORCHA_UPLOAD_CDN_URI,
+  region: env.AWS_REGION,
+  uploadPrefix: process.env.ORCHA_UPLOAD_PREFIX || "",
+  assetRoot: resolve(__dirname, "../assets/"),
+  email: {
+    unsubscribeUri: `${process.env.ORCHA_API_URI}/unsubscribe`,
+    confirmLinkExpiration: 3600, // 1 hour
+    noReplyAddress: `no-reply@${process.env.ORCHA_DOMAIN}`,
+  },
+  upload: {
+    multiples: true,
+    uploadDir: `${__dirname}/../upload`,
+    keepExtensions: true,
+  },
+  password_lost_token_expiration: 600, // 10 minutes
+  pow_difficulty: 4, // proof of work difficulty level, in power of 10
+  autoResolveIssueAfter: 28, // auto resolve issue after 28 days
+  workReminderOffset: 10, // work reminder offset in minutes
+
+  // test REST interfaces do not run in PROD and only if ORCHA_TEST_INTERFACE is set to true
+  testInterfaces: isProd ? false : process.env.ORCHA_TEST_INTERFACE === "true",
+};
+
+logger.info(`Config is ready, \n${JSON.stringify(config, null, 2)}`);

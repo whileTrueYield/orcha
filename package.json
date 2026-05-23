@@ -1,0 +1,19 @@
+{
+  "name": "orcha",
+  "version": "0.0.0",
+  "private": true,
+  "license": "FSL-1.1-MIT",
+  "description": "Project manager with a Monte Carlo Tree Search scheduler.",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "support"
+  ],
+  "volta": {
+    "node": "16.17.1",
+    "yarn": "1.22.17"
+  },
+  "scripts": {
+    "types": "yarn workspace orcha-backend types"
+  }
+}

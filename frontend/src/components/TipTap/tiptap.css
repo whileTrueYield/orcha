@@ -1,0 +1,114 @@
+.ProseMirror-focused {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.prose strong {
+  /* I don't understand why it's set to black by tailwind Prose styles */
+  color: inherit !important;
+}
+
+/* Give a remote user a caret */
+.collaboration-cursor__caret {
+  border-left: 1px solid #0d0d0d;
+  border-right: 1px solid #0d0d0d;
+  margin-left: -1px;
+  margin-right: -1px;
+  pointer-events: none;
+  position: relative;
+  word-break: normal;
+}
+
+/* Render the username above the caret */
+.collaboration-cursor__label {
+  border-radius: 3px 3px 3px 0;
+  color: #0d0d0d;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  left: -1px;
+  line-height: normal;
+  padding: 0.1rem 0.3rem;
+  position: absolute;
+  top: -1.4em;
+  user-select: none;
+  white-space: nowrap;
+}
+
+ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+}
+
+ul[data-type="taskList"] p {
+  margin: 0;
+}
+
+ul[data-type="taskList"] li {
+  display: flex;
+}
+
+ul[data-type="taskList"] li label {
+  flex: 0 0 auto;
+  margin-right: 0.5rem;
+  user-select: none;
+}
+
+ul[data-type="taskList"] li div {
+  flex: 1 1 auto;
+}
+
+.prose a {
+  color: #0369a1;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.prose ol li p,
+.prose ul li p {
+  margin: 0;
+}
+
+ul[data-type="taskList"] li input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px solid rgb(203, 213, 225);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  vertical-align: text-top;
+}
+
+ul[data-type="taskList"] li input[type="checkbox"]:hover {
+  border-color: rgb(2 132 199);
+}
+
+ul[data-type="taskList"] li input[type="checkbox"]:checked {
+  color: rgb(2 132 199);
+}
+
+ul[data-type="taskList"] li:has(input[type="checkbox"]:checked) > div {
+  text-decoration: line-through;
+  color: rgb(100 116 139);
+}
+
+ul li,
+ol li {
+  display: list-item;
+}
+
+.mention {
+  border: 1px solid #000;
+  border-radius: 0.4rem;
+  box-decoration-break: clone;
+  padding: 0.1rem 0.3rem;
+}
+
+.tiptap .is-editor-empty:first-child::before {
+  color: #adb5bd;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

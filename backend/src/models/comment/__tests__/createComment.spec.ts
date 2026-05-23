@@ -1,0 +1,265 @@
+import {
+  graphqlRequest,
+  getTestSessionWithRole,
+  createRandomTicket,
+} from "../../../utils/testing";
+import { faker } from "@faker-js/faker";
+import { RoleType } from "@generated/type-graphql";
+import expect from "expect";
+import prisma from "../../../prisma";
+
+const createCommentMutation = `
+mutation CreateComment($ticketId: Int!, $input:CreateCommentInput!) {
+  createComment(
+    ticketId: $ticketId
+    input: $input
+  ) {
+    id
+    comments {
+      nodes {
+        body
+        ticket {
+          id
+        }
+        author {
+          id
+        }
+        organization {
+          id
+        }
+      }
+    }
+  }
+}
+`;
+
+const addReplyMutation = `
+mutation AddReply($commentId: Int!, $input: AddReplyInput!) {
+  addReply(commentId: $commentId, input: $input) {
+    id
+    body
+    author {
+      id
+    }
+  }
+}
+`;
+
+describe("create comment", () => {
+  it("creates a new comment", async () => {
+    const { session, role, organization } = await getTestSessionWithRole(
+      RoleType.MEMBER
+    );
+
+    const { ticket } = await createRandomTicket(organization, role);
+
+    const comment = {
+      body: faker.lorem.paragraph(),
+    };
+
+    const response = await graphqlRequest({
+      source: createCommentMutation,
+      variableValues: {
+        input: comment,
+        ticketId: ticket.id,
+      },
+      session,
+    });
+
+    expect(response).toEqual({
+      data: {
+        createComment: {
+          id: ticket.id,
+          comments: {
+            nodes: [
+              {
+                organization: {
+                  id: organization.id,
+                },
+                author: {
+                  id: role.id,
+                },
+                ticket: {
+                  id: ticket.id,
+                },
+                body: comment.body,
+              },
+            ],
+          },
+        },
+      },
+    });
+  });
+
+  it("does not create a comment without a body", async () => {
+    const { session, role, organization } = await getTestSessionWithRole(
+      RoleType.ADMIN
+    );
+
+    const { ticket } = await createRandomTicket(organization, role);
+
+    const comment = {
+      body: "",
+    };
+
+    const response = await graphqlRequest({
+      source: createCommentMutation,
+      variableValues: {
+        input: comment,
+        ticketId: ticket.id,
+      },
+      session,
+    });
+
+    expect(response.errors).toBeDefined();
+  });
+
+  it("creates a new comment creates only one notification", async () => {
+    const {
+      session: jeffSession,
+      role: jeff,
+      organization,
+    } = await getTestSessionWithRole(RoleType.MEMBER);
+
+    const { session: tedSession, role: ted } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+      undefined,
+      organization
+    );
+
+    // creating a ticket using the first role
+    const { ticket } = await createRandomTicket(organization, jeff, undefined, {
+      owner: { connect: { id: jeff.id } },
+      watchers: { connect: [{ id: jeff.id }] },
+    });
+
+    // create a comment tagging jeff
+    const comment = {
+      body: `[jeff](@role/${jeff.id}) faker.lorem.paragraph()`,
+    };
+
+    // ted creates a comment on it
+    const response = await graphqlRequest({
+      source: createCommentMutation,
+      variableValues: {
+        input: comment,
+        ticketId: ticket.id,
+      },
+      session: tedSession,
+    });
+
+    const notifications = await prisma.notification.findMany({
+      where: {
+        roleId: jeff.id,
+      },
+    });
+
+    // while the comment is created on a ticket Jeff owns and Jeff is
+    // tagged on it, we should only get one notification from it
+    expect(notifications.length).toBe(1);
+  });
+
+  it("notifiy the owner of the ticket on a new comment", async () => {
+    const {
+      session: jeffSession,
+      role: jeff,
+      organization,
+    } = await getTestSessionWithRole(RoleType.MEMBER);
+
+    const { session: tedSession, role: ted } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+      undefined,
+      organization
+    );
+
+    const { session: johnSession, role: john } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+      undefined,
+      organization
+    );
+
+    // creating a ticket using the first role
+    const { ticket } = await createRandomTicket(organization, jeff, undefined, {
+      owner: { connect: { id: jeff.id } },
+      watchers: { connect: [{ id: jeff.id }] },
+    });
+
+    // create a comment tagging john on it (not the owner)
+    const comment = {
+      body: `[john](@role/${john.id}) faker.lorem.paragraph()`,
+    };
+
+    // ted creates a comment on it
+    const response = await graphqlRequest({
+      source: createCommentMutation,
+      variableValues: {
+        input: comment,
+        ticketId: ticket.id,
+      },
+      session: tedSession,
+    });
+
+    // we should notify jeff because he's the owner of the ticket
+    const notifications = await prisma.notification.findMany({
+      where: {
+        roleId: jeff.id,
+      },
+    });
+
+    // while the comment is created on a ticket Jeff owns and Jeff is
+    // tagged on it, we should only get one notification from it
+    expect(notifications.length).toBe(1);
+  });
+
+  it("creates a new reply creates only one notification", async () => {
+    const {
+      session: jeffSession,
+      role: jeff,
+      organization,
+    } = await getTestSessionWithRole(RoleType.MEMBER);
+
+    const { session: tedSession, role: ted } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+      undefined,
+      organization
+    );
+
+    // Jeff creates a ticket and is the owner
+    const { ticket } = await createRandomTicket(organization, jeff, undefined, {
+      owner: { connect: { id: jeff.id } },
+      watchers: { connect: [{ id: jeff.id }] },
+    });
+
+    // Jeff creates a comment on this ticket
+    const comment = await prisma.comment.create({
+      data: {
+        ticketId: ticket.id,
+        authorId: jeff.id,
+        body: "just a comment",
+        organizationId: ticket.organizationId,
+      },
+    });
+
+    // ted creates a reply on
+    await graphqlRequest({
+      source: addReplyMutation,
+      variableValues: {
+        input: {
+          body: `[jeff](@role/${jeff.id}) the reply`,
+        },
+        commentId: comment.id,
+      },
+      session: tedSession,
+    });
+
+    const notifications = await prisma.notification.findMany({
+      where: {
+        roleId: jeff.id,
+      },
+    });
+
+    // while the comment is created on a ticket Jeff owns and Jeff is
+    // tagged on it, we should only get one notification from it
+    expect(notifications.length).toBe(1);
+  });
+});

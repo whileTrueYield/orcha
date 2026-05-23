@@ -1,0 +1,24 @@
+{
+  "tags": [
+    {
+      "name": "0 - Very High Priority",
+      "color": "red"
+    },
+    {
+      "name": "1 - High Priority",
+      "color": "orange"
+    },
+    {
+      "name": "2 - Medium Priority",
+      "color": "black"
+    },
+    {
+      "name": "3 - Low Priority",
+      "color": "gray"
+    },
+    {
+      "name": "4 - Very Low Priority",
+      "color": "white"
+    }
+  ]
+}

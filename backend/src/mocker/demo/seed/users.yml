@@ -1,0 +1,82 @@
+---
+users:
+  - name: Amos Gregory
+    title: Software Engineer
+    role: admin
+    email: john.doe@example.com
+    timeZone: America/Los_Angeles
+    hours: FULL_TIME_WORK_WEEK
+    avatarUrl: https://upload.beta-orcha.com/demo/john-doe.jpg
+
+  - name: Corine Albert
+    title: CEO
+    role: owner
+    email: jane.smith@example.com
+    timeZone: America/Los_Angeles
+    hours: FULL_TIME_WORK_WEEK
+    avatarUrl: https://upload.beta-orcha.com/demo/jane-smith.jpg
+
+  - name: Matthieu Dina
+    title: CTO
+    role: admin
+    email: bob.johnson@example.com
+    timeZone: America/Los_Angeles
+    hours: FULL_TIME_WORK_WEEK
+    avatarUrl: https://upload.beta-orcha.com/demo/bob-johnson.jpg
+
+  - name: Emma Ross
+    title: Quality Assurance
+    role: admin
+    email: alice.lee@example.com
+    timeZone: Europe/London
+    hours: FULL_TIME_WORK_WEEK
+    avatarUrl: https://upload.beta-orcha.com/demo/alice-lee.jpg
+
+  - name: Luca Roberts
+    title: Lead Software Engineer
+    role: admin
+    email: david.kim@example.com
+    timeZone: America/Los_Angeles
+    hours: FULL_TIME_WORK_WEEK
+    avatarUrl: https://upload.beta-orcha.com/demo/david-kim.jpg
+
+  - name: Noelle Oda
+    title: Designer
+    role: member
+    email: sarah.lee@example.com
+    timeZone: America/Los_Angeles
+    hours: FIRST_HALF_WORK_WEEK
+    avatarUrl: https://upload.beta-orcha.com/demo/sarah-lee.jpg
+
+  - name: Fernando Julieta
+    title: Software Engineer
+    role: member
+    email: michael.davis@example.com
+    timeZone: America/Los_Angeles
+    hours: FULL_TIME_WORK_WEEK
+    avatarUrl: https://upload.beta-orcha.com/demo/michael-davis.jpg
+
+  - name: Regina Keys
+    title: Project Manager
+    role: admin
+    email: rachel.lee@example.com
+    timeZone: America/Los_Angeles
+    hours: FULL_TIME_WORK_WEEK
+    avatarUrl: https://upload.beta-orcha.com/demo/rachel-lee.jpg
+    # status: "INVITED"
+
+  - name: Joseph Lin
+    title: Dev Ops
+    role: member
+    email: tom.johnson@example.com
+    timeZone: America/New_York
+    hours: FULL_TIME_WORK_WEEK
+    avatarUrl: https://upload.beta-orcha.com/demo/tom-johnson.jpg
+
+  - name: Lina Marvin
+    title: Software Engineer
+    role: member
+    email: emily.wilson@example.com
+    timeZone: America/Los_Angeles
+    hours: FULL_TIME_WORK_WEEK
+    avatarUrl: https://upload.beta-orcha.com/demo/emily-wilson.jpg

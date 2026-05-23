@@ -1,0 +1,978 @@
+---
+projects:
+  - title: StreetBeats
+    body: |
+      Executive Sponsor: Matthieu Dina (CTO and Founder)
+      Product Name: StreetBeats by GrooveStream
+      Product Vision: To connect GrooveStream users with local concerts, enriching their music experience by bridging the gap between digital music streaming and real-world musical events.
+
+      # Target Users:
+      GrooveStream users who enjoy attending live music performances, especially local, smaller-scale concerts, and are interested in discovering new artists.
+
+      # Executive Summary:
+      StreetBeats is an innovative feature added to the GrooveStream platform, which aims to bridge the gap between digital music streaming and real-world musical events. Leveraging location-based technologies, StreetBeats provides users with hyperlocal discovery of street performances, thereby transforming their music streaming experience into a more interactive and engaging one.
+      The product is designed to cater to music lovers who enjoy live performances, by introducing them to local artists and street concerts happening in their vicinity. Key features of StreetBeats include an intuitive user interface for easy event discovery, detailed information about each event and the performing artist, personalized event notifications based on user preferences, and interactive elements that allow users to engage with the events by liking, sharing, and commenting.
+      By integrating with the existing GrooveStream platform, StreetBeats offers users a seamless experience, from listening to their favorite tracks online to discovering local live performances. It not only enriches the users' musical experiences but also supports local artists and performers, creating a win-win situation for all stakeholders.
+      In the long term, StreetBeats has the potential to redefine the way music streaming platforms operate, moving from purely digital interactions to fostering real-world community experiences. As we continue to develop and refine this product, we anticipate significant user growth and engagement, contributing positively to GrooveStream's position as a leader in the digital music landscape.
+
+      # High Level MVP
+      The goal of the MVP is to validate the hypothesis that GrooveStream users are interested in discovering and attending local street concerts. By delivering these core features, we aim to assess user engagement with the feature, gather user feedback, and measure the impact on overall user satisfaction and retention on GrooveStream. Future enhancements and features will be planned based on the insights and feedback gathered from the MVP.
+
+      # Project Notes:
+      Each of the subprojects will track different aspects or phases of the project. We'll use this master folder to take a look at everything at a glance.
+
+  - title: 01 SB Research
+    parentProject: StreetBeats
+    body: |
+      ## Market Research
+      Understand the overall landscape of the music streaming industry and the local live music scene. This can provide insights on market trends, competitors, and potential opportunities for differentiation.
+
+      ## User Research
+      This involves getting to know your target users better. You can conduct surveys, interviews, or focus groups to understand their music preferences, habits, and pain points with existing solutions. This research should include both existing GrooveStream users and potential new users who might be attracted by the local music discovery feature.
+
+      ## Technology Research
+      Research the technologies and platforms you plan to use for the development of StreetBeats. This includes location-based services, notification systems, UI/UX design practices, and any third-party integrations required.
+
+      ## Feasibility Study
+      Assess the feasibility of your plan in terms of technical requirements, timeline, and budget. This can help you identify potential challenges or limitations upfront.
+
+      ## Legal and Compliance Research
+      This involves understanding any legal or regulatory considerations associated with live music events, location-based services, user data privacy, etc.
+
+      ## Partnership Opportunities
+      Research local music scenes, potential partnerships with local artists, event organizers, or local businesses that could enhance the StreetBeats offering.
+
+      ## Accessibility and Inclusion
+      It's important to ensure that your product is accessible and inclusive to all users. Research best practices for accessibility in digital design, and consider seeking input from users with diverse abilities.
+
+    tickets:
+      - title: Analyze current user behavior data on GrooveStream to help set the stage for StreetBeats
+        product: StreetBeats
+        workflow: to do
+        description: |
+          The team will analyze user behavior on GrooveStream to understand their music preferences and potential interest in attending street concerts. This includes studying their favorite genres, artists, and how often they attend concerts. The insights gained from this analysis will help tailor the StreetBeats discovery feature to user needs.
+        tags:
+          - research
+
+      - title: Identify users' favorite genres, artists, and frequency of concert attendance based on available data.
+        product: StreetBeats
+        workflow: to do
+        description: |
+          Analyze user interactions with music playlists, liked artists, saved events, and other relevant features to determine their interest in attending street concerts.
+          Use the insights gained from the analysis to define user segments or personas based on music preferences and concert-going habits.
+          Document the key findings and insights from the user behavior analysis for reference and future decision-making.
+        tags:
+          - research
+
+      - title: Local Music Scene and Collaboration
+        product: StreetBeats
+        workflow: to do
+        description: |
+          To make the concert discovery feature relevant and appealing, it is important to research the local music scene and street concert trends. This involves studying popular music genres, the frequency of street concerts, and identifying prominent local artists. By gaining insights into these aspects, we can ensure that the concert discovery feature aligns with the local music landscape, enabling users to explore and engage with the vibrant local music scene.
+          Research the local music scene and street concert trends to gain insights into popular genres, concert frequency, and prominent local artists. This research will inform the development of the concert discovery feature, ensuring its relevance and appeal to users seeking local music experiences.
+        tags:
+          - research
+
+      - title: Research hyperlocal music scene for the street concert discovery feature
+        product: StreetBeats
+        workflow: to do
+        description: |
+          Identify target geographic areas: Use the US Census bureau data to stack rank cities from most populated to least. This will guide our outreach and partnership efforts.
+        after:
+          - "Identify prominent local artists and popular local genres"
+          - "Explore music venues and event organizers"
+          - "Gather information on upcoming concerts"
+          - "Collaboration and partnerships"
+        milestone: true
+
+      - title: Identify prominent local artists and popular local genres
+        product: StreetBeats
+        workflow: to do
+        description: |
+          Compile a list of notable local artists and bands within the target areas.
+          Consider artists with a significant following, recognition, or impact on the local music scene.
+          Identify popular music genres prevalent in the local music scene and understand their audience appeal and trends.
+          Explore the frequency of street concerts or similar local music events in the target areas, noting peak seasons or periods of heightened activity.
+        tags:
+          - research
+
+      - title: Explore music venues and event organizers
+        product: StreetBeats
+        workflow: to do
+        description: |
+          Research and compile a list of music venues and event organizers in the target areas.
+          Identify key venues known for hosting street concerts or local music events.
+
+      - title: Gather information on upcoming concerts
+        product: StreetBeats
+        workflow: to do
+        description: |
+          Identify and document upcoming concerts and music events in the target areas.
+          Include relevant details such as dates, venues, artists, and ticket availability.
+
+      - title: Collaboration and partnerships
+        product: StreetBeats
+        workflow: to do
+        description: |
+          Collaborate with the marketing and business development teams to leverage their expertise and networks in identifying potential collaboration opportunities based on the local music scene research.
+          Consider factors such as artist popularity, audience reach, and potential promotional value in selecting the most suitable collaborations.
+          Engage with legal and contract management teams to ensure the necessary agreements and contracts are established for successful partnerships.
+          **Technical Requirements**
+          - Identify the system resources required to support the concert discovery feature, such as server capacity, database storage, and bandwidth considerations.
+          - Assess the existing platform architecture and determine the necessary changes or enhancements to integrate the concert discovery feature seamlessly.
+          - Evaluate the feasibility of leveraging third-party APIs or data sources to access local concert data, ensuring reliable and up-to-date event information.
+          - Specify the technical requirements for data retrieval, storage, and processing related to the concert discovery feature.
+          - Define the necessary user interface components, navigation flows, and interactive elements to create an intuitive and user-friendly experience.
+          - Consider scalability and performance requirements, ensuring the feature can handle increasing user activity and data processing demands.
+          - Collaborate with UX/UI designers and front-end developers to align technical requirements with the desired user experience.
+          - Document the defined technical requirements, including system specifications, platform changes, and any third-party integrations.
+        tags:
+          - integration
+          - risk mitigation
+
+  - title: 03 Technical Design
+    parentProject: StreetBeats
+    body: |
+      # Architecture for StreetBeats
+      To meet the high availability, fault tolerance, and scalability requirements, GrooveStream needs a scalable and robust system architecture. First we need to analyze the current system architecture, to identify areas for improvement, and design an architecture that can handle increasing user demands while ensuring uninterrupted service.
+      The architecture should incorporate redundancy measures, load balancing strategies, and caching mechanisms to enhance system performance and scalability. Collaboration with infrastructure specialists and network administrators will ensure the alignment of the system architecture design with the technical requirements. Documenting the system architecture design will provide a comprehensive reference for future maintenance and enhancements.
+      ## Notes:
+      list:
+          - Engage with infrastructure specialists or DevOps teams to leverage their expertise in designing a scalable and robust system architecture.
+          - Conduct thorough testing and performance evaluations to validate the scalability and resilience of the designed system architecture.
+
+      # Backend Development
+      ## I. Project Overview
+      Our goal is to design and develop a robust, scalable, and secure back-end architecture for StreetBeats, a feature aimed at enhancing the music experience for GrooveStream users by enabling the discovery of local street performances.
+      ## II. Objectives
+      list:
+      - To design a back-end system that supports efficient hyperlocal discovery of street performances.
+      - To ensure the back-end system is scalable to handle high traffic and data loads.
+      - To build secure and privacy-compliant data management processes.
+      ## III. Key Actions
+      ### Requirements Gathering
+      Collaborate with product managers, business analysts, and stakeholders to understand the specific functionalities of StreetBeats and gather system requirements. Also, understand the projected user base and traffic to ensure scalability.
+      ### System Design
+      Create an architectural plan that accommodates the system requirements. This could include the database schema, APIs, server infrastructure, and other key system components. Plan for efficient data management strategies to support hyperlocal discovery of performances. Design the system for scalability, ensuring it can handle increased loads and data traffic.
+      ### Development
+      Build the database and ensure efficient storage and retrieval of information such as user data, artist details, and concert data.Develop APIs for interaction between the front-end and back-end systems, making sure they can handle different types of requests like data retrieval, user authentication, etc. Implement robust security measures to protect user data and comply with privacy regulations.
+      ### Testing
+      Perform unit testing, integration testing, and stress testing to ensure the system functions as expected under various conditions.Perform security and privacy audits to ensure that the system is secure and complies with all relevant regulations.
+      ### Deployment and Monitoring
+      Deploy the back-end system, integrating it with the existing GrooveStream platform and the newly developed front-end of StreetBeats. Monitor the system regularly for any bugs, performance issues, and security breaches. Implement a robust logging and alert system for proactive issue detection.
+      ### Requirements Gathering
+      Collaborate with product managers, business analysts, and stakeholders to understand the specific functionalities of StreetBeats and gather system requirements. Also, understand the projected user base and traffic to ensure scalability.
+
+      ## IV. Considerations
+      ### Scalability:
+      Design the system to handle growth in user numbers and data volume.
+      ### Security:
+      Implement strong security measures to protect user data and ensure privacy.
+      ### Performance:
+      The system should be capable of efficiently retrieving data to ensure a seamless user experience.
+
+    tickets:
+      - title: Architecture
+        product: StreetBeats
+        workflow: to do
+        description: |
+          Evaluate the current system architecture and identify areas that require modification or enhancement to support the concert discovery feature. The infrastructure team will need information from the product and marketing teams as to initial target lists, expected volume, and future scaling of the StreetBeats program.
+          ## Acceptance Criteria:
+          - Updated architectural diagrams with proposed enhancements
+
+        tags:
+          - research
+
+      - title: Infrastructure Optimization
+        product: StreetBeats
+        workflow: to do
+        description: |
+          Design a scalable infrastructure that can handle the potential increase in data processing and traffic associated with the feature.
+          The infrastructure should have the ability to scale both vertically (increasing the size/capacity of existing components) and horizontally (adding more components to handle increased load) to meet changing demand.
+          Document the designed system architecture, including component specifications, network diagrams, and scalability considerations.
+        tags:
+          - infrastructure
+
+      - title: Components and Hardware
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Define the necessary components, such as servers, databases, and storage, to support the feature's functionality and performance requirements.
+          Ensure the system architecture is fault-tolerant and resilient, minimizing the risk of service disruptions or downtime.
+          Implement efficient data management strategies, including caching mechanisms, to optimize performance and reduce response times.
+        tags:
+          - infrastructure
+
+      - title: Security and Access
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Define appropriate security measures, including access controls and data encryption, to safeguard user information and platform integrity.
+
+      - title: StreetBeats Database
+        product: StreetBeats
+        workflow: feature
+        description: |
+          To efficiently store and manage user data, songs, playlists, and metadata, GrooveStream requires a well-designed database schema and data model. The database design should ensure data integrity, scalability, and optimal performance for seamless retrieval and management of information. It should include tables for user data, songs, playlists, and appropriate associations and relationships between them. The design should also consider performance and scalability requirements, implement indexing and query optimization techniques, and handle data migration and backup processes. Collaboration with database administrators and adherence to best practices will ensure an efficient and robust database design for GrooveStream. What follows are the items that need to be attended to.
+          Database User Data: Design a user table to store user information such as username, email, password, and profile details. Ensure the appropriate data types, constraints, and indexing for efficient querying and data integrity. Implement mechanisms for user authentication and authorization to secure user data.
+          Database Songs and Metadata: Design a songs table to store information about individual songs, including title, artist, album, genre, duration, and file location. Define appropriate relationships and foreign keys to associate songs with their respective albums and artists. Implement metadata fields to store additional information, such as song lyrics, release date, and popularity ratings.
+          Database Playlists: Design a playlists table to store information about user-created playlists, including title, description, and creation date. Establish a many-to-many relationship between playlists and songs to associate songs with multiple playlists and vice versa. Implement appropriate indexing and query optimization techniques for efficient retrieval and management of playlists.
+          Database Relationships and Associations:Define the necessary relationships and associations between tables to establish data integrity and enforce referential integrity constraints.
+          Implement foreign keys and cascading deletion/update rules as needed to maintain data consistency.
+          Database Performance and Scalability: Consider database performance and scalability requirements, such as indexing, partitioning, and caching strategies, to optimize query execution and handle increasing data volumes.
+          Implement appropriate database normalization techniques to eliminate data redundancy and ensure efficient data storage and retrieval.
+          Data Migration and Backup: Design mechanisms for data migration and backup to facilitate seamless database updates, maintenance, and disaster recovery.
+          Acceptance Criteria:
+          - The database schema accurately represents the relationships between entities.
+          - Data normalization principles are followed for efficient data storage.
+          - Indexing strategies are implemented to optimize data retrieval.
+          - Data integrity and consistency are maintained through appropriate constraints and validations.
+        tags:
+          - infrastructure
+
+      - title: Develop an algorithm for matching users with street concerts based on musical preferences and location
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Develop an algorithm for matching users with street concerts based on their musical preferences and location. The algorithm should accurately capture user preferences and generate relevant concert recommendations that align with their music tastes and proximity.
+          - Gather and analyze user data related to musical preferences and location, including favorite genres, liked artists, and user-provided location information.
+          - Define an algorithm that takes into account user preferences and proximity to recommend street concerts that match their musical interests.
+          - The algorithm should prioritize concert recommendations based on the user's preferred genres, artists, and location proximity.
+          - Ensure the algorithm considers factors such as concert popularity, artist popularity, and user engagement metrics to generate the most relevant recommendations.
+          - Implement a scalable and efficient matching algorithm that can handle large volumes of user data and deliver real-time concert recommendations.
+          - Validate the algorithm's accuracy by comparing its recommendations against user feedback and engagement metrics.
+          - Collaborate with the development team to integrate the algorithm seamlessly into the concert discovery feature.
+        tags:
+          - ai
+
+      - title: "Server Setup and Configuration"
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Set up the server environment, including installing the necessary software, frameworks, and libraries. Configure the server to ensure optimal performance, security, and scalability.
+        tags:
+          - infrastructure
+
+      - title: "API Design and Development"
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Design and develop RESTful APIs to handle user requests, data retrieval, and modification. Implement proper authentication and authorization mechanisms to secure API endpoints. Ensure consistent and intuitive API documentation to facilitate integration with frontend and third-party systems.
+
+      - title: "Data Processing and Storage"
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Develop the necessary logic and algorithms to process and manipulate user data, songs, playlists, and metadata. Integrate with the database and implement CRUD (Create, Read, Update, Delete) operations to manage data efficiently. Optimize data access and retrieval by utilizing appropriate caching mechanisms and database query optimizations.
+        tags:
+          - ai
+          - infrastructure
+
+      - title: "Business Logic Implementation:"
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Implement the core business logic of GrooveStream, such as music playback controls, playlist management, and user interactions. Handle user authentication, session management, and authorization for secure access to platform features. Implement algorithms and mechanisms for personalized music recommendations, music matching, and music discovery.
+
+      - title: "Integration and External Services"
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Integrate with external services, such as music streaming APIs, payment gateways, and social media platforms, as required by GrooveStream's functionalities.
+          Implement the necessary logic and endpoints to communicate and exchange data with external services.
+        tags:
+          - integration
+
+      - title: "Error Handling and Logging"
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Implement robust error handling mechanisms to gracefully handle exceptions, validation errors, and unexpected scenarios. Integrate logging functionality to capture system events, errors, and user activities for troubleshooting and auditing purposes.
+
+      - title: "Testing and Quality Assurance"
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Develop unit tests, integration tests, and automated test suites to ensure the reliability and quality of the backend components. Conduct rigorous testing to identify and address any functional or performance issues. Implement code review practices and follow coding standards to maintain code quality and readability."
+
+  - title: 02 SB Platform
+    parentProject: StreetBeats
+    body: |
+      ## Functionality Notes
+      To provide users with a comprehensive digital music player experience, it is essential to define the core functionality and features of GrooveStream. This includes music playback controls, the ability to create and manage playlists, efficient search functionality, personalized music recommendations, and user profiles for personalization and social interaction. The platform should offer a seamless music discovery process, enabling users to explore new songs, artists, and genres. It should also ensure cross-platform compatibility to cater to users on different devices and maintain consistent functionality and user experience. Regular updates and enhancements based on user feedback will ensure that GrooveStream remains a competitive and engaging digital music player.
+      ## Hyperlocal Discovery
+      This feature allows users to discover street performances happening in their local vicinity. The development team will need to create algorithms for location-based search and discovery. This will involve integrating location services and creating a database of event locations. The UX/UI team will design an intuitive discovery interface.
+      ## Event Details
+      Each event listing should provide details such as artist name, time, location, genre, and a brief description of the performance. The back-end team will develop a system to store and retrieve event details. The front-end team will create an informative and visually appealing event details page.
+      ## User Preferences
+      Users should be able to input their preferences for types of performances, favorite artists, and preferred event times. The back-end team will need to develop systems to store and manage user preferences. The front-end team will create an interface for users to input and edit their preferences.
+      ## Event Notifications
+      Users should receive notifications for upcoming events that match their preferences. The development team will implement a notification system. This system should consider user preferences and location to provide timely and relevant alerts.
+      ## Artist Profiles
+      These profiles provide information about the artists performing at the events. The back-end team will develop a database to store artist information. The front-end team will design an attractive artist profile layout.
+      ## User Registration and Authentication
+      This involves allowing users to create an account, log in, and manage their profile information. The back-end team will implement secure user authentication protocols. The front-end team will create a user-friendly login and profile management interface.
+      ## User Interaction
+      Features such as liking, sharing, and commenting on events. The back-end team will build systems to manage user interaction data. The front-end team will integrate these features into the user interface.
+
+      ## UI Notes
+      To provide users with an engaging and seamless music player experience, StreetBeats requires an intuitive and visually appealing user interface (UI) design. The UI design should be visually appealing, consistent, and aligned with GrooveStream's overarching brand identity. It should prioritize ease of use and provide a cohesive user experience across different platforms. Collaborating closely with UX designers, the UI design will undergo usability testing and continuous refinement to ensure optimal usability and an enhanced user experience.
+      ### Simple and Clean:
+      The design should be uncluttered, allowing users to focus on the main feature: discovering local music performances. Use whitespace effectively to highlight key elements and make the interface easy to navigate.
+      ### Intuitive Navigation:
+      Key features such as event search, user preferences, and event notifications should be easy to locate and use. Users should be able to navigate the app effortlessly, with clear visual cues and labels.
+      ### Localization:
+      Since StreetBeats focuses on local music discovery, integrating a map or location-based feature could be highly beneficial. This might show performances in a user's area, for example.
+      ### Event Details:
+      Information about events should be presented clearly and attractively. This could include the artist's name, performance time, location, and genre. A photograph or artistic representation might also be included.
+      ### Artist Profiles:
+      Profiles for artists should be visually appealing, presenting key information about the artist such as their bio, genre, and previous performances.
+      ### User Preferences and Interaction:
+      Options for liking, sharing, and commenting on events should be clearly visible but not obtrusive. User preference settings should be simple and straightforward to adjust.
+      ### Consistent Aesthetic:
+      The UI should reflect the GrooveStream branding, including the color scheme, typography, and logo. This will maintain brand consistency and aid user recognition.
+      ### Accessibility:
+      Ensure the design is accessible to all users, including those with visual or other impairments. This could include options for larger text, high contrast mode, or screen reader compatibility.
+      ### Responsive Design:
+      The UI should adapt to different devices and screen sizes, providing a good user experience whether accessed on a mobile device, tablet, or desktop computer.
+      ### Dark Mode:
+      Given the music and nightlife focus of StreetBeats, offering a dark mode option might align well with the brand and be appreciated by users.
+
+    tickets:
+      - title: Music Playback
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Enable users to play and control music tracks, including basic playback controls (play, pause, skip, repeat, shuffle).
+
+      - title: Audio formats
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Support a variety of audio formats and provide seamless streaming capabilities.
+          Implement volume control and audio settings adjustment for user customization.
+
+      - title: Location-based Event Discovery
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Implement a location-based service to provide users with a list of nearby street performances.
+          Integrate with a location service API to gather the user's current location data.
+          Develop an algorithm that fetches and sorts events based on proximity to the user's location.
+        tags:
+          - ai
+
+      - title: Event Details
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Develop a feature to provide detailed information about each event.
+          Create a database to store and manage details of each event including the artist, time, location, genre, etc.
+          Implement a user interface that clearly and intuitively displays this information when an event is selected.
+
+      - title: Personalized Recommendations
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Implement a recommendation algorithm that suggests events based on a user's music preferences and past activity.
+          Design an algorithm that analyzes a user's music preferences and past event attendance.
+          Use the algorithm to curate a personalized list of recommended events for each user.
+        tags:
+          - ai
+
+      - title: Notifications
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Develop a notification system that alerts users of upcoming events that match their interests.
+          Integrate with a notification service API to handle the delivery of notifications.
+          Create rules for when and how to send notifications based on factors like proximity to the event, user preferences, and event popularity.
+
+      - title: Event Check-in
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Create a feature that allows users to check-in at events.
+          Develop a user interface for the check-in feature, allowing users to mark their attendance at an event.
+          Implement a system to verify the user's location at the time of check-in.
+
+      - title: User Feecback
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Implement a user feedback system to allow users to rate and review events.
+          Design a feedback form that prompts users for a rating and optional review after attending an event.
+          Create a system to store and display these ratings and reviews for each event.
+
+      - title: Music Organization
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Allow users to create and manage playlists to organize their favorite songs or curated collections.
+          Provide options for creating and managing personalized music libraries or collections based on user preferences.
+
+      - title: Search
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Implement efficient search functionality to help users easily find and access their desired songs or albums.
+          Support metadata management, ensuring accurate track information, album artwork, and artist details.
+        tags:
+          - search
+
+      - title: Music Discovery
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Offer personalized music recommendations based on user preferences, listening history, and music genre exploration.
+          Provide curated playlists or radio features to introduce users to new songs, artists, and music genres.
+          Enable users to browse and discover trending or popular music tracks, albums, or artists.
+          Integrate with external music APIs or services to expand the music catalog and enhance discovery capabilities.
+
+      - title: Personalization and User Profiles
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Allow users to create personalized profiles with unique usernames, avatars, and user preferences.
+          Provide user settings and customization options for personalizing the music player's appearance and behavior.
+
+      - title: Social
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Support social features, allowing users to connect, follow, and share music with friends or the GrooveStream community.
+          Implement features like music recommendations, playlists, or personalized radio stations based on user preferences and listening history.
+
+      - title: Cross-Platform Compatibility
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Ensure the availability of GrooveStream on multiple platforms, including web browsers, mobile devices (iOS and Android), and desktop applications.
+          Maintain consistent functionality and user experience across different platforms, enabling seamless transitions between devices.
+
+      - title: Visual Design
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Develop a visually appealing and modern UI design that aligns with GrooveStream's brand identity.
+          Ensure a cohesive and consistent visual language, including color schemes, typography, and iconography.
+          Use clear and intuitive visual cues to guide users and enhance usability.
+          Optimize the UI design for different platforms (web, mobile, desktop) while maintaining a consistent user experience.
+
+      - title: Navigation and Information Hierarchy
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Design a clear and intuitive navigation structure that allows users to easily access different sections and features of the platform.
+          Ensure consistent placement of common UI elements, such as menus, search bars, and playback controls, for easy accessibility.
+          Establish a logical information hierarchy, prioritizing important elements and providing visual cues for user actions.
+        tags:
+          - search
+
+      - title: Street Concert Discovery Controls
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Design intuitive and user-friendly controls that allow users to
+          Ensure the controls are prominently displayed and easily accessible throughout the UI, providing a seamless music playback experience.
+
+      - title: Playlist and Library Management
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Design an interface that allows users to create, manage, and organize playlists and music libraries effectively.
+          Provide clear visual indicators for playlist management actions, such as adding or removing songs, reordering tracks, and creating new playlists.
+          Enable users to easily browse, search, and filter their music collections for efficient music organization.
+        tags:
+          - search
+
+      - title: Visual Feedback and Response
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Implement visual feedback mechanisms, such as animations, transitions, and progress indicators, to provide users with real-time feedback on their interactions.
+          Ensure smooth and responsive UI behavior to create a seamless and engaging user experience.
+
+      - title: Responsive Design
+        product: StreetBeats
+        workflow: feature
+        description: |
+          - Design the UI to be responsive and adaptable to different screen sizes and resolutions, providing optimal user experience across various devices.
+          - Ensure that UI elements and content are appropriately scaled and rearranged to accommodate different screen orientations and device types.
+
+      - title: StreetBeats client-side components
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Develop the client-side components for GrooveStream, ensuring a seamless and interactive user interface and integration with backend functionalities.
+          ## Acceptance Criteria:
+          - User interfaces are implemented using HTML, CSS, and JavaScript.
+          - UI components display and interact with data retrieved from the backend.
+          - The UI is responsive, compatible with major web browsers and devices.
+          - User interactions are smooth and intuitive.
+
+      - title: API Development
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Create an API for GrooveStream to enable integrations with external services or potential future platform extensions.
+          ## Acceptance Criteria:
+          - Well-defined API endpoints and request/response formats are established.
+          - Authentication mechanisms are implemented for secure communication.
+          - API documentation is provided for developers integrating with GrooveStream.
+          - The API supports essential functionalities and data access requirements.
+        tags:
+          - integration
+
+      - title: Wireframes for the StreetBeats user interface
+        product: StreetBeats
+        workflow: feature
+        description: |
+          Design the interface with a focus on ease of use, allowing users to browse and explore street concerts effortlessly. Also ensure the interface is responsive and compatible with both web and mobile platforms.
+          ## Acceptance Criteria:
+          - The user interface for the street concert discovery feature is visually appealing and intuitive to navigate.
+          - Users can easily access and browse street concerts through the designated section in the platform.
+          - The interface is responsive, providing a seamless experience across different devices and screen sizes.
+
+        tags:
+          - ai
+
+      - title: Integrate the matching algorithm into the GrooveStream platform
+        product: StreetBeats
+        workflow: feature
+        description: |
+          In this task, the team will integrate the matching algorithm into the Groovystream platform. This involves making sure the algorithm effectively interacts with user data and the concert database to provide accurate recommendations.
+        tags:
+          - integration
+
+      - title: Ensure smooth integration with the existing platform
+        product: StreetBeats
+        workflow: feature
+        description: |
+          This task involves ensuring the new feature integrates smoothly with the existing Groovestream platform. The team will need to conduct initial tests to check for any conflicts or issues that may arise from the integration.
+          [Matthieu Dina]: We'll need to update the system's diagram while we're at it.
+        tags:
+          - integration
+        after:
+          - "Conduct functionality testing of the concert discovery feature"
+
+  - title: 04 SB Deployment
+    parentProject: StreetBeats
+    unscheduled: true
+    body: |
+      ## Alpha Launch:
+      The alpha launch of StreetBeats, our groundbreaking location-based music event discovery platform, is a crucial first step in our product development lifecycle. This phase, focused primarily on internal testing and selective user involvement, is designed to rigorously assess the product's functionality and identify areas for refinement.
+      Initially, we will roll out StreetBeats to our internal teams. This valuable group of first users will interact with the product in a real-world environment, allowing us to understand how well the platform performs and to identify any unforeseen issues that might arise during regular use.
+      Upon gathering and examining feedback from our internal teams, our development group will address the discovered issues, prioritizing them based on their severity and impact on the user experience. This iterative process will ensure the necessary improvements are made to enhance the product's usability and performance.
+      Following successful internal testing, we will move to a closed alpha stage involving selective user testing. We will invite a diverse group of existing GrooveStream users to explore the alpha version of StreetBeats. Their feedback will be integral to gaining insights into the user experience from a customer's perspective, and their input will guide us in making any necessary refinements.
+      We will thoroughly analyze this user feedback to identify recurring themes, significant issues, or beneficial suggestions. Prioritized improvements will be implemented and tested to ensure they address the issues effectively.
+      Once we've refined StreetBeats based on alpha testing feedback, we will start preparations for the beta launch. We'll implement changes to the product, adjust our marketing strategies, and update support plans based on insights gathered during the alpha stage.
+      The conclusion of the alpha launch will feature a comprehensive review and retrospective to document successes, challenges, and key learning points. These insights will significantly enhance the upcoming beta launch and other future projects, driving continuous improvement in our product development process. The alpha launch, while a milestone in its own right, is the beginning of our journey towards perfecting StreetBeats for our enthusiastic music-loving user base.
+
+      ## Private Beta Launch:
+      The beta launch of StreetBeats represents a significant milestone in our product development journey. As a revolutionary platform designed to connect music lovers with local concerts and street performances, StreetBeats' beta phase is all about refining the product based on extensive user feedback and preparing for a full-scale public launch.
+      Upon successfully addressing the insights gathered from the alpha testing phase, the beta version of StreetBeats will be introduced to a larger, more diverse pool of users. This stage enables us to assess the performance and reliability of the platform under more varied and widespread use, enabling us to understand user behaviors, preferences, and potential issues that might arise on a larger scale.
+      Throughout the beta testing phase, we will encourage feedback from our beta users to understand their experiences in real-world conditions. Our development team will actively monitor user interactions to identify and resolve any remaining issues, further enhancing the product's usability, reliability, and overall performance.
+      The user feedback will not only inform our technical improvements but also guide our marketing strategies, informing us about what users value most about StreetBeats and how we can best position our product in the market. This process allows us to refine our marketing messaging and strategies to effectively reach and engage our target audiences.
+      Our dedicated customer support team will be on standby during the beta phase, ensuring that users have assistance when needed and providing us with valuable feedback from a customer service perspective. Their insights can help us improve our support systems and readiness for the public launch.
+      Following the beta launch, we'll conduct a thorough review of our findings, which will guide the final adjustments before the full-scale public release. We'll analyze every aspect, from the technical performance to the user feedback and support interactions, to ensure that StreetBeats is not only functionally robust but also a delight to our users.
+      The beta launch is an essential step towards our commitment to providing a rich, engaging, and seamless musical experience for our users. It allows us to fine-tune StreetBeats and ensure we are fully prepared to exceed user expectations when we finally go public.
+
+      ## Beta Launch Task Notes:
+      This portion of the project still needs to be fleshed out. Below are some tasks we know we need to complete which will eventually become tickets but the list is not exhaustive and more details and tasks will be added as the project progresses through its earlier phases.
+      Regina Keys will work with Marketing and Customer Success to develop this program. We will need to determine what we want to learn from the beta launch which will help us create and implement the program.
+
+      ## High Level Tasks to be translated into tickets:
+      ### Prepare support materials and train the customer support team.
+      Develop FAQs, user guides, and other support materials. Train the customer support team to handle user queries and feedback effectively
+      ### Launch the beta version and provide access to standard Beta testers for GrooveStream.
+      ### Set the cadence for weekly check-ins with Beta testers
+      Monitor user activity and provide support. Monitor user activity on the platform, gather data on usage patterns, and provide technical support as needed.
+      ### Gather and analyze user feedback.
+      Collect user feedback through surveys and interviews, and analyze this feedback along with user activity data to identify common issues and areas for improvement.
+      ### Implement and test improvements
+      Make necessary changes to the platform based on user feedback, and test these improvements for effectiveness.
+
+      ## Prepare for the public launch:
+      Finalize the changes for the public launch based on user feedback and testing results. Prepare marketing and PR materials for the public launch, and develop a plan for scaling up customer support in anticipation of the larger user base.
+
+    tickets:
+      - title: Unit Tests
+        product: StreetBeats
+        workflow: to do
+        description: |
+          Write unit tests to test individual functions in isolation.
+          ```py
+          # Python unittest example
+          import unittest
+
+          class TestMyFunction(unittest.TestCase):
+              def test_add(self):
+                  self.assertEqual(add(1, 2), 3)
+
+              def test_add_negative(self):
+                  self.assertEqual(add(-1, 2), 1)
+          ```
+
+      - title: Integration Tests
+        product: StreetBeats
+        workflow: to do
+        description: |
+          Test how different components of the system work together. Check the DB functionality and data flow among modules
+          ```py
+          # Python unittest example
+          import unittest
+
+          class TestDatabase(unittest.TestCase):
+            def test_insert_and_retrieve(self):
+              db.insert('test', 'data')
+              self.assertEqual(db.retrieve('test'), 'data')
+          ```
+        tags:
+          - integration
+
+      - title: End to End Tests
+        product: StreetBeats
+        workflow: to do
+        description: |
+          Test the performance of common user workflows
+          - Determine all the possible user workflows within StreetBeats. This includes everything that a user can and will run through while using the product.
+          - Make the necessary changes and updates based on test data. Identify and resolve issues that can negatively impact the user experience.
+          - Create E2E testing automation"
+
+      - title: Alpha Testing and Deployment
+        product: StreetBeats
+        workflow: to do
+        description: |
+          The StreetBeats Alpha test group will be testing on Staging before it goes to Production to assess the quality of the system. Post-alpha testing will occur in parallel - please report bugs for the developers using the Support function embedded in the product.
+          1. Review the design specification and understand the functional and non-functional requirements.
+          1. Create the test plan to generate all the necessary test cases.
+          1. QA and the StreetBeats stakeholders will run through test cases to stress test the workflows and system behavior.
+          1. Log bugs in the support module
+          1. [Regina King], please translate these reports into bug tickets for the developers.
+          1. When the development team confirms that the issues have been resolved, the testing team retests the software product. This testing cycle will continue until no more issues are found.
+
+  - title: Private Beta Launch
+    parentProject: StreetBeats
+    body: |
+      Conduct a private beta launch of StreetBeats, allowing a select group of users to test the platform, provide feedback, and help identify areas for improvement before the public launch.
+      This portion of the project still needs to be fleshed out. Below are some tasks we know we need to complete which will eventually become tickets but the list is not exhaustive and more details and tasks will be added as the project progresses through its earlier phases.
+      Regina Keys will work with Marketing and Customer Success to develop this program. We will need to determine what we want to learn from the beta launch which will help us create and implement the program. 
+
+      ## High Level Tasks
+      ### Prepare support materials and train the customer support team:
+      Develop FAQs, user guides, and other support materials. Train the customer support team to handle user queries and feedback effectively.
+      ### Launch the beta version and provide access to standard Beta testers for GrooveStream.
+      Set the cadence for weekly check-ins with Beta testers
+      ### Monitor user activity and provide support:
+      Monitor user activity on the platform, gather data on usage patterns, and provide technical support as needed.
+      ### Gather and analyze user feedback:
+      Collect user feedback through surveys and interviews, and analyze this feedback along with user activity data to identify common issues and areas for improvement.
+      ### Implement and test improvements:
+      Make necessary changes to the platform based on user feedback, and test these improvements for effectiveness.
+      ### Prepare for the public launch:
+      Finalize the changes for the public launch based on user feedback and testing results. Prepare marketing and PR materials for the public launch, and develop a plan for scaling up customer support in anticipation of the larger user base."
+
+  - title: GrooveStream (BAU)
+    body: |
+      # Executive Summary
+      The "Business As Usual" project for GrooveStream is a strategic initiative designed to ensure the platform's continued performance, relevance, and user satisfaction. Although it might lack the allure of cutting-edge innovation projects, "Business As Usual" is the backbone that allows us to maintain our platform's stability, security, and incremental improvements, all essential to sustaining and growing our user base.
+      The primary focus of this project is to provide ongoing maintenance for GrooveStream. This includes troubleshooting and resolving technical issues, implementing software updates, and ensuring the overall integrity and reliability of the platform. Our development team's proactive monitoring and prompt responsiveness are integral to providing an uninterrupted, seamless user experience.
+      Parallelly, we're committed to making incremental improvements to GrooveStream. These enhancements, although might seem subtle, are informed by continuous user feedback, industry trends, and performance analytics. The scope of these improvements spans from refining user interfaces, enhancing functionality, to improving backend efficiency. These deliberate and continuous enhancements ensure GrooveStream remains user-friendly, engaging, and up-to-date.
+      In addition to routine maintenance and improvements, "Business As Usual" also involves ensuring the platform's security. We understand the importance of user privacy and data protection, hence we regularly review and update our security measures to protect against potential threats. This involves everything from encrypting user data, employing secure authentication protocols, to conducting regular security audits.
+      Lastly, this project will help us manage and optimize the integration of new features into the GrooveStream platform, like StreetBeats. We will ensure that these additions enhance the user experience, align with the overall product vision, and function seamlessly with existing features.
+
+      # Additional Context:
+
+      ## Ongoing Maintenance:
+      The heart of the "Business As Usual" project lies in the ongoing maintenance of the GrooveStream platform. Our primary aim is to ensure the platform operates seamlessly and delivers the high-quality performance our users have come to expect. This involves proactive system monitoring to identify and resolve any potential issues that could impact the platform's performance or user experience. These actions encompass everything from fixing bugs and glitches, performing routine system updates, and optimizing server loads to prevent lagging or crashing during peak usage times.
+
+      ## Incremental Improvements:
+      While our innovation projects focus on introducing new features or services, the "Business As Usual" project emphasizes making incremental improvements to the existing platform. These updates can range from refining the user interface, improving search algorithms, enhancing playlist generation, or streamlining the user registration process. We continuously gather user feedback, industry trends, and analyze user interaction data to inform these improvements, ensuring that GrooveStream evolves to meet and exceed our users' needs and expectations.
+
+      ## Security Measures:
+      In today's digital age, ensuring the privacy and security of user data is of utmost importance. As part of the "Business As Usual" project, we regularly review and enhance our security measures. This includes everything from updating encryption protocols, enhancing firewall protection, ensuring secure data storage, to conducting regular vulnerability assessments and penetration testing. By doing so, we can protect against potential security threats and reassure our users that their data is safe with GrooveStream.
+
+      ## Integration of New Features:
+      The "Business As Usual" project also facilitates the seamless integration of new features into the existing platform, such as StreetBeats. We aim to ensure these new additions enhance the overall user experience, align with GrooveStream's overall vision, and interact flawlessly with existing features. This involves rigorous quality assurance testing and post-launch monitoring to address any issues that may arise from the integration of new features.
+
+      ## Performance Analysis:
+      To continuously improve our platform, it's crucial to understand how our users are interacting with GrooveStream. We'll utilize analytics to gain insights into user behavior, feature popularity, and overall platform performance. These insights will inform both our incremental improvements and future innovation projects.
+
+      ## User Support:
+      We're dedicated to providing our users with excellent customer support. Our team will consistently monitor user queries and feedback to address any issues or concerns promptly. We will also use this information to identify common problems or areas for improvement within the platform.
+
+    tickets:
+      - title: Search results showing incorrect artist names
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users are reporting that when they search for a specific artist, some of the search results show incorrect artist names
+          - Investigate and fix the issue so that search results display the correct artist names
+          - Test the fix to ensure that it does not affect the search functionality for other types of searches
+          [Corine Albert]: Do you think this is related to the problem with the APIs I showed you yesterday?
+        tags:
+          - search
+
+      - title: App becomes unresponsive when searching for a song
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users are reporting that the app becomes unresponsive and slow when searching for a specific song
+          - Investigate and fix the issue so that searching for songs does not cause the app to become unresponsive or slow
+          - Test the fix to ensure that it does not affect the search functionality or other features of the app
+        tags:
+          - search
+
+      - title: Users are able to log in with incorrect credentials
+        product: GrooveStream
+        workflow: bug
+        description: |
+          to log in with incorrect credentials or prevent them from accessing their accounts with the correct credentials. This may be related to inappropriate session handling as we've also seen premature logouts.
+
+      - title: Failed Password Reset
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Bugs in the password reset system could prevent users from resetting their passwords when they forget them. Alternatively, the reset link might not be delivered to the correct email address. This may be related to the third party verification services we're using or could be a CAPTCHA problem.
+        tags:
+          - critical
+
+      - title: Old music persisting on playlist and not skipping
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users are reporting that old music that is no longer served on the music player is persisting on their playlist and is not being skipped
+          Investigate and fix the issue so that old music is removed from playlists and skipped if it is no longer served on the music player
+          Test the fix to ensure that it does not affect the performance of the playlist feature
+          [Amos Gregory] This seems to be a transient bug which is making it hard to pinpoint with our standard approach.
+
+      - title: App crashes when attempting to create new playlist
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users are reporting that the app crashes when they attempt to create a new playlist
+          - Investigate and fix the issue so that users can create new playlists without the app crashing
+          - Test the fix to ensure that it does not affect the creation or management of other types of data in the app
+
+      - title: User interface freezes when adding a large number of songs to a playlist
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users are reporting that the user interface freezes and becomes unresponsive when they add a large number of songs to a playlist
+          - Investigate and fix the issue so that adding songs to a playlist does not cause the user interface to freeze or become unresponsive
+          - Test the fix to ensure that it does not affect the performance or stability of the app when managing large amounts of data
+
+      - title: Playlist order is not saved after app restart
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users are reporting that the order of their playlists is not saved after they restart the app
+          - Investigate and fix the issue so that the order of playlists is saved even after the app is restarted
+          - Test the fix to ensure that it does not affect the ordering of other UI components or playlists
+
+      - title: Repeat all mode plays album twice then stops
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users are reporting that when in repeat all mode, the album plays twice and then stops
+          - Investigate and fix the issue so that albums play continuously in repeat all mode
+          - Test the fix to ensure that it does not introduce any new issues
+
+      - title: App crashes when playing certain songs
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users are reporting that the app crashes when playing certain songs
+          - Investigate and fix the issue so that the app does not crash when playing any song
+          - Test the fix to ensure that it does not introduce any new issues with song playback or app stability
+        tags:
+          - critical
+
+      - title: Album art does not display for some songs
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users are reporting that album art does not display for some songs, even though it is present in their music files
+          - Investigate and fix the issue so that album art displays correctly for all songs in the music library
+          - Test the fix to ensure that it does not affect the display of other UI components or album art for other songs
+
+      - title: Skipping to next song causes app to freeze
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users are reporting that when they skip to the next song, the app freezes and becomes unresponsive
+          - Investigate and fix the issue so that the app does not freeze when skipping to the next song
+          - Test the fix to ensure that it does not affect the skipping functionality or other features of the app
+
+      - title: App displays incorrect song length for certain files
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users are reporting that the app displays an incorrect song length for certain files
+          - Investigate and fix the issue so that the correct song length is displayed for all files
+          - Test the fix to ensure that it does not affect the display of other metadata or song information
+
+      - title: Music playback stops when screen locks
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users are reporting that music playback stops when the screen locks or the device goes to sleep
+          - Investigate and fix the issue so that music playback continues even when the screen locks or the device goes to sleep
+          - Test the fix to ensure that it does not affect the battery life or performance of the device
+
+      - title: Cannot switch payment method from credit card to PayPal
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users are reporting that they cannot switch their payment method from credit card to PayPal
+          - Investigate and fix the issue so that users can switch their payment method
+          - Test the fix to ensure that it does not affect the user's account or payment information
+        tags:
+          - critical
+
+      - title: Incorrect tracking of shares and engagement on Facebook
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Users have reported that the number of shares and engagement metrics for their shared GrooveStream content on Facebook appear to be incorrect or not updating in real-time
+          - Investigate and fix the issue, ensuring that the platform accurately tracks and displays the number of shares and engagement metrics for shared content on Facebook
+          - Test the fix to confirm that it does not affect the performance of the Facebook sharing feature or other related features
+          [Emma Ross] We need to determine if this is being caused by something in our integration with Facebook or if there is a change in the way Facebook defines its metrics
+
+      - title: Sharing functionality not working for some users on Facebook
+        product: GrooveStream
+        workflow: bug
+        description: |
+          Some users have reported that they are unable to share GrooveStream content on Facebook, with the sharing button not functioning as expected
+          - Investigate and fix the issue, ensuring that all users can share GrooveStream content on Facebook without any problems
+          - Test the fix to confirm that it does not affect the performance of the Facebook sharing feature or other related features
+
+  - title: Garage Clean Up (Non Software)
+    body: |
+      Everyone is pitching in! We really need to clean out the start-up's garage, it's full of old bike parts, holiday decorations that we don't use, and random stuff from Marketing (sorry guys, you know it's true).
+      I've created a workflow and a product for this initiative. We can archive everything when we're done but setting things up this way will be a good way to track the project. We've been trying to do this for a couple of years and have gotten… distracted each time.
+      Let's do this!
+      # Project Notes
+      The workflow holds the phases of the cleanup (Sort and discard, Organize, Clean, Stage for moving back in) This way, each ticket can represent different areas of the garage or different classifications of stuff.
+      ## Items to Attend to
+      list:
+      - Marketing closet
+      - Marketing corner
+      - Marketing loft (for goodness sakes guys, stop spreading out!)
+      - Bicycle graveyard
+      - Holiday decorations
+      - Artwork and posters"
+      - Some of the items will be things to do after the initial cleanup is complete
+      - Build storage racks
+      - Clean windows
+      - Sweep the floors
+      - Fix bikes, then discard parts
+      - Reseal concrete
+      - Move things back in
+      After we complete this project, we'll be able to buy a new fridge so we'll never run out of sparkling water again! Just don't forget your lunches in there like last time… that fridge was not saveable.
+
+    tickets:
+      - title: Marketing closet - Initial clean up
+        product: Garage Clean Up
+        workflow: garage clean up
+        description: |
+          Go through the marketing closet and sort through all the collateral, schwag, posters, and life-sized cardboard cutouts of Corinne. Determine what to keep and what to toss. Pull everything out since we'll be painting this later.
+        after:
+          - Build Storage Racks
+          - Sweep the floors
+
+      - title: Marketing corner - Initial clean up
+        product: Garage Clean Up
+        workflow: garage clean up
+        description: |
+          Marketing has created a mound of marketing materials in the north east corner of the garage. It's possible there are other corners of undiscovered detritus from marketing floating around but the north east corner is the only one I'm aware of. Go through and categorize all of the stuff, earmark things for donation, and toss the rest. Leave the corner empty since we'll be re-sealing the garage floor.
+        after:
+          - Build Storage Racks
+          - Sweep the floors
+
+      - title: Marketing loft - Initial clean up (for goodness sakes guys, stop spreading out!)
+        product: Garage Clean Up
+        workflow: garage clean up
+        description: |
+          Marketing also has taken over the loft in the garage that we used to use for office supplies. I'm sure there are some ancient office supplies buried somewhere in there. If you come across any, feel free to take those relics home. Otherwise, just toss them out.
+          Marketing, you guys need to stop buying stuff and tossing it into the loft. I needed a pen the other day and when I went to get it, I nearly caused an avalance of posters from the last conference we went to.
+        after:
+          - Build Storage Racks
+          - Sweep the floors
+
+      - title: Bicycle graveyard
+        product: Garage Clean Up
+        workflow: garage clean up
+        description: |
+          Somehow, we've been accumulating old bicycles, bicycle parts, broken locks, and flat tires. It would be nice if we could clear that area so we can actually put a functinal bike rack for people to use instead of piling bikes on bikes on bikes.
+        after:
+          - Build Storage Racks
+          - Fix bikes, then discard parts
+
+      - title: Holiday decorations
+        product: Garage Clean Up
+        workflow: garage clean up
+        description: |
+          We have bins and boxes of holiday decorations that are in various stages of disrepair. Please figure out which light strings still work and toss the broken ones. I think we have more non-op stuff than stuff that works. Also, if you come across an inflatable santa with a bottle of grog, let Amos know. He's been looking for that.
+        after:
+          - Build Storage Racks
+
+      - title: Artwork and posters
+        product: Garage Clean Up
+        workflow: garage clean up
+        description: |
+          We have stacks on stack on stacks of artwork from various offices. After three office moves, we seem to have more artwok in the corners than on the walls.
+          Please go through and sort it into the following piles depending on the content: 
+          - Star Wars
+          - Star Trek
+          - Battlestar Galactica
+          - Stargate
+          - French Impressionists
+          - Kandinsksy
+          - Piet Hein
+          - Everything Else
+        after:
+          - Build Storage Racks
+
+      - title: Build storage racks
+        product: Garage Clean Up
+        workflow: to do
+        description: |
+          Once everything else is done, please build storage racks
+
+      - title: Clean windows
+        product: Garage Clean Up
+        workflow: to do
+        description: |
+          Once the walls are clear, feel free to start cleaning the windows. Buckets and sponges will be provided
+
+      - title: Sweep the floors
+        product: Garage Clean Up
+        workflow: to do
+        description: |
+          Once marketing has cleared their areas, we can sweep the floors.
+        after:
+          - Reseal Concrete
+
+      - title: Fix bikes, then discard parts
+        product: Garage Clean Up
+        workflow: to do
+        description: |
+          Figure out which bikes to salvage and toss any that don't work 100%. Not 99%, not "oh, this is just missing a pedal but I can make it work if I just use one leg." They have to be 100% functional othewise they're going to the recycling plant.
+        after:
+          - Move things back in
+
+      - title: Reseal concrete
+        product: Garage Clean Up
+        workflow: to do
+        description: |
+          Once the floors are swept, we'll have a contractor come in and resesal the concrete
+        after:
+          - Move things back in
+
+      - title: Move things back in
+        product: Garage Clean Up
+        workflow: to do
+        description: |
+          Once the floor is dry, we'll move things back in and celebrate our new, clean garage!

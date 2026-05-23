@@ -1,0 +1,30 @@
+.swim-lane {
+  background-size: 60px 400px;
+  background-image: linear-gradient(to right, #f1f5f9 1px, transparent 1px);
+}
+
+.swim-lane.dark {
+  background-size: 60px 400px;
+  background-image: linear-gradient(to left, #e2e8f0 1px, transparent 1px);
+  background-position: center right;
+}
+
+.swim-lane .cancelled-ticket {
+  background: repeating-linear-gradient(
+    45deg,
+    #f1f5f9,
+    #f1f5f9 10px,
+    white 10px,
+    white 20px
+  );
+}
+
+.swim-lane .cancelled-ticket:hover {
+  background: repeating-linear-gradient(
+    45deg,
+    #e2e8f0,
+    #e2e8f0 10px,
+    white 10px,
+    white 20px
+  );
+}

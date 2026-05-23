@@ -1,0 +1,18 @@
+Hello {{name}}
+
+This is to let you know we have received your support request. 
+
+Our team will be working on it shortly and get back to you soon.
+
+To leave another message or consult the progress of your request, please visit 
+your support page case at: {{url}}
+
+Thank you,
+
+The Support team
+
+---- Your Request ----
+
+{{#each description}}
+{{this}}\n
+{{/each}}

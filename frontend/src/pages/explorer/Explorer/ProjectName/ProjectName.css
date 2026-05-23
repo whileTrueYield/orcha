@@ -1,0 +1,20 @@
+.textarea-container::after {
+  content: attr(data-value) " ";
+  visibility: hidden;
+  white-space: pre-wrap;
+}
+
+.textarea-container::after,
+.textarea-container textarea {
+  width: auto;
+  min-width: 10em;
+  grid-area: 1 / 2;
+  font: inherit;
+  padding: 0.25em;
+  margin: 0;
+  resize: none;
+  background: none;
+  appearance: none;
+  border: none;
+  overflow-y: hidden;
+}

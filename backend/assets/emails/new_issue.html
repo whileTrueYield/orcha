@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New Issue</title>
+  </head>
+  <body>
+    <div
+      style="
+        font-family: Dejavu Sans, verdana, arial, ui-sans-serif, system-ui,
+          -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue,
+          Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji,
+          Segoe UI Symbol, Noto Color Emoji;
+        font-size: 16px;
+        line-height: 20px;
+        color: #1e293b;
+        max-width: 600px;
+      "
+    >
+      <p style="margin-bottom: 12px">Hello {{name}}</p>
+
+      <p style="margin-bottom: 12px">
+        This is to let you know we have received your support request.
+      </p>
+
+      <p style="margin-bottom: 12px">
+        Our team will be working on it shortly and get back to you soon.
+      </p>
+
+      <p style="margin-bottom: 12px">
+        To leave another message or consult the progress of your request, please
+        visit your <a href="{{url}}">support case page here</a>.
+      </p>
+
+      <p style="margin-bottom: 12px; color: #64748b">
+        Thank you,<br />The Support team
+      </p>
+
+      <p
+        style="
+          font-family: 'Courier New', Courier, monospace;
+          color: #475569;
+          margin-top: 32px;
+        "
+      >
+        ---- Your Request ----
+      </p>
+
+      <div
+        style="
+          padding: 8px 16px;
+          border-radius: 12px;
+          background-color: #f1f5f9;
+          color: #334155;
+          font-size: 14px;
+        "
+      >
+        {{#each description}}
+        <p style="margin-bottom: 12px">{{this}}</p>
+        {{/each}}
+      </div>
+    </div>
+  </body>
+</html>

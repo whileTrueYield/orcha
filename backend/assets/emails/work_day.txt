@@ -1,0 +1,30 @@
+Hello,
+
+this is your early day update for {{today}}.
+
+Notifications:
+{{#each notifications}}
+  - {{this.title}}  {{this.url}}
+{{else}}
+No Notifications  
+{{/each}}
+
+Tickets to estimate:
+{{#each ticketsToEstimate}}
+  - {{this.title}}  {{this.url}}
+{{else}}
+No ticket to estimate
+{{/each}}
+
+{{ unfinishedTickets.length }} Started {{#ifIsUniq unfinishedTickets}}Ticket{{else}}Tickets{{/ifIsUniq}}:
+{{homeUrl}}dashboard?type=task_manager
+
+{{ availableTickets.length }} Ready to start:
+{{homeUrl}}dashboard?type=task_manager
+
+If you did no subscribe to our service, you may discard this email, your email will not be granted access to our service.
+
+This email is scheduled to be sent prior to your work day. You can change your email preference at: {{homeUrl}}user/me/edit
+
+Orcha 
+{{wwwUri}}

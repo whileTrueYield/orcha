@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="100"
+   height="100"
+   viewBox="0 0 26.458333 26.458333"
+   version="1.1"
+   id="svg22759"
+   inkscape:version="1.2.1 (0f2f062aeb, 2022-09-21, custom)"
+   sodipodi:docname="pie-chart.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview22761"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     showgrid="true"
+     inkscape:zoom="10.35"
+     inkscape:cx="46.47343"
+     inkscape:cy="51.835749"
+     inkscape:window-width="1874"
+     inkscape:window-height="1230"
+     inkscape:window-x="839"
+     inkscape:window-y="801"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1">
+    <inkscape:grid
+       type="xygrid"
+       id="grid24695"
+       originx="0"
+       originy="0" />
+  </sodipodi:namedview>
+  <defs
+     id="defs22756" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       id="path31818"
+       style="fill:#64748b;fill-opacity:1;stroke:#cbd5e1;stroke-width:0.79375;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+       d="M 14.022916 1.7492472 L 14.022916 8.4067219 A 4.8947916 4.8947916 0 0 1 18.123958 13.229166 A 4.8947916 4.8947916 0 0 1 15.407845 17.611845 L 17.441312 23.939624 A 11.509375 11.509375 0 0 0 24.738541 13.229166 A 11.509375 11.509375 0 0 0 14.022916 1.7492472 z M 12.435417 1.7507975 A 11.509375 11.509375 0 0 0 2.4344767 9.2557657 L 8.9209024 10.921297 A 4.8947916 4.8947916 0 0 1 12.435417 8.4077554 L 12.435417 1.7507975 z M 1.9869588 10.779704 A 11.509375 11.509375 0 0 0 1.7197916 13.229166 A 11.509375 11.509375 0 0 0 13.229166 24.738541 A 11.509375 11.509375 0 0 0 15.926159 24.414013 L 13.890108 18.077966 A 4.8947916 4.8947916 0 0 1 13.229166 18.123958 A 4.8947916 4.8947916 0 0 1 8.3343749 13.229166 A 4.8947916 4.8947916 0 0 1 8.4077554 12.428699 L 1.9869588 10.779704 z " />
+  </g>
+</svg>

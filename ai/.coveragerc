@@ -1,0 +1,6 @@
+[run]
+command_line = venv/bin/pytest
+source = app/
+
+[report]
+omit = *_test.py

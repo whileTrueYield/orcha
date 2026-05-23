@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<head>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.min.css"
+  />
+  <style>
+    body {
+      background-color: #f1f5f9;
+    }
+    body::-webkit-scrollbar {
+      width: 20px;
+      height: 20px;
+    }
+
+    body::-webkit-scrollbar-track {
+      background-color: #e2e8f0;
+    }
+
+    body::-webkit-scrollbar-thumb {
+      background-color: #64748b;
+    }
+
+    .head {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      padding: 0 12px;
+    }
+
+    .head .button {
+      flex-shrink: 0;
+    }
+
+    .head form {
+      flex: 1 1 0%;
+      display: flex;
+      flex-direction: row;
+      min-width: 240px;
+      max-width: 80%;
+    }
+
+    .head form .url {
+      flex: 1 1 0%;
+    }
+
+    /* Iphone */
+    .iphone {
+      height: 812px;
+      width: 375px;
+      border-radius: 20px;
+      border: 0 solid #000;
+      background-color: #f1f5f9;
+    }
+
+    .iphone .webview {
+      height: 628px;
+    }
+
+    .iphone .head {
+      height: 80px;
+    }
+
+    /* Ipad */
+    .ipad {
+      height: 1194px;
+      width: 834px;
+      border-radius: 20px;
+      border: 0 solid #000;
+      background-color: #f1f5f9;
+    }
+
+    .ipad .webview {
+      height: 1087px;
+    }
+
+    .ipad .head {
+      height: calc(1194px - 1087px);
+    }
+
+    /* Ipad landscape */
+    .ipad-landscape {
+      height: 834px;
+      width: 1194px;
+      border-radius: 20px;
+      border: 0 solid #000;
+      background-color: #f1f5f9;
+    }
+
+    .ipad-landscape .webview {
+      height: 727px;
+    }
+
+    .ipad-landscape .head {
+      height: calc(834px - 727px);
+    }
+
+    /* macbook air @ 75% */
+    .macbook-pro {
+      height: 723px;
+      width: 1280px;
+      border: 0 solid #000;
+      background-color: #f1f5f9;
+    }
+
+    .macbook-pro .webview {
+      height: 644px;
+      width: 1280px;
+    }
+
+    .macbook-pro .head {
+      height: calc(723px - 644px);
+      background-color: #f1f5f9;
+    }
+
+    /* desktop @ 75% */
+    .desktop {
+      height: calc(1080px * 0.75);
+      width: calc(1920px * 0.75);
+      border: 0 solid #000;
+      background-color: #f1f5f9;
+    }
+    .desktop input {
+      transform: scale(0.75);
+    }
+
+    .desktop .webview {
+      height: 969px;
+      width: 1920px;
+    }
+
+    .desktop .head {
+      height: calc(111px * 0.75);
+      background-color: #f1f5f9;
+    }
+    .desktop iframe {
+      transform: scale(0.75)
+        translate(calc(1920px * -0.166666), calc(969px * -0.166666));
+    }
+
+    .webview {
+      width: 100%;
+      border: 0;
+      background-color: white;
+    }
+
+    .url {
+      background-color: #ccc;
+      color: #444;
+      border-radius: 10px;
+      border: 0;
+      display: block;
+      padding: 10px 10px;
+      text-align: center;
+      font-size: 16px;
+    }
+
+    .url:focus {
+      background-color: white;
+      outline: none;
+    }
+
+    .head {
+      border-bottom: 1px solid #aaa;
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+    }
+    .foot {
+      border-top: 1px solid #ccc;
+    }
+    .app {
+      display: flex;
+      flex-direction: row;
+      padding: 10px 20px;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .device {
+      margin-right: 40px;
+      overflow: hidden;
+      flex-shrink: 0;
+      box-shadow: 3px 3px 15px 5px rgba(0, 0, 0, 0.3);
+    }
+    .elt {
+      position: relative;
+      margin: 50px 0 0 0;
+    }
+    .name {
+      position: absolute;
+      left: 10px;
+      top: -40px;
+      font-size: 20px;
+      color: #333;
+    }
+    .name span {
+      font-size: 16px;
+      color: #666;
+      margin-left: 16px;
+    }
+    .button {
+      border: 0;
+      color: gray;
+      font-size: 20px;
+      font-weight: bold;
+      background-color: rgba(255, 255, 255, 0.8);
+      outline: none;
+      border-radius: 999px;
+      margin-right: 5px;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+    }
+    .button:hover {
+      color: white;
+      background-color: #64748b;
+    }
+    .button svg {
+      width: 2rem;
+      height: 2rem;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="elt">
+      <div class="name">iPhone 8<span>(375 x 628)</span></div>
+      <div class="iphone device">
+        <div class="head">
+          <button class="previous button" onclick="previous()">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path
+                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                clip-rule="evenodd"
+                fill-rule="evenodd"
+              ></path>
+            </svg>
+          </button>
+          <button class="next button" onclick="next()">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path
+                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                clip-rule="evenodd"
+                fill-rule="evenodd"
+              ></path>
+            </svg>
+          </button>
+          <form onsubmit="onSubmitPath(event)">
+            <input type="text" name="path" class="url" onclick="select()" />
+          </form>
+        </div>
+        <iframe src="" border="0" class="webview"></iframe>
+        <div class="foot"></div>
+      </div>
+    </div>
+
+    <div class="elt">
+      <div class="name">iPad portrait<span>(834 x 1087)</span></div>
+      <div class="ipad device">
+        <div class="head">
+          <button class="previous button" onclick="previous()">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path
+                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                clip-rule="evenodd"
+                fill-rule="evenodd"
+              ></path>
+            </svg>
+          </button>
+          <button class="next button" onclick="next()">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path
+                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                clip-rule="evenodd"
+                fill-rule="evenodd"
+              ></path>
+            </svg>
+          </button>
+          <form onsubmit="onSubmitPath(event)">
+            <input type="text" name="path" class="url" onclick="select()" />
+          </form>
+        </div>
+        <iframe src="" border="0" class="webview"></iframe>
+        <div class="foot"></div>
+      </div>
+    </div>
+
+    <div class="elt">
+      <div class="name">iPad landscape<span>(1194 x 727)</span></div>
+      <div class="ipad-landscape device">
+        <div class="head">
+          <button class="previous button" onclick="previous()">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path
+                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                clip-rule="evenodd"
+                fill-rule="evenodd"
+              ></path>
+            </svg>
+          </button>
+          <button class="next button" onclick="next()">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path
+                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                clip-rule="evenodd"
+                fill-rule="evenodd"
+              ></path>
+            </svg>
+          </button>
+          <form onsubmit="onSubmitPath(event)">
+            <input type="text" name="path" class="url" onclick="select()" />
+          </form>
+        </div>
+        <iframe src="" border="0" class="webview"></iframe>
+        <div class="foot"></div>
+      </div>
+    </div>
+
+    <div class="elt">
+      <div class="name">Macbook Pro<span>(1280 x 644)</span></div>
+      <div class="macbook-pro device">
+        <div class="head">
+          <button class="previous button" onclick="previous()">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path
+                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                clip-rule="evenodd"
+                fill-rule="evenodd"
+              ></path>
+            </svg>
+          </button>
+          <button class="next button" onclick="next()">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path
+                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                clip-rule="evenodd"
+                fill-rule="evenodd"
+              ></path>
+            </svg>
+          </button>
+          <form onsubmit="onSubmitPath(event)">
+            <input type="text" name="path" class="url" onclick="select()" />
+          </form>
+        </div>
+        <iframe src="" border="0" class="webview"></iframe>
+        <div class="foot"></div>
+      </div>
+    </div>
+
+    <div class="elt">
+      <div class="name">Desktop<span>(1920 x 969 @ 75%)</span></div>
+      <div class="desktop device">
+        <div class="head">
+          <button class="previous button" onclick="previous()">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path
+                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                clip-rule="evenodd"
+                fill-rule="evenodd"
+              ></path>
+            </svg>
+          </button>
+          <button class="next button" onclick="next()">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path
+                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                clip-rule="evenodd"
+                fill-rule="evenodd"
+              ></path>
+            </svg>
+          </button>
+          <form onsubmit="onSubmitPath(event)">
+            <input type="text" name="path" class="url" onclick="select()" />
+          </form>
+        </div>
+        <iframe src="" border="0" class="webview"></iframe>
+        <div class="foot"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const url = new URL(window.location.href);
+    const siteUrl = url.searchParams.get("site");
+    let currentUrl = siteUrl || url.origin + "/";
+    let activeIframe = null;
+    const intervalUrlCheck = 200;
+
+    const previousUrls = []; // URLs for the previous nav button
+    const futureUrls = []; // URLs for the next nav button
+    const currentUrls = []; // URLs of the iframes
+
+    const iframes = document.querySelectorAll("iframe");
+
+    function last(arr) {
+      return arr[arr.length];
+    }
+
+    setUrl();
+
+    function checkIframeUrlChange() {
+      iframes.forEach((iframe, index) => {
+        const url = iframe.contentWindow.location.href;
+
+        // if the current iframe url changed
+        if (url !== currentUrls[index]) {
+          currentUrls[index] = url;
+
+          // if the iframe is different than the globally accepted current URL
+          if (url !== currentUrl) {
+            console.log("updating to url", url);
+            futureUrls.length = 0;
+            previousUrls.push(currentUrl);
+            currentUrl = url;
+            debouncedSetUrl(iframe);
+          }
+        } else if (url !== currentUrl) {
+          currentUrls[index] = currentUrl;
+          setIframeUrl(iframe, currentUrl);
+        }
+      });
+    }
+
+    function previous() {
+      if (previousUrls.length) {
+        const url = previousUrls.pop();
+        futureUrls.push(currentUrl);
+        currentUrl = url;
+        setUrl();
+      }
+    }
+
+    function next() {
+      if (futureUrls.length) {
+        const url = futureUrls.pop();
+        previousUrls.push(currentUrl);
+        currentUrl = url;
+        setUrl();
+      }
+    }
+
+    setInterval(checkIframeUrlChange, intervalUrlCheck);
+
+    let debounceTimeout;
+    function debouncedSetUrl(changedIframe) {
+      clearTimeout(debounceTimeout);
+
+      // if the active iframe is not yet define, it's the
+      // first that fires the event
+      if (!activeIframe) {
+        activeIframe = changedIframe;
+      }
+
+      // ignore any changes triggered by an iframe that is no active
+      if (changedIframe !== activeIframe) {
+        return;
+      }
+
+      debounceTimeout = setTimeout(() => {
+        setUrl(changedIframe);
+        // keep the iframe active so the URL update of the iframe will
+        // not trigger a change event
+        setTimeout(() => (activeIframe = null), intervalUrlCheck * 3);
+      }, intervalUrlCheck * 5);
+    }
+
+    function setIframeUrl(iframe, url) {
+      iframe.src = url;
+    }
+
+    function onSubmitPath(event) {
+      const newPath = event.form.path.value();
+      event.preventDefault();
+      goTo(newPath);
+    }
+
+    function goTo(url) {
+      iframes.forEach((iframe) => {
+        setIframeUrl(iframe, currentUrl);
+      });
+    }
+
+    function setUrl(changedIframe) {
+      iframes.forEach((iframe) => {
+        if (changedIframe !== iframe) {
+          setIframeUrl(iframe, currentUrl);
+        }
+      });
+
+      const input = document.querySelectorAll("input.url");
+      input.forEach((input) => {
+        input.setAttribute("value", currentUrl);
+      });
+
+      window.history.pushState(
+        {},
+        "",
+        url.pathname + "?site=" + encodeURIComponent(currentUrl)
+      );
+    }
+  </script>
+</body>

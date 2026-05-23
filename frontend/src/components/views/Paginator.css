@@ -1,0 +1,18 @@
+.anim\:loading-appear {
+  opacity: 0;
+  animation-duration: 1000ms;
+  animation-name: animAppear;
+  animation-timing-function: ease-in;
+  animation-delay: 2000ms;
+  animation-fill-mode: forwards;
+}
+
+@keyframes animAppear {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

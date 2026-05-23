@@ -1,0 +1,26 @@
+Hello {{name}}
+
+You have received a reply to your support request. 
+
+
+--
+
+{{#each message}}
+{{this}}\n
+{{/each}}
+
+--
+
+
+To leave another message or consult the progress of your request, please visit 
+your support page case at: {{url}}
+
+Thank you,
+
+The Support team
+
+-- Your Original Request --
+
+{{#each description}}
+{{this}}\n
+{{/each}}

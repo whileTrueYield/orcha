@@ -1,0 +1,38 @@
+{
+  "workflows": [
+    {
+      "name": "Release",
+      "color": "lightYellow",
+      "states": [
+        { "name": "Staging Release" },
+        { "name": "Regression Tests on Staging" },
+        { "name": "Production Release" },
+        { "name": "Regression Tests Prod." }
+      ]
+    },
+    {
+      "name": "Bug",
+      "color": "lightRed",
+      "states": [
+        { "name": "Development" },
+        { "name": "Peer Review" },
+        { "name": "QA" }
+      ]
+    },
+    {
+      "name": "Feature",
+      "color": "lightBlue",
+      "states": [
+        { "name": "Development" },
+        { "name": "Documentation" },
+        { "name": "Peer Review" },
+        { "name": "QA" }
+      ]
+    },
+    {
+      "name": "To Do",
+      "color": "lightGreen",
+      "states": [{ "name": "Implement" }]
+    }
+  ]
+}

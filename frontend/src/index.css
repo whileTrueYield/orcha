@@ -1,0 +1,328 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.filter-none {
+  filter: none;
+}
+.filter-grayscale {
+  filter: grayscale(100%);
+}
+
+body {
+  min-height: 100vh;
+  /* mobile viewport bug fix */
+  min-height: -webkit-fill-available;
+}
+
+.ios-hscreen {
+  max-height: -webkit-fill-available;
+}
+
+.toggle-container {
+  @apply bg-gray-200;
+}
+
+.toggle-input:checked ~ .toggle-container {
+  @apply bg-brand-600;
+}
+
+.toggle-container.toggle-error {
+  @apply bg-red-200;
+}
+
+.toggle-input:checked ~ .toggle-container.toggle-error {
+  @apply bg-red-600;
+}
+
+.toggle-input:checked:disabled ~ .toggle-container {
+  @apply cursor-not-allowed bg-blue-200;
+}
+
+.toggle-container .toggle-ball {
+  @apply translate-x-0;
+}
+
+.toggle-input:checked ~ .toggle-container .toggle-ball {
+  @apply translate-x-5;
+}
+
+@keyframes strong-pulse {
+  50% {
+    opacity: 0.75;
+  }
+}
+
+@keyframes appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(100px);
+  }
+  50% {
+    transform: scale(0.9) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0px);
+  }
+}
+
+@keyframes grow {
+  0% {
+    max-height: 0;
+  }
+  50% {
+    max-height: 2rem;
+  }
+  100% {
+    max-height: 4rem;
+  }
+}
+
+@keyframes grow {
+  0% {
+    max-height: 0;
+  }
+  50% {
+    max-height: 2rem;
+  }
+  100% {
+    max-height: 4rem;
+  }
+}
+
+@keyframes hang {
+  from {
+    transform: rotate(0deg) translateY(0);
+  }
+  40% {
+    transform: rotate(10deg) translateY(15px);
+  }
+  80% {
+    transform: rotate(5deg) translateY(8px);
+  }
+  to {
+    transform: rotate(6deg) translateY(10px);
+  }
+}
+
+@keyframes transient-color {
+  0% {
+    transform: rotate(-360deg);
+    color: #4299e1;
+  }
+  1% {
+    color: #10b981;
+  }
+  2% {
+    color: #f59e0b;
+  }
+  3% {
+    color: #ec4899;
+  }
+  4% {
+    color: #ef4444;
+  }
+  5% {
+    color: #8b5cf6;
+  }
+  6% {
+    transform: rotate(0deg);
+    color: #4299e1;
+  }
+  100% {
+    color: #4299e1;
+  }
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+.rotate-90 {
+  transform: rotate(90deg);
+}
+
+.rotate-270 {
+  transform: rotate(270deg);
+}
+
+.-rotate-180 {
+  transform: rotate(-180deg);
+}
+
+.-rotate-90 {
+  transform: rotate(-90deg);
+}
+
+.-rotate-270 {
+  transform: rotate(-270deg);
+}
+
+code:hover .copy-button {
+  @apply opacity-100;
+}
+
+.contains-task-list {
+  @apply mb-4 mt-2 pl-16;
+}
+
+.task-list-item {
+  @apply mb-2 -ml-6;
+}
+
+/*!
+ * Agate by Taufik Nurrohman <https://github.com/taufik-nurrohman>
+ * ---------------------------------------------------------------
+ *
+ * #ade5fc
+ * #a2fca2
+ * #c6b4f0
+ * #d36363
+ * #fcc28c
+ * #fc9b9b
+ * #ffa
+ * #fff
+ * #333
+ * #62c8f3
+ * #888
+ *
+ */
+
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1.25rem 0.5rem;
+  color: white;
+  background-color: #32374c;
+  /* @apply bg-gray-700; */
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+.hljs-code,
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-tag {
+  color: #62c8f3;
+}
+
+.hljs-tag .hljs-name {
+  color: #ff5874;
+}
+
+.hljs-tag .hljs-attr {
+  color: #ffcb6b;
+  font-style: italic;
+}
+
+.hljs-variable,
+.hljs-template-variable,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: #ade5fc;
+}
+
+.hljs-string {
+  color: #c3e88d;
+}
+
+.hljs-string .hljs-subst {
+  color: white;
+}
+
+.hljs-bullet {
+  color: #a2fca2;
+}
+
+.hljs-function .hljs-keyword {
+  font-style: normal;
+}
+.hljs-function .hljs-title {
+  color: #82aaff;
+}
+
+.hljs-params {
+  color: #7986e7;
+}
+
+.hljs-type,
+.hljs-section,
+.hljs-attribute,
+.hljs-title,
+.hljs-built_in,
+.hljs-builtin-name {
+  color: #ffcb6b;
+}
+
+.hljs-quote {
+  color: #697098;
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+  color: #f78c6c;
+}
+
+.hljs-comment,
+.hljs-quote,
+.hljs-keyword {
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag {
+  color: #c792ea;
+}
+
+.hljs-literal {
+  color: #ff5874;
+}
+
+.hljs-comment {
+  color: #999fc2;
+}
+
+.hljs-code {
+  color: #697098;
+}
+
+.hljs-regexp,
+.hljs-link {
+  color: #80cbc4;
+}
+
+.hljs-meta {
+  color: #fc9b9b;
+  @apply text-red-400;
+}
+
+.hljs-deletion {
+  color: #32374c;
+  @apply -m-1 rounded-sm bg-red-500 p-1 text-red-100;
+}
+
+.hljs-addition {
+  /* background-color: #99b76d; */
+  @apply -m-1 rounded-sm bg-green-500 p-1 text-green-100;
+}
+
+.hljs a {
+  color: inherit;
+}
+
+.hljs a:focus,
+.hljs a:hover {
+  color: inherit;
+  text-decoration: underline;
+}
+
+textarea.md-textarea {
+  white-space: pre-wrap;
+  overflow: auto;
+}

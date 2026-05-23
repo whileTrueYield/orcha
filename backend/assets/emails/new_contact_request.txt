@@ -1,0 +1,21 @@
+Hello
+
+We have received a new contact request. 
+
+- email: {{email}}
+- Name: {{firstName}} {{lastName}}
+- Company Name: {{companyName}}
+- Phone Number: ({{countryCode}}) {{phoneNumber}}
+- topic: {{topic}}
+- companySize: {{companySize}}
+- department: {{department}}
+
+Message: 
+
+--
+
+{{#each description}}
+{{this}}\n
+{{/each}}
+
+--
