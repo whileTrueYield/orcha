@@ -121,4 +121,8 @@ async function start() {
   return app;
 }
 
-start();
+// TODO: remove catch wrapper after DO deployment is verified
+start().catch((err) => {
+  console.error("[startup] fatal:", err);
+  process.exit(1);
+});

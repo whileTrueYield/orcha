@@ -5,6 +5,9 @@ import IORedis from "ioredis";
 // rediss:// and password) or REDIS_HOSTNAME/REDIS_PORT for self-hosted.
 function parseRedisConfig() {
   if (process.env.REDIS_URL) {
+    // TODO: remove after DO deployment is verified
+    const masked = process.env.REDIS_URL.replace(/:([^@]+)@/, ":***@");
+    console.log(`[redis] connecting to: ${masked}`);
     const url = new URL(process.env.REDIS_URL);
     const opts: Record<string, any> = {
       host: url.hostname,
