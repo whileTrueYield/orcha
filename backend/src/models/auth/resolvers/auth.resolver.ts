@@ -332,10 +332,16 @@ export class AuthResolver {
       throw new UserInputError("This user already exists, try to login");
     }
 
+    // Bootstrap escape hatch: the very first user on a fresh database
+    // is auto-confirmed (ACTIVE) so a self-hosted instance can be set up
+    // without needing a working email pipeline. Every subsequent user
+    // goes through the normal UNCONFIRMED + email confirmation flow.
+    const isFirstUser = (await ctx.prisma.user.count()) === 0;
+
     const user = await ctx.prisma.user.create({
       data: {
         email,
-        status: UserStatus.UNCONFIRMED,
+        status: isFirstUser ? UserStatus.ACTIVE : UserStatus.UNCONFIRMED,
         password: await hash(input.password, 12),
       },
     });
@@ -343,7 +349,9 @@ export class AuthResolver {
     ctx.req.session!.userId = user.id;
     ctx.req.session!.isStaff = user.isStaff;
 
-    await this._sendConfirmationEmail(user);
+    if (!isFirstUser) {
+      await this._sendConfirmationEmail(user);
+    }
 
     return this.me(ctx);
   }
