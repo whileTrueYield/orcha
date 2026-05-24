@@ -5,10 +5,10 @@
 # Six services + one static frontend on orcha.run (ADR #0002, #0003).
 # Prisma migrations run at API startup (idempotent, no-op when current).
 #
-# Managed resources (provision separately in DO console):
-#   - Managed PostgreSQL (set DATABASE_URL in app-level env vars)
-#   - Managed Redis (set REDIS_URL — includes host, port, password, and TLS)
-#   - DO Spaces (set SPACES_* env vars)
+# Managed resources (defined below, auto-wired via ${resource.VAR}):
+#   - Managed PostgreSQL 16 (orcha-db)
+#   - Managed Valkey 8 (orcha-redis)
+#   - DO Spaces (set SPACES_* env vars in DO console)
 #
 # Secrets: after creating the app, set values marked [SECRET] in the
 # DO console under each component's env var settings.
@@ -21,6 +21,22 @@ region: sfo
 domains:
   - domain: orcha.run
     type: PRIMARY
+
+# ---- Managed databases ---------------------------------------------------
+
+databases:
+  - name: orcha-db
+    engine: PG
+    version: "16"
+    production: true
+    cluster_name: orcha-db
+    db_name: orcha
+    db_user: doadmin
+  - name: orcha-redis
+    engine: VALKEY
+    version: "8"
+    production: true
+    cluster_name: orcha-redis
 
 # ---- Services (HTTP-receiving) -------------------------------------------
 
@@ -44,7 +60,7 @@ services:
     envs:
       - key: DATABASE_URL
         scope: RUN_TIME
-        value: "${DATABASE_URL}"
+        value: "${orcha-db.DATABASE_URL}"
       - key: NODE_ENV
         scope: RUN_TIME
         value: production
@@ -88,7 +104,7 @@ services:
       # AI service — internal URL within DO App Platform
       - key: ORCHA_AI_URI
         scope: RUN_TIME
-        value: "${ORCHA_AI_URI}"
+        value: "http://${ai.INTERNAL_URL}:8000"
       # Session
       - key: ORCHA_SESSION_SECRET
         scope: RUN_TIME
@@ -96,7 +112,7 @@ services:
       # Redis (DO Managed Redis URL includes TLS and auth)
       - key: REDIS_URL
         scope: RUN_TIME
-        value: "${REDIS_URL}"
+        value: "${orcha-redis.DATABASE_URL}"
       # DO Spaces (S3-compatible)
       - key: UPLOAD_S3_BUCKET
         scope: RUN_TIME
@@ -166,7 +182,7 @@ services:
     envs:
       - key: DATABASE_URL
         scope: RUN_TIME
-        value: "${DATABASE_URL}"
+        value: "${orcha-db.DATABASE_URL}"
       - key: NODE_ENV
         scope: RUN_TIME
         value: production
@@ -187,7 +203,7 @@ services:
         value: "${ORCHA_SESSION_SECRET}"
       - key: REDIS_URL
         scope: RUN_TIME
-        value: "${REDIS_URL}"
+        value: "${orcha-redis.DATABASE_URL}"
       - key: VAPID_PUBLIC_KEY
         scope: RUN_TIME
         value: "${VAPID_PUBLIC_KEY}"
@@ -303,7 +319,7 @@ workers:
     envs:
       - key: DATABASE_URL
         scope: RUN_TIME
-        value: "${DATABASE_URL}"
+        value: "${orcha-db.DATABASE_URL}"
       - key: NODE_ENV
         scope: RUN_TIME
         value: production
@@ -342,13 +358,13 @@ workers:
         value: "true"
       - key: ORCHA_AI_URI
         scope: RUN_TIME
-        value: "${ORCHA_AI_URI}"
+        value: "http://${ai.INTERNAL_URL}:8000"
       - key: ORCHA_SESSION_SECRET
         scope: RUN_TIME
         value: "${ORCHA_SESSION_SECRET}"
       - key: REDIS_URL
         scope: RUN_TIME
-        value: "${REDIS_URL}"
+        value: "${orcha-redis.DATABASE_URL}"
       - key: UPLOAD_S3_BUCKET
         scope: RUN_TIME
         value: "${UPLOAD_S3_BUCKET}"
