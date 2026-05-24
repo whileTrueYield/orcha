@@ -168,10 +168,10 @@ services:
       # Resource references (can't inherit — need explicit wiring)
       - key: ORCHA_AI_URI
         scope: RUN_TIME
-        value: "http://${ai.INTERNAL_URL}:8000"
+        value: "${ai.PRIVATE_URL}"
       - key: REDIS_URL
         scope: RUN_TIME
-        value: "${orcha-redis.DATABASE_URL}"
+        value: "${orcha-redis.REDIS_URL}"
 
   # -- Hocuspocus (WebSocket CRDT collaboration) --
   - name: hocuspocus
@@ -208,7 +208,7 @@ services:
         value: wss://orcha.run/ws
       - key: REDIS_URL
         scope: RUN_TIME
-        value: "${orcha-redis.DATABASE_URL}"
+        value: "${orcha-redis.REDIS_URL}"
 
   # -- MCTS AI scheduler (internal only, called by cron worker) --
   - name: ai
@@ -358,7 +358,7 @@ workers:
       # Resource references (can't inherit — need explicit wiring)
       - key: ORCHA_AI_URI
         scope: RUN_TIME
-        value: "http://${ai.INTERNAL_URL}:8000"
+        value: "${ai.PRIVATE_URL}"
       - key: REDIS_URL
         scope: RUN_TIME
-        value: "${orcha-redis.DATABASE_URL}"
+        value: "${orcha-redis.REDIS_URL}"
