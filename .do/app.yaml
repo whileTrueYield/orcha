@@ -32,7 +32,7 @@ services:
       branch: main
       deploy_on_push: true
     source_dir: backend
-    dockerfile_path: Dockerfile
+    dockerfile_path: backend/Dockerfile
     http_port: 4000
     instance_size_slug: professional-xs
     instance_count: 1
@@ -156,7 +156,7 @@ services:
       branch: main
       deploy_on_push: true
     source_dir: backend
-    dockerfile_path: Dockerfile
+    dockerfile_path: backend/Dockerfile
     http_port: 38268
     instance_size_slug: basic-xxs
     instance_count: 1
@@ -215,7 +215,7 @@ services:
       branch: main
       deploy_on_push: true
     source_dir: support
-    dockerfile_path: Dockerfile
+    dockerfile_path: support/Dockerfile
     http_port: 3001
     instance_size_slug: basic-xxs
     instance_count: 1
@@ -296,7 +296,7 @@ workers:
       branch: main
       deploy_on_push: true
     source_dir: backend
-    dockerfile_path: Dockerfile
+    dockerfile_path: backend/Dockerfile
     instance_size_slug: basic-xxs
     instance_count: 1
     run_command: node dist/cron.js
