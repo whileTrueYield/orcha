@@ -14,7 +14,7 @@ function parseRedisConfig() {
       port: parseInt(url.port || "6379"),
     };
     if (url.password) opts.password = decodeURIComponent(url.password);
-    if (url.protocol === "rediss:") opts.tls = {};
+    if (url.protocol === "rediss:") opts.tls = { rejectUnauthorized: false };
     return opts;
   }
   return {
