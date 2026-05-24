@@ -22,6 +22,64 @@ domains:
   - domain: orcha.run
     type: PRIMARY
 
+# ---- App-level env vars --------------------------------------------------
+# These are shared across all components. Set actual values in the DO console.
+# Component-level envs reference these via ${VAR_NAME}.
+
+envs:
+  # Session
+  - key: ORCHA_SESSION_SECRET
+    scope: RUN_TIME
+    type: SECRET
+    value: "CHANGE_ME"
+  # DO Spaces (S3-compatible storage)
+  - key: SPACES_ENDPOINT
+    scope: RUN_TIME
+    value: "CHANGE_ME"
+  - key: SPACES_CDN_URL
+    scope: RUN_TIME
+    value: "CHANGE_ME"
+  - key: SPACES_ACCESS_KEY
+    scope: RUN_TIME
+    type: SECRET
+    value: "CHANGE_ME"
+  - key: SPACES_SECRET_KEY
+    scope: RUN_TIME
+    type: SECRET
+    value: "CHANGE_ME"
+  - key: UPLOAD_S3_BUCKET
+    scope: RUN_TIME
+    value: "CHANGE_ME"
+  - key: DOCUMENTATION_S3_BUCKET
+    scope: RUN_TIME
+    value: "CHANGE_ME"
+  # Push notifications
+  - key: VAPID_PUBLIC_KEY
+    scope: RUN_TIME
+    value: "CHANGE_ME"
+  - key: VAPID_PRIVATE_KEY
+    scope: RUN_TIME
+    type: SECRET
+    value: "CHANGE_ME"
+  # Email (SMTP or Resend — set whichever you use)
+  - key: SMTP_HOST
+    scope: RUN_TIME
+    value: "CHANGE_ME"
+  - key: SMTP_PORT
+    scope: RUN_TIME
+    value: "CHANGE_ME"
+  - key: SMTP_USER
+    scope: RUN_TIME
+    value: "CHANGE_ME"
+  - key: SMTP_PASS
+    scope: RUN_TIME
+    type: SECRET
+    value: "CHANGE_ME"
+  - key: RESEND_API_KEY
+    scope: RUN_TIME
+    type: SECRET
+    value: "CHANGE_ME"
+
 # ---- Managed databases ---------------------------------------------------
 
 databases:
