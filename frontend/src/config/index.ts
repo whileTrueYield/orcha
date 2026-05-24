@@ -11,7 +11,7 @@ export const defaultPagination: PaginationURL = {
 export const AppUri = window.location.origin;
 export const ApiUri = import.meta.env.VITE_API_URI!;
 export const GraphQLUri = import.meta.env.VITE_GRAPHQL_URI!;
-export const UploadCdnUri = import.meta.env.VITE_UPLOAD_CDN_URI;
+export const UploadCdnUri = import.meta.env.VITE_UPLOADS_CDN_URL;
 
 // The default delay a notification stays visible
 // before it auto-disapear
