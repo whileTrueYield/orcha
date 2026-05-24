@@ -14,8 +14,6 @@ interface Config {
   isStaging: boolean;
   hostname: string;
   allowOrigin: string[];
-  allowedEmails: string[];
-  allowedEmailDomains: string[];
   sessionSecret: string;
   assetRoot: string;
   webAppUri: string;
@@ -35,6 +33,8 @@ interface Config {
     noReplyAddress: string;
     unsubscribeUri: string;
     confirmLinkExpiration: number;
+    smtp: { host: string; port: number; user: string; pass: string } | null;
+    resendApiKey: string | null;
   };
   upload: {
     multiples: boolean;
@@ -173,8 +173,6 @@ export const config: Config = {
   sessionSecret: env.ORCHA_SESSION_SECRET,
   hostname: env.ORCHA_HOSTNAME,
   allowOrigin: [env.ORCHA_WEBAPP_URI, env.ORCHA_SUPPORT_URI, env.ORCHA_WWW_URI],
-  allowedEmails: ["kerbyferris@gmail.com"],
-  allowedEmailDomains: ["orchalabs.com", "jeeny.com"],
   webAppUri: env.ORCHA_WEBAPP_URI,
   supportUri: env.ORCHA_SUPPORT_URI,
   wwwUri: env.ORCHA_WWW_URI,
@@ -193,6 +191,15 @@ export const config: Config = {
     unsubscribeUri: `${process.env.ORCHA_API_URI}/unsubscribe`,
     confirmLinkExpiration: 3600, // 1 hour
     noReplyAddress: `no-reply@${process.env.ORCHA_DOMAIN}`,
+    smtp: process.env.SMTP_HOST
+      ? {
+          host: process.env.SMTP_HOST,
+          port: parseInt(process.env.SMTP_PORT || "587", 10),
+          user: process.env.SMTP_USER || "",
+          pass: process.env.SMTP_PASS || "",
+        }
+      : null,
+    resendApiKey: process.env.RESEND_API_KEY || null,
   },
   upload: {
     multiples: true,
