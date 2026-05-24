@@ -1,4 +1,6 @@
 // TODO: remove after DO deployment is verified
+process.stderr.write("[api] process started\n");
+
 process.on("uncaughtException", (err) => {
   console.error("[uncaught]", err);
   process.exit(1);
@@ -23,17 +25,11 @@ import { json as jsonBodyParser } from "express";
 import { corsCheckOrigin } from "./utils";
 import RedisStore from "connect-redis";
 
+// TODO: remove after DO deployment is verified
+process.stderr.write("[api] imports done, calling start()\n");
+
 async function start() {
-  // The ApolloServer constructor requires two parameters: your schema
-  // definition and your set of resolvers.
-  //
-  // Apollo <--> TypeGrapqhl <--> Prisma
-  //
-  // TypeGrapqhl is handling permission and "endpoints" for apollo, while
-  // Prisma is our ORM, handling relations, retrieval and other CRUD operations.
-  //
-  // You'll also notice that the context is modified to include the prisma
-  // instance to every typegraphql handler
+  process.stderr.write("[api] building schema...\n");
   const server = new ApolloServer({
     // bounded cache to protect against DOS attacks
     // see https://www.apollographql.com/docs/apollo-server/v3/performance/cache-backends#ensuring-a-bounded-cache
@@ -102,7 +98,9 @@ async function start() {
 
   // Starting the apollo service and couple it with the express app (it also
   // requires a CORS handler).
+  process.stderr.write("[api] schema built, starting apollo...\n");
   await server.start();
+  process.stderr.write("[api] apollo started, mounting middleware...\n");
   server.applyMiddleware({
     app,
     path: `${config.apiPathPrefix}/graphql`,
@@ -114,6 +112,7 @@ async function start() {
 
   // Launches the backend express application
   app.listen({ port: config.port }, () => {
+    process.stderr.write(`[api] listening on port ${config.port}\n`);
     logger.info(
       `🚀 Server ready at http://${config.hostname}:${config.port}${server.graphqlPath}`
     );

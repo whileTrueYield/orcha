@@ -71,7 +71,7 @@ services:
       period_seconds: 10
       timeout_seconds: 5
       failure_threshold: 5
-    run_command: npx prisma migrate deploy && node dist/server.js
+    run_command: node dist/server.js
     envs:
       - key: DATABASE_URL
         scope: RUN_TIME
