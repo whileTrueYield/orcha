@@ -1,0 +1,403 @@
+# ============================================================================
+# Orcha — production Docker Compose (standalone)
+# ============================================================================
+#
+# Self-hosted production deployment with Traefik reverse proxy and automatic
+# Let's Encrypt TLS. All traffic enters through Traefik on ports 80/443 —
+# individual services do NOT expose ports to the host.
+#
+# Path-based routing on a single domain ($ORCHA_DOMAIN):
+#   /          -> frontend  (nginx serving static SPA)
+#   /api       -> backend   (Node.js on port 4000)
+#   /ws        -> hocuspocus (WebSocket collaboration server on port 38268)
+#   /uploads   -> minio     (S3-compatible object storage on port 9000)
+#
+# Prerequisites:
+#   1. Copy .env.prod.example to .env.prod and fill in all values
+#   2. DNS A record pointing $ORCHA_DOMAIN to this server
+#
+# Usage:
+#   make prod
+#   # or manually:
+#   docker compose -f docker-compose.prod.yaml --env-file .env.prod up -d --build
+#
+# Services (11 containers + Traefik):
+#   Infrastructure: db, redis, minio, minio-init, traefik
+#   Application:    db-migrate, backend, cron, ai, hocuspocus, support, frontend
+#
+# Excluded from production (security risks):
+#   - studio  (Prisma Studio — direct DB admin UI)
+#   - dozzle  (unauthenticated container log viewer)
+#
+# ============================================================================
+
+services:
+  # --------------------------------------------------------------------------
+  # Reverse proxy — single entry point for all traffic
+  # --------------------------------------------------------------------------
+  traefik:
+    container_name: orcha-traefik
+    image: traefik:v3.1
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # Redirect all HTTP to HTTPS
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      # Let's Encrypt automatic TLS
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${LETS_ENCRYPT_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "letsencrypt-data:/letsencrypt"
+
+  # --------------------------------------------------------------------------
+  # Data stores
+  # --------------------------------------------------------------------------
+  db:
+    container_name: orcha-db
+    image: postgres:13
+    restart: unless-stopped
+    healthcheck:
+      test: pg_isready -U ${__DOCKER_POSTGRES_USER} -d ${__DOCKER_POSTGRES_DB}
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    volumes:
+      - db-data:/var/lib/postgres
+    environment:
+      - POSTGRES_PASSWORD=${__DOCKER_POSTGRES_PASSWORD}
+      - POSTGRES_USER=${__DOCKER_POSTGRES_USER}
+      - POSTGRES_DB=${__DOCKER_POSTGRES_DB}
+    expose:
+      - 5432
+
+  redis:
+    container_name: orcha-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+
+  minio:
+    container_name: orcha-minio
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+    expose:
+      - 9000
+      - 9001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      # Route /uploads/* to MinIO — strip the /uploads prefix before forwarding
+      - "traefik.http.routers.minio.rule=Host(`${ORCHA_DOMAIN}`) && PathPrefix(`/uploads`)"
+      - "traefik.http.routers.minio.entrypoints=websecure"
+      - "traefik.http.routers.minio.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.minio.priority=30"
+      - "traefik.http.routers.minio.middlewares=minio-stripprefix"
+      - "traefik.http.middlewares.minio-stripprefix.stripprefix.prefixes=/uploads"
+      - "traefik.http.services.minio.loadbalancer.server.port=9000"
+
+  minio-init:
+    container_name: orcha-minio-init
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set orcha http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
+      mc mb --ignore-existing orcha/${__DOCKER_UPLOAD_S3_BUCKET};
+      mc anonymous set download orcha/${__DOCKER_UPLOAD_S3_BUCKET};
+      mc mb --ignore-existing orcha/${__DOCKER_DOCUMENTATION_S3_BUCKET};
+      mc anonymous set download orcha/${__DOCKER_DOCUMENTATION_S3_BUCKET};
+      exit 0;
+      "
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+
+  # --------------------------------------------------------------------------
+  # Database migration — runs once at boot then exits
+  # --------------------------------------------------------------------------
+  db-migrate:
+    container_name: orcha-db-migrate
+    build:
+      context: ./backend
+      dockerfile: Dockerfile-dev
+      target: prisma
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
+    command: ["yarn", "prisma", "migrate", "deploy"]
+
+  # --------------------------------------------------------------------------
+  # Application services
+  # --------------------------------------------------------------------------
+  backend:
+    container_name: orcha-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile-dev
+      target: backend
+    restart: unless-stopped
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:${__DOCKER_ORCHA_BACKEND_PORT}/alive || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      ai:
+        condition: service_started
+      redis:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
+      - NODE_ENV=production
+      - APOLLO_GRAPH_REF=orcha@current
+      - ORCHA_WS_BACKEND_PORT=${__DOCKER_ORCHA_WS_BACKEND_PORT}
+      - ORCHA_BACKEND_PORT=${__DOCKER_ORCHA_BACKEND_PORT}
+      - ORCHA_HOSTNAME=${ORCHA_DOMAIN}
+      - ORCHA_WEBAPP_URI=https://${ORCHA_DOMAIN}
+      - ORCHA_SUPPORT_URI=https://${ORCHA_DOMAIN}/support
+      - ORCHA_SESSION_SECRET=${__DOCKER_ORCHA_SESSION_SECRET}
+      - ORCHA_TEST_INTERFACE=false
+      - ORCHA_DOMAIN=${ORCHA_DOMAIN}
+      - ORCHA_API_URI=https://${ORCHA_DOMAIN}/api
+      - ORCHA_API_WS_URI=wss://${ORCHA_DOMAIN}/ws
+      - ORCHA_AI_URI=http://ai:${__DOCKER_ORCHA_AI_PORT}
+      - ORCHA_WWW_URI=https://${ORCHA_DOMAIN}
+      - UPLOAD_S3_BUCKET=${__DOCKER_UPLOAD_S3_BUCKET}
+      - DOCUMENTATION_S3_BUCKET=${__DOCKER_DOCUMENTATION_S3_BUCKET}
+      - DOCUMENTATION_DISTRIBUTION_ID=${__DOCKER_DOCUMENTATION_DISTRIBUTION_ID:-}
+      - ORCHA_UPLOAD_CDN_URI=https://${ORCHA_DOMAIN}/uploads
+      - ORCHA_S3_ENDPOINT=http://minio:9000
+      - ORCHA_S3_PUBLIC_ENDPOINT=https://${ORCHA_DOMAIN}/uploads
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - AWS_REGION=us-west-1
+      - NO_COLOR=true
+      - VAPID_PUBLIC_KEY=${__DOCKER_VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${__DOCKER_VAPID_PRIVATE_KEY}
+      - REDIS_HOSTNAME=${__DOCKER_REDIS_HOSTNAME}
+      - REDIS_PORT=${__DOCKER_REDIS_PORT}
+      # Email provider — uncomment the one you're using
+      # SMTP:
+      # - SMTP_HOST=${__DOCKER_SMTP_HOST}
+      # - SMTP_PORT=${__DOCKER_SMTP_PORT}
+      # - SMTP_USER=${__DOCKER_SMTP_USER}
+      # - SMTP_PASS=${__DOCKER_SMTP_PASS}
+      # Resend:
+      # - RESEND_API_KEY=${__DOCKER_RESEND_API_KEY}
+    expose:
+      - ${__DOCKER_ORCHA_BACKEND_PORT}
+    labels:
+      - "traefik.enable=true"
+      # Route /api/* to the backend — strip the /api prefix before forwarding
+      - "traefik.http.routers.backend.rule=Host(`${ORCHA_DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.backend.priority=40"
+      - "traefik.http.routers.backend.middlewares=backend-stripprefix"
+      - "traefik.http.middlewares.backend-stripprefix.stripprefix.prefixes=/api"
+      - "traefik.http.services.backend.loadbalancer.server.port=${__DOCKER_ORCHA_BACKEND_PORT}"
+
+  cron:
+    container_name: orcha-cron
+    build:
+      context: ./backend
+      dockerfile: Dockerfile-dev
+      target: cron
+    restart: unless-stopped
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      ai:
+        condition: service_started
+      redis:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
+      - NODE_ENV=production
+      - APOLLO_GRAPH_REF=orcha@current
+      - ORCHA_WS_BACKEND_PORT=${__DOCKER_ORCHA_WS_BACKEND_PORT}
+      - ORCHA_BACKEND_PORT=${__DOCKER_ORCHA_BACKEND_PORT}
+      - ORCHA_HOSTNAME=${ORCHA_DOMAIN}
+      - ORCHA_WEBAPP_URI=https://${ORCHA_DOMAIN}
+      - ORCHA_SUPPORT_URI=https://${ORCHA_DOMAIN}/support
+      - ORCHA_SESSION_SECRET=${__DOCKER_ORCHA_SESSION_SECRET}
+      - ORCHA_TEST_INTERFACE=false
+      - ORCHA_DOMAIN=${ORCHA_DOMAIN}
+      - ORCHA_API_URI=https://${ORCHA_DOMAIN}/api
+      - ORCHA_API_WS_URI=wss://${ORCHA_DOMAIN}/ws
+      - ORCHA_AI_URI=http://ai:${__DOCKER_ORCHA_AI_PORT}
+      - ORCHA_WWW_URI=https://${ORCHA_DOMAIN}
+      - UPLOAD_S3_BUCKET=${__DOCKER_UPLOAD_S3_BUCKET}
+      - DOCUMENTATION_S3_BUCKET=${__DOCKER_DOCUMENTATION_S3_BUCKET}
+      - DOCUMENTATION_DISTRIBUTION_ID=${__DOCKER_DOCUMENTATION_DISTRIBUTION_ID:-}
+      - ORCHA_UPLOAD_CDN_URI=https://${ORCHA_DOMAIN}/uploads
+      - ORCHA_S3_ENDPOINT=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - AWS_REGION=us-west-1
+      - NO_COLOR=true
+      - VAPID_PUBLIC_KEY=${__DOCKER_VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${__DOCKER_VAPID_PRIVATE_KEY}
+      - REDIS_HOSTNAME=${__DOCKER_REDIS_HOSTNAME}
+      - REDIS_PORT=${__DOCKER_REDIS_PORT}
+
+  ai:
+    container_name: orcha-ai
+    build:
+      context: ./ai
+    restart: unless-stopped
+    healthcheck:
+      test: wget --tries=1 --method=GET http://127.0.0.1:${__DOCKER_ORCHA_AI_PORT}/alive -O /dev/null
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    expose:
+      - ${__DOCKER_ORCHA_AI_PORT}
+
+  hocuspocus:
+    container_name: orcha-hocuspocus
+    build:
+      context: ./backend
+      dockerfile: Dockerfile-dev
+      target: hocuspocus
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:${__DOCKER_ORCHA_WS_BACKEND_PORT}/ || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    environment:
+      - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
+      - NODE_ENV=production
+      - ORCHA_WS_BACKEND_PORT=${__DOCKER_ORCHA_WS_BACKEND_PORT}
+      - ORCHA_HOSTNAME=${ORCHA_DOMAIN}
+      - ORCHA_SESSION_SECRET=${__DOCKER_ORCHA_SESSION_SECRET}
+      - ORCHA_DOMAIN=${ORCHA_DOMAIN}
+      - ORCHA_API_WS_URI=wss://${ORCHA_DOMAIN}/ws
+      - REDIS_HOSTNAME=${__DOCKER_REDIS_HOSTNAME}
+      - VAPID_PUBLIC_KEY=${__DOCKER_VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${__DOCKER_VAPID_PRIVATE_KEY}
+    expose:
+      - ${__DOCKER_ORCHA_WS_BACKEND_PORT}
+    labels:
+      - "traefik.enable=true"
+      # Route /ws/* to hocuspocus — strip the /ws prefix before forwarding
+      - "traefik.http.routers.hocuspocus.rule=Host(`${ORCHA_DOMAIN}`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.hocuspocus.entrypoints=websecure"
+      - "traefik.http.routers.hocuspocus.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.hocuspocus.priority=50"
+      - "traefik.http.routers.hocuspocus.middlewares=hocuspocus-stripprefix"
+      - "traefik.http.middlewares.hocuspocus-stripprefix.stripprefix.prefixes=/ws"
+      - "traefik.http.services.hocuspocus.loadbalancer.server.port=${__DOCKER_ORCHA_WS_BACKEND_PORT}"
+
+  support:
+    container_name: orcha-support
+    build:
+      context: ./support
+      target: dev
+    restart: unless-stopped
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:${__DOCKER_ORCHA_SUPPORT_PORT}/orcha-support.js || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    environment:
+      - NODE_ENV=production
+      - PORT=${__DOCKER_ORCHA_SUPPORT_PORT}
+      - VITE_WEBSITE_NAME=Orcha Support
+      - VITE_SUPPORT_URI=https://${ORCHA_DOMAIN}/support
+      - VITE_API_URI=https://${ORCHA_DOMAIN}/api
+      - VITE_DOCUMENTATION_URI=https://${ORCHA_DOMAIN}/api
+      - VITE_UPLOAD_CDN_URI=https://${ORCHA_DOMAIN}/uploads
+    expose:
+      - ${__DOCKER_ORCHA_SUPPORT_PORT}
+    labels:
+      - "traefik.enable=true"
+      # Route /support/* to the support widget server
+      - "traefik.http.routers.support.rule=Host(`${ORCHA_DOMAIN}`) && PathPrefix(`/support`)"
+      - "traefik.http.routers.support.entrypoints=websecure"
+      - "traefik.http.routers.support.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.support.priority=35"
+      - "traefik.http.routers.support.middlewares=support-stripprefix"
+      - "traefik.http.middlewares.support-stripprefix.stripprefix.prefixes=/support"
+      - "traefik.http.services.support.loadbalancer.server.port=${__DOCKER_ORCHA_SUPPORT_PORT}"
+
+  frontend:
+    container_name: orcha-frontend
+    build:
+      context: ./frontend
+      target: production
+      args:
+        - orcha_api_uri=https://${ORCHA_DOMAIN}/api
+        - orcha_api_ws_uri=wss://${ORCHA_DOMAIN}/ws
+        - orcha_upload_cdn_uri=https://${ORCHA_DOMAIN}/uploads
+        - orcha_support_uri=https://${ORCHA_DOMAIN}/support
+        - orcha_hostname=${ORCHA_DOMAIN}
+    restart: unless-stopped
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 30s
+    expose:
+      - 80
+    labels:
+      - "traefik.enable=true"
+      # Catch-all: any path not matched by a higher-priority router goes to frontend
+      - "traefik.http.routers.frontend.rule=Host(`${ORCHA_DOMAIN}`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.frontend.priority=10"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+
+volumes:
+  db-data:
+  minio-data:
+  letsencrypt-data:

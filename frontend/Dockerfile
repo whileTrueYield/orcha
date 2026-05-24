@@ -58,10 +58,10 @@ ADD .env.development .env
 # --no-open prevents the script from opening the browser in the container
 CMD ["yarn", "start", "--no-open"]
 
-# use nginx image
+# Production stage — serves pre-built assets via nginx.
+# The build stage above compiles the Vite app; this stage copies the output
+# and relies on nginx's default CMD to serve it.
 FROM nginx:1.23-alpine as production
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf
-COPY www-support www-support/
-COPY www-frontend www-frontend/
-# --no-open prevents the script from opening the browser in the container
-CMD ["yarn", "start", "--no-open"]
+COPY --from=build /orcha/dist /www-frontend
+CMD ["nginx", "-g", "daemon off;"]

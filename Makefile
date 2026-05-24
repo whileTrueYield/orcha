@@ -5,6 +5,21 @@ main: .env
 .env:
 	cp .env.example .env
 
+# Production deployment — uses Traefik with automatic TLS.
+# Requires .env.prod (copy from .env.prod.example and fill in all values).
+prod: .env.prod
+	docker compose -f docker-compose.prod.yaml --env-file .env.prod up -d --build
+
+prod-down:
+	docker compose -f docker-compose.prod.yaml --env-file .env.prod down
+
+prod-logs:
+	docker compose -f docker-compose.prod.yaml --env-file .env.prod logs -f
+
+.env.prod:
+	@echo "ERROR: .env.prod not found. Copy .env.prod.example to .env.prod and fill in all values."
+	@exit 1
+
 watch:
 	docker compose watch
 
@@ -158,6 +173,10 @@ help:
 	@echo "make watch \twatch for code changes and update dockers images on changes"
 	@echo "make stop \tstops the docker image but maintain state"
 	@echo "make down \tstops docker images and delete state"
+	@echo "\n\033[1mProduction commands\033[0m"
+	@echo "make prod \t\tBuild and start production stack with Traefik TLS"
+	@echo "make prod-down \t\tStop the production stack"
+	@echo "make prod-logs \t\tTail production logs"
 	@echo "\n\033[1mDatabase commands\033[0m"
 	@echo "make db-init \t\tInitialize the database using the migration SQL files"
 	@echo "make db-push \t\tInitialize the database using the Prisma schema"
