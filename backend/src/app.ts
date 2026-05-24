@@ -22,8 +22,9 @@ export function createExpressApp(middlewares: any[] = []) {
     app.use(middleware);
   }
 
-  // add the REST endpoints
-  app.use(router);
+  // Mount REST endpoints under the API path prefix. Empty for self-hosted
+  // (Traefik strips /api), "/api" for DO App Platform (preserves the prefix).
+  app.use(config.apiPathPrefix, router);
 
   if (config.isDev) {
     app.use("/doc/", express.static("out/doc/"));

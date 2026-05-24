@@ -8,6 +8,7 @@ import { Database } from "@hocuspocus/extension-database";
 import { Redis } from "@hocuspocus/extension-redis";
 import { Logger } from "@hocuspocus/extension-logger";
 
+import { redisConfig } from "../redis";
 import { fetchDocumentationText } from "./documentationText/fetchDocumentationText";
 import { storeDocumentationText } from "./documentationText/storeDocumentationText";
 
@@ -56,10 +57,7 @@ export const hocusPocus = Server.configure({
       onConfigure: true,
     }),
 
-    new Redis({
-      host: process.env.REDIS_HOSTNAME || "127.0.0.1",
-      port: parseInt(process.env.REDIS_PORT || "6379"),
-    }),
+    new Redis(redisConfig),
 
     // hocuspocus uses a Database instance as CRUD access, you can define
     // how you store and and retrieve the document you store here.

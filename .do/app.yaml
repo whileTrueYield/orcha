@@ -1,0 +1,417 @@
+# ============================================================================
+# Orcha — Digital Ocean App Platform spec
+# ============================================================================
+#
+# Six services + one static frontend + one pre-deploy migration job.
+# Path-based routing on orcha.run (ADR #0002, #0003).
+#
+# Managed resources (provision separately in DO console):
+#   - Managed PostgreSQL (set DATABASE_URL in app-level env vars)
+#   - Managed Redis (set REDIS_URL — includes host, port, password, and TLS)
+#   - DO Spaces (set SPACES_* env vars)
+#
+# Secrets: after creating the app, set values marked [SECRET] in the
+# DO console under each component's env var settings.
+#
+# ============================================================================
+
+name: orcha
+region: sfo
+
+domains:
+  - domain: orcha.run
+    type: PRIMARY
+
+# ---- Pre-deploy job: Prisma migration ------------------------------------
+# Runs before services are updated. If migration fails, deploy rolls back.
+
+jobs:
+  - name: migrate
+    kind: PRE_DEPLOY
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: false
+    source_dir: backend
+    dockerfile_path: Dockerfile
+    run_command: npx prisma migrate deploy
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: "${DATABASE_URL}"
+
+# ---- Services (HTTP-receiving) -------------------------------------------
+
+services:
+  # -- API server (GraphQL + REST) --
+  - name: api
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: true
+    source_dir: backend
+    dockerfile_path: Dockerfile
+    http_port: 4000
+    instance_size_slug: professional-xs
+    instance_count: 1
+    routes:
+      - path: /api
+    health_check:
+      http_path: /api/alive
+    run_command: node dist/server.js
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: "${DATABASE_URL}"
+      - key: NODE_ENV
+        scope: RUN_TIME
+        value: production
+      - key: ORCHA_BACKEND_PORT
+        scope: RUN_TIME
+        value: "4000"
+      - key: ORCHA_WS_BACKEND_PORT
+        scope: RUN_TIME
+        value: "38268"
+      - key: ORCHA_HOSTNAME
+        scope: RUN_TIME
+        value: orcha.run
+      - key: ORCHA_DOMAIN
+        scope: RUN_TIME
+        value: orcha.run
+      - key: ORCHA_WEBAPP_URI
+        scope: RUN_TIME
+        value: https://orcha.run
+      - key: ORCHA_WWW_URI
+        scope: RUN_TIME
+        value: https://orcha.run
+      - key: ORCHA_API_URI
+        scope: RUN_TIME
+        value: https://orcha.run/api
+      - key: ORCHA_API_WS_URI
+        scope: RUN_TIME
+        value: wss://orcha.run/ws
+      - key: ORCHA_SUPPORT_URI
+        scope: RUN_TIME
+        value: https://orcha.run/support
+      - key: ORCHA_TEST_INTERFACE
+        scope: RUN_TIME
+        value: "false"
+      - key: NO_COLOR
+        scope: RUN_TIME
+        value: "true"
+      # DO App Platform preserves the /api prefix — tell Express to mount there
+      - key: API_PATH_PREFIX
+        scope: RUN_TIME
+        value: /api
+      # AI service — internal URL within DO App Platform
+      - key: ORCHA_AI_URI
+        scope: RUN_TIME
+        value: "${ORCHA_AI_URI}"
+      # Session
+      - key: ORCHA_SESSION_SECRET
+        scope: RUN_TIME
+        value: "${ORCHA_SESSION_SECRET}"
+      # Redis (DO Managed Redis URL includes TLS and auth)
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: "${REDIS_URL}"
+      # DO Spaces (S3-compatible)
+      - key: UPLOAD_S3_BUCKET
+        scope: RUN_TIME
+        value: "${UPLOAD_S3_BUCKET}"
+      - key: DOCUMENTATION_S3_BUCKET
+        scope: RUN_TIME
+        value: "${DOCUMENTATION_S3_BUCKET}"
+      - key: DOCUMENTATION_DISTRIBUTION_ID
+        scope: RUN_TIME
+        value: ""
+      - key: ORCHA_S3_ENDPOINT
+        scope: RUN_TIME
+        value: "${SPACES_ENDPOINT}"
+      - key: ORCHA_S3_PUBLIC_ENDPOINT
+        scope: RUN_TIME
+        value: "${SPACES_CDN_URL}"
+      - key: ORCHA_UPLOAD_CDN_URI
+        scope: RUN_TIME
+        value: "${SPACES_CDN_URL}"
+      - key: AWS_ACCESS_KEY_ID
+        scope: RUN_TIME
+        value: "${SPACES_ACCESS_KEY}"
+      - key: AWS_SECRET_ACCESS_KEY
+        scope: RUN_TIME
+        value: "${SPACES_SECRET_KEY}"
+      - key: AWS_REGION
+        scope: RUN_TIME
+        value: us-west-1
+      # Push notifications
+      - key: VAPID_PUBLIC_KEY
+        scope: RUN_TIME
+        value: "${VAPID_PUBLIC_KEY}"
+      - key: VAPID_PRIVATE_KEY
+        scope: RUN_TIME
+        value: "${VAPID_PRIVATE_KEY}"
+      # Email — set SMTP or Resend vars
+      - key: SMTP_HOST
+        scope: RUN_TIME
+        value: "${SMTP_HOST}"
+      - key: SMTP_PORT
+        scope: RUN_TIME
+        value: "${SMTP_PORT}"
+      - key: SMTP_USER
+        scope: RUN_TIME
+        value: "${SMTP_USER}"
+      - key: SMTP_PASS
+        scope: RUN_TIME
+        value: "${SMTP_PASS}"
+      - key: RESEND_API_KEY
+        scope: RUN_TIME
+        value: "${RESEND_API_KEY}"
+
+  # -- Hocuspocus (WebSocket CRDT collaboration) --
+  - name: hocuspocus
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: true
+    source_dir: backend
+    dockerfile_path: Dockerfile
+    http_port: 38268
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    routes:
+      - path: /ws
+    run_command: node dist/hocuspocus/server.js
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: "${DATABASE_URL}"
+      - key: NODE_ENV
+        scope: RUN_TIME
+        value: production
+      - key: ORCHA_WS_BACKEND_PORT
+        scope: RUN_TIME
+        value: "38268"
+      - key: ORCHA_HOSTNAME
+        scope: RUN_TIME
+        value: orcha.run
+      - key: ORCHA_DOMAIN
+        scope: RUN_TIME
+        value: orcha.run
+      - key: ORCHA_API_WS_URI
+        scope: RUN_TIME
+        value: wss://orcha.run/ws
+      - key: ORCHA_SESSION_SECRET
+        scope: RUN_TIME
+        value: "${ORCHA_SESSION_SECRET}"
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: "${REDIS_URL}"
+      - key: VAPID_PUBLIC_KEY
+        scope: RUN_TIME
+        value: "${VAPID_PUBLIC_KEY}"
+      - key: VAPID_PRIVATE_KEY
+        scope: RUN_TIME
+        value: "${VAPID_PRIVATE_KEY}"
+
+  # -- MCTS AI scheduler (internal, no public route) --
+  - name: ai
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: true
+    source_dir: ai
+    dockerfile_path: Dockerfile
+    http_port: 8000
+    instance_size_slug: professional-xs
+    instance_count: 1
+    health_check:
+      http_path: /alive
+
+  # -- Support widget --
+  - name: support
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: true
+    source_dir: support
+    dockerfile_path: Dockerfile
+    http_port: 3001
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    routes:
+      - path: /support
+    envs:
+      - key: NODE_ENV
+        scope: RUN_AND_BUILD_TIME
+        value: production
+      - key: PORT
+        scope: RUN_TIME
+        value: "3001"
+      - key: VITE_WEBSITE_NAME
+        scope: BUILD_TIME
+        value: Orcha Support
+      - key: VITE_SUPPORT_URI
+        scope: BUILD_TIME
+        value: https://orcha.run/support
+      - key: VITE_API_URI
+        scope: BUILD_TIME
+        value: https://orcha.run/api
+      - key: VITE_DOCUMENTATION_URI
+        scope: BUILD_TIME
+        value: https://orcha.run/api
+      - key: VITE_UPLOAD_CDN_URI
+        scope: BUILD_TIME
+        value: "${SPACES_CDN_URL}"
+
+  # -- Frontend (SPA served by nginx) --
+  - name: frontend
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: true
+    source_dir: /
+    dockerfile_path: frontend/Dockerfile.prod
+    http_port: 80
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    routes:
+      - path: /
+    envs:
+      - key: VITE_API_URI
+        scope: BUILD_TIME
+        value: https://orcha.run/api
+      - key: VITE_API_WS_URI
+        scope: BUILD_TIME
+        value: wss://orcha.run/ws
+      - key: VITE_GRAPHQL_URI
+        scope: BUILD_TIME
+        value: https://orcha.run/api/graphql
+      - key: VITE_UPLOAD_CDN_URI
+        scope: BUILD_TIME
+        value: "${SPACES_CDN_URL}"
+      - key: VITE_SUPPORT_URI
+        scope: BUILD_TIME
+        value: https://orcha.run/support
+      - key: VITE_DOCUMENTATION_URI
+        scope: BUILD_TIME
+        value: https://orcha.run/api
+      - key: VITE_WEBSITE_DOMAIN
+        scope: BUILD_TIME
+        value: orcha.run
+      - key: VITE_VAPID_PUBLIC_KEY
+        scope: BUILD_TIME
+        value: "${VAPID_PUBLIC_KEY}"
+      - key: VITE_DEMO_MODE
+        scope: BUILD_TIME
+        value: "false"
+
+# ---- Workers (no HTTP) ---------------------------------------------------
+
+workers:
+  # -- Cron worker (BullMQ job processor) --
+  - name: cron
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: true
+    source_dir: backend
+    dockerfile_path: Dockerfile
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    run_command: node dist/cron.js
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: "${DATABASE_URL}"
+      - key: NODE_ENV
+        scope: RUN_TIME
+        value: production
+      - key: ORCHA_BACKEND_PORT
+        scope: RUN_TIME
+        value: "4000"
+      - key: ORCHA_WS_BACKEND_PORT
+        scope: RUN_TIME
+        value: "38268"
+      - key: ORCHA_HOSTNAME
+        scope: RUN_TIME
+        value: orcha.run
+      - key: ORCHA_DOMAIN
+        scope: RUN_TIME
+        value: orcha.run
+      - key: ORCHA_WEBAPP_URI
+        scope: RUN_TIME
+        value: https://orcha.run
+      - key: ORCHA_WWW_URI
+        scope: RUN_TIME
+        value: https://orcha.run
+      - key: ORCHA_API_URI
+        scope: RUN_TIME
+        value: https://orcha.run/api
+      - key: ORCHA_API_WS_URI
+        scope: RUN_TIME
+        value: wss://orcha.run/ws
+      - key: ORCHA_SUPPORT_URI
+        scope: RUN_TIME
+        value: https://orcha.run/support
+      - key: ORCHA_TEST_INTERFACE
+        scope: RUN_TIME
+        value: "false"
+      - key: NO_COLOR
+        scope: RUN_TIME
+        value: "true"
+      - key: ORCHA_AI_URI
+        scope: RUN_TIME
+        value: "${ORCHA_AI_URI}"
+      - key: ORCHA_SESSION_SECRET
+        scope: RUN_TIME
+        value: "${ORCHA_SESSION_SECRET}"
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: "${REDIS_URL}"
+      - key: UPLOAD_S3_BUCKET
+        scope: RUN_TIME
+        value: "${UPLOAD_S3_BUCKET}"
+      - key: DOCUMENTATION_S3_BUCKET
+        scope: RUN_TIME
+        value: "${DOCUMENTATION_S3_BUCKET}"
+      - key: DOCUMENTATION_DISTRIBUTION_ID
+        scope: RUN_TIME
+        value: ""
+      - key: ORCHA_S3_ENDPOINT
+        scope: RUN_TIME
+        value: "${SPACES_ENDPOINT}"
+      - key: AWS_ACCESS_KEY_ID
+        scope: RUN_TIME
+        value: "${SPACES_ACCESS_KEY}"
+      - key: AWS_SECRET_ACCESS_KEY
+        scope: RUN_TIME
+        value: "${SPACES_SECRET_KEY}"
+      - key: AWS_REGION
+        scope: RUN_TIME
+        value: us-west-1
+      - key: ORCHA_UPLOAD_CDN_URI
+        scope: RUN_TIME
+        value: "${SPACES_CDN_URL}"
+      - key: VAPID_PUBLIC_KEY
+        scope: RUN_TIME
+        value: "${VAPID_PUBLIC_KEY}"
+      - key: VAPID_PRIVATE_KEY
+        scope: RUN_TIME
+        value: "${VAPID_PRIVATE_KEY}"
+      - key: SMTP_HOST
+        scope: RUN_TIME
+        value: "${SMTP_HOST}"
+      - key: SMTP_PORT
+        scope: RUN_TIME
+        value: "${SMTP_PORT}"
+      - key: SMTP_USER
+        scope: RUN_TIME
+        value: "${SMTP_USER}"
+      - key: SMTP_PASS
+        scope: RUN_TIME
+        value: "${SMTP_PASS}"
+      - key: RESEND_API_KEY
+        scope: RUN_TIME
+        value: "${RESEND_API_KEY}"

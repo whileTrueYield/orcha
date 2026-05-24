@@ -29,6 +29,9 @@ interface Config {
   wwwUri: string;
   region: string;
   uploadPrefix: string;
+  // Path prefix for API routes. Empty string for self-hosted (Traefik strips
+  // the prefix), "/api" for DO App Platform (preserves the prefix).
+  apiPathPrefix: string;
   email: {
     noReplyAddress: string;
     unsubscribeUri: string;
@@ -185,6 +188,7 @@ export const config: Config = {
   documentationDistributionId: env.DOCUMENTATION_DISTRIBUTION_ID || undefined,
   uploadCdnUri: env.ORCHA_UPLOAD_CDN_URI,
   region: env.AWS_REGION,
+  apiPathPrefix: process.env.API_PATH_PREFIX || "",
   uploadPrefix: process.env.ORCHA_UPLOAD_PREFIX || "",
   assetRoot: resolve(__dirname, "../assets/"),
   email: {

@@ -96,10 +96,10 @@ async function start() {
 
   // Starting the apollo service and couple it with the express app (it also
   // requires a CORS handler).
-  // graphql is configured to serve at /graphql in the apollo.config.js file
   await server.start();
   server.applyMiddleware({
     app,
+    path: `${config.apiPathPrefix}/graphql`,
     cors: {
       credentials: true,
       origin: corsCheckOrigin(config.allowOrigin),
