@@ -1,0 +1,9 @@
+.git
+.gitignore
+.github
+.vscode
+_upload
+docs
+README.md
+.dockerignore
+node_modules
