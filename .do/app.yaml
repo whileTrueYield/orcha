@@ -2,8 +2,8 @@
 # Orcha — Digital Ocean App Platform spec
 # ============================================================================
 #
-# Six services + one static frontend + one pre-deploy migration job.
-# Path-based routing on orcha.run (ADR #0002, #0003).
+# Six services + one static frontend on orcha.run (ADR #0002, #0003).
+# Prisma migrations run at API startup (idempotent, no-op when current).
 #
 # Managed resources (provision separately in DO console):
 #   - Managed PostgreSQL (set DATABASE_URL in app-level env vars)
@@ -21,26 +21,6 @@ region: sfo
 domains:
   - domain: orcha.run
     type: PRIMARY
-
-# ---- Pre-deploy job: Prisma migration ------------------------------------
-# Runs before services are updated. If migration fails, deploy rolls back.
-
-jobs:
-  - name: migrate
-    kind: PRE_DEPLOY
-    github:
-      repo: whileTrueYield/orcha
-      branch: main
-      deploy_on_push: false
-    source_dir: backend
-    dockerfile_path: Dockerfile
-    run_command: npx prisma migrate deploy
-    instance_size_slug: basic-xxs
-    instance_count: 1
-    envs:
-      - key: DATABASE_URL
-        scope: RUN_TIME
-        value: "${DATABASE_URL}"
 
 # ---- Services (HTTP-receiving) -------------------------------------------
 
@@ -60,7 +40,7 @@ services:
       - path: /api
     health_check:
       http_path: /api/alive
-    run_command: node dist/server.js
+    run_command: npx prisma migrate deploy && node dist/server.js
     envs:
       - key: DATABASE_URL
         scope: RUN_TIME
