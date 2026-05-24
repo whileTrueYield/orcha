@@ -49,8 +49,7 @@ For experienced users who want to get running in five minutes:
 
 ```sh
 git clone https://github.com/whileTrueYield/orcha.git && cd orcha
-cp .env.prod.example .env.prod
-# Edit .env.prod -- set domain, email provider, generate secrets (see below)
+./orcha-setup.sh
 make prod
 ```
 
@@ -58,15 +57,19 @@ Open `https://your-domain.com` and register. The first user is auto-confirmed.
 
 ## Step-by-step setup
 
-### 1. Clone and create your environment file
+### 1. Clone and run the setup script
 
 ```sh
 git clone https://github.com/whileTrueYield/orcha.git && cd orcha
-cp .env.prod.example .env.prod
+./orcha-setup.sh
 ```
 
-Open `.env.prod` in your editor. Every value marked `CHANGE_ME` must be
-replaced before starting.
+The setup script checks prerequisites, prompts for your domain, Let's Encrypt
+email, and email provider, then auto-generates cryptographic secrets and writes
+everything to `.env.prod`. See below for details on each prompt.
+
+To configure manually instead, copy `.env.prod.example` to `.env.prod` and
+replace every `CHANGE_ME` value (see [Environment variable reference](#environment-variable-reference)).
 
 ### 2. Set your domain
 
@@ -98,7 +101,8 @@ automatically.
 
 ### 4. Generate secrets
 
-Run each command and paste the output into `.env.prod`:
+The setup script generates these automatically. If configuring manually, run
+each command and paste the output into `.env.prod`:
 
 ```sh
 # Postgres password -> __DOCKER_POSTGRES_PASSWORD
@@ -120,8 +124,9 @@ update `.env.prod` and restart with `make prod`.
 
 ### 5. Configure email
 
-Choose **one** provider. Uncomment the relevant lines in both `.env.prod` and
-the backend environment block in [`docker-compose.prod.yaml`](docker-compose.prod.yaml).
+Choose **one** provider. The setup script handles this, or set the vars in
+`.env.prod` manually. Only set the vars for your chosen provider -- leave the
+other blank.
 
 **Option A: SMTP** -- works with Mailgun, SendGrid, Amazon SES, Postmark, or
 any SMTP server.
@@ -138,9 +143,6 @@ __DOCKER_SMTP_PASS=your-smtp-password
 ```
 __DOCKER_RESEND_API_KEY=re_xxxxxxxxxxxx
 ```
-
-In `docker-compose.prod.yaml`, find the `# Email provider` comment in the
-backend service and uncomment the matching lines (SMTP or Resend).
 
 ## Starting Orcha
 
@@ -255,7 +257,7 @@ fill with a random secret, **No** = safe default.
 | `__DOCKER_DOCUMENTATION_S3_BUCKET`       | `orcha-docs`    | No        |
 | `__DOCKER_DOCUMENTATION_DISTRIBUTION_ID` | (empty)         | No        |
 
-### Email provider (uncomment one in `.env.prod` and `docker-compose.prod.yaml`)
+### Email provider (set one group in `.env.prod`)
 
 | Variable                  | Description          | Required  |
 |---------------------------|----------------------|-----------|
@@ -362,8 +364,7 @@ Rate limit: 5 certificates per domain per week. If hit, wait and retry.
 ### Emails not arriving
 
 1. Verify credentials in `.env.prod`
-2. Confirm you uncommented email lines in `docker-compose.prod.yaml`
-3. Check backend logs: `docker logs orcha-backend 2>&1 | grep -i email`
+2. Check backend logs: `docker logs orcha-backend 2>&1 | grep -i email`
 4. Check spam folders
 5. Verify domain authentication (SPF/DKIM) with your provider
 

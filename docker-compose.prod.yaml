@@ -214,14 +214,12 @@ services:
       - VAPID_PRIVATE_KEY=${__DOCKER_VAPID_PRIVATE_KEY}
       - REDIS_HOSTNAME=${__DOCKER_REDIS_HOSTNAME}
       - REDIS_PORT=${__DOCKER_REDIS_PORT}
-      # Email provider — uncomment the one you're using
-      # SMTP:
-      # - SMTP_HOST=${__DOCKER_SMTP_HOST}
-      # - SMTP_PORT=${__DOCKER_SMTP_PORT}
-      # - SMTP_USER=${__DOCKER_SMTP_USER}
-      # - SMTP_PASS=${__DOCKER_SMTP_PASS}
-      # Resend:
-      # - RESEND_API_KEY=${__DOCKER_RESEND_API_KEY}
+      # Email provider — set SMTP or Resend vars in .env.prod
+      - SMTP_HOST=${__DOCKER_SMTP_HOST:-}
+      - SMTP_PORT=${__DOCKER_SMTP_PORT:-}
+      - SMTP_USER=${__DOCKER_SMTP_USER:-}
+      - SMTP_PASS=${__DOCKER_SMTP_PASS:-}
+      - RESEND_API_KEY=${__DOCKER_RESEND_API_KEY:-}
     expose:
       - ${__DOCKER_ORCHA_BACKEND_PORT}
     labels:
