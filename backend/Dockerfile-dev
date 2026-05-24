@@ -1,4 +1,4 @@
-FROM node:20-alpine as base
+FROM node:22-alpine AS base
 
 ARG node_env=development
 ENV NODE_ENV $node_env
@@ -11,12 +11,12 @@ COPY package.json yarn.lock ./
 ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
 RUN yarn --pure-lockfile
 
-FROM base as prisma
+FROM base AS prisma
 COPY prisma prisma/
 ENV NODE_OPTIONS --max-old-space-size=4096
 RUN yarn prisma generate
 
-FROM prisma as studio
+FROM prisma AS studio
 ADD nodemon.json nodemon.json
 ADD tsconfig.json tsconfig.json
 COPY prisma prisma/
@@ -25,7 +25,7 @@ EXPOSE 5555
 
 CMD ["yarn", "prisma", "studio", "--browser", "none"]
 
-FROM prisma as backend
+FROM prisma AS backend
 ADD nodemon.json nodemon.json
 ADD tsconfig.json tsconfig.json
 COPY assets assets/
@@ -41,7 +41,7 @@ EXPOSE 8000
 CMD ["yarn", "run", "nodemon", "src/server.ts"]
 
 
-FROM prisma as cron
+FROM prisma AS cron
 ADD nodemon.json nodemon.json
 ADD tsconfig.json tsconfig.json
 COPY assets assets/
@@ -55,7 +55,7 @@ RUN yarn tailwindcss -i ./templates/input.css -o ./templates/css/style.css
 CMD ["yarn", "run", "nodemon", "src/cron.ts"]
 
 
-FROM prisma as hocuspocus
+FROM prisma AS hocuspocus
 ADD nodemon.json nodemon.json
 ADD tsconfig.json tsconfig.json
 COPY src src/

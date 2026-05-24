@@ -1,7 +1,7 @@
 services:
   db:
     container_name: postgres
-    image: postgres:13
+    image: postgres:16
     healthcheck:
       test: pg_isready -U ${__DOCKER_POSTGRES_USER} -d ${__DOCKER_POSTGRES_DB}
       interval: 30s

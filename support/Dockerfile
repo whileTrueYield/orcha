@@ -1,11 +1,11 @@
-FROM node:18-alpine as base
+FROM node:22-alpine AS base
 
 WORKDIR /orcha
 RUN apk --no-cache add git
 COPY package.json yarn.lock ./
 RUN yarn --pure-lockfile
 
-FROM base as dev
+FROM base AS dev
 
 COPY src src/
 COPY public public/

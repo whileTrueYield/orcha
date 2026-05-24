@@ -9,7 +9,7 @@
 #   hocuspocus: node dist/hocuspocus/server.js
 #   migrate:    npx prisma migrate deploy
 
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /orcha
 

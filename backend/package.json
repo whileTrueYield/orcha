@@ -5,8 +5,8 @@
   "private": true,
   "license": "UNLICENSED",
   "volta": {
-    "node": "16.17.1",
-    "yarn": "1.22.17"
+    "node": "22.11.0",
+    "yarn": "1.22.22"
   },
   "dependencies": {
     "@aws-sdk/client-cloudfront": "^3.540.0",

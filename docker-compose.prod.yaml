@@ -64,7 +64,7 @@ services:
   # --------------------------------------------------------------------------
   db:
     container_name: orcha-db
-    image: postgres:13
+    image: postgres:16
     restart: unless-stopped
     healthcheck:
       test: pg_isready -U ${__DOCKER_POSTGRES_USER} -d ${__DOCKER_POSTGRES_DB}

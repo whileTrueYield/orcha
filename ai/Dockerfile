@@ -1,4 +1,4 @@
-FROM python:3.9 as base
+FROM python:3.12 AS base
 
 WORKDIR /orcha-ai
 
@@ -13,7 +13,7 @@ COPY ./gunicorn.conf.py /orcha-ai/gunicorn.conf.py
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
-FROM base as test
+FROM base AS test
 
 COPY --from=base /orcha-ai /orcha-ai
 COPY ./pytest.ini /orcha-ai/pytest.ini
