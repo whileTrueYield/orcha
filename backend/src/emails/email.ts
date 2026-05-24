@@ -1,12 +1,30 @@
+/**
+ * Email sending and template rendering.
+ *
+ * Loads Handlebars templates from disk, renders them with provided data, and
+ * delivers the result via the configured email provider (SMTP or Resend).
+ * Dev / test / demo modes short-circuit before touching the provider.
+ *
+ * Exports: loadTemplate, sendEmail, SendEmailArgs, EmailTemplates
+ *
+ * Assumptions:
+ *   - Templates live in `backend/assets/emails/` as .html / .txt pairs.
+ *   - The email provider is configured via env vars (see providers/index.ts).
+ *   - Redis is available for the @example.com integration-test stash.
+ */
+
 import { readFileSync } from "fs";
 import Handlebars from "handlebars";
-import { SendEmailCommand, SendEmailRequest } from "@aws-sdk/client-ses";
 import { config } from "../config";
 import { resolve } from "path";
-import { ses } from "./ses";
-import { every, some } from "lodash";
+import { emailProvider } from "./providers";
+import { some } from "lodash";
 import { logger } from "../logger";
 import { redis } from "../redis";
+
+// ---------------------------------------------------------------------------
+// Template types — one per email template file
+// ---------------------------------------------------------------------------
 
 interface ConfirmEmailTemplate {
   template: "email_confirm";
@@ -98,6 +116,10 @@ type EmailTemplates =
   | NewIssueMessageTemplate
   | NewContactRequest;
 
+// ---------------------------------------------------------------------------
+// Template loading
+// ---------------------------------------------------------------------------
+
 export const loadTemplate = async (template: EmailTemplates) => {
   const htmlFilename = resolve(
     config.assetRoot,
@@ -142,27 +164,16 @@ export const loadTemplate = async (template: EmailTemplates) => {
   };
 };
 
+// ---------------------------------------------------------------------------
+// Email sending
+// ---------------------------------------------------------------------------
+
 export interface SendEmailArgs {
   ToAddresses: string[];
   html: string;
   text: string;
   subject: string;
 }
-
-export const areEmailAllowed = (emailAddresses: string[]): boolean => {
-  if (config.isTest) {
-    return true;
-  }
-
-  // are all emails address or their domain part of our allow list?
-  return every(emailAddresses, (emailAddress) => {
-    emailAddress = emailAddress.toLowerCase();
-    const emailDomain = emailAddress.split("@")[1];
-    const allowedEmail = config.allowedEmails.indexOf(emailAddress) > -1;
-    const allowedDomain = config.allowedEmailDomains.indexOf(emailDomain) > -1;
-    return allowedDomain || allowedEmail;
-  });
-};
 
 export const sendEmail = async ({
   ToAddresses,
@@ -211,29 +222,13 @@ export const sendEmail = async ({
     return false;
   }
 
-  const emailParams: SendEmailRequest = {
-    Destination: {
-      ToAddresses: ToAddresses,
-    },
-    Source: `"Orcha" <${config.email.noReplyAddress}>`,
-    Message: {
-      Subject: {
-        Charset: "UTF-8",
-        Data: subject,
-      },
-      Body: {
-        Html: {
-          Charset: "UTF-8",
-          Data: html,
-        },
-        Text: {
-          Charset: "UTF-8",
-          Data: text,
-        },
-      },
-    },
-  };
+  await emailProvider.sendEmail({
+    from: `"Orcha" <${config.email.noReplyAddress}>`,
+    to: ToAddresses,
+    subject,
+    html,
+    text,
+  });
 
-  await ses.send(new SendEmailCommand(emailParams));
   return true;
 };

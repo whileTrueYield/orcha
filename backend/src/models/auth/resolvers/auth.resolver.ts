@@ -321,14 +321,6 @@ export class AuthResolver {
 
     const email = input.email.toLowerCase();
 
-    // Prevent anyone from registering a new account if not part of the
-    // allow list (this does not apply to invitees)
-    // if (!areEmailAllowed([email])) {
-    //   throw new UserInputError(
-    //     "Orcha is in Private Beta and requires an invite"
-    //   );
-    // }
-
     const existingUser = await ctx.prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       // if the user was invited it will have been created with an
