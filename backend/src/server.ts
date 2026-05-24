@@ -1,3 +1,9 @@
+// TODO: remove after DO deployment is verified
+process.on("uncaughtException", (err) => {
+  console.error("[uncaught]", err);
+  process.exit(1);
+});
+
 require("reflect-metadata");
 
 import { ApolloServer } from "apollo-server-express";
