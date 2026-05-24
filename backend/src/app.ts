@@ -22,9 +22,10 @@ export function createExpressApp(middlewares: any[] = []) {
     app.use(middleware);
   }
 
-  // Mount REST endpoints under the API path prefix. Empty for self-hosted
-  // (Traefik strips /api), "/api" for DO App Platform (preserves the prefix).
-  app.use(config.apiPathPrefix, router);
+  // Mount REST endpoints under the API path prefix. Reverse proxies (DO App
+  // Platform, Traefik) strip the /api prefix before forwarding, so the default
+  // mount point is root. Set API_PATH_PREFIX="/api" only if the proxy preserves it.
+  app.use(config.apiPathPrefix || "/", router);
 
   if (config.isDev) {
     app.use("/doc/", express.static("out/doc/"));
