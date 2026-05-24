@@ -202,7 +202,7 @@ services:
       branch: main
       deploy_on_push: true
     source_dir: ai
-    dockerfile_path: Dockerfile
+    dockerfile_path: ai/Dockerfile
     internal_ports:
       - 8000
     instance_size_slug: professional-xs
