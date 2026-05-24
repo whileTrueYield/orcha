@@ -162,6 +162,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/nodemailer": "^8.0.0",
     "@types/nunjucks": "^3.2.6",
+    "@types/react": "^19.2.15",
     "@types/redlock": "^4.0.7",
     "@types/sinonjs__fake-timers": "^8.1.5",
     "@types/web-push": "^3.6.3",
