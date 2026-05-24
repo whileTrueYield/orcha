@@ -15,6 +15,9 @@ matplotlib>=3.9,<4
 seaborn>=0.13,<1
 Pillow>=11,<12
 
+# Progress bars (used by MCTS scheduler)
+tqdm>=4.67,<5
+
 # Dev / testing
 pytest>=8,<9
 
