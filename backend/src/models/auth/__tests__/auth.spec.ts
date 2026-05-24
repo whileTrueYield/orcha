@@ -97,6 +97,98 @@ const passwordResetMutation = `
   }
 `;
 
+describe("register — first-user bootstrap", function () {
+  this.timeout(5000);
+  const sandbox = sinon.createSandbox();
+  let sendEmail: SinonSpy<any>;
+
+  beforeEach(async () => {
+    sendEmail = sandbox.spy(email, "sendEmail");
+    sandbox.stub(redis, "getdel").value(() => Promise.resolve(TEST_IP));
+
+    // Wipe all users (cascades to roles, etc.) so the next register
+    // sees an empty database — required for the bootstrap escape hatch.
+    await prisma.emailConfirmation.deleteMany();
+    await prisma.role.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+  });
+
+  it("auto-activates the first user on an empty database", async () => {
+    const user = {
+      email: faker.internet.email(),
+      password: faker.internet.password(),
+      hash: POW_HASH,
+      proof: POW_PROOF,
+    };
+
+    const response = await graphqlRequest({
+      source: registerMutation,
+      variableValues: { input: user },
+    });
+
+    expect(response).toEqual({
+      data: {
+        register: {
+          user: {
+            email: user.email.toLowerCase(),
+            status: UserStatus.ACTIVE,
+          },
+          status: AuthStatus.USER,
+        },
+      },
+    });
+
+    // No confirmation email should be sent for the bootstrap user
+    sandbox.assert.notCalled(sendEmail);
+  });
+
+  it("requires confirmation for the second user", async () => {
+    // Seed a first user so the table is no longer empty
+    const firstUser = {
+      email: faker.internet.email(),
+      password: faker.internet.password(),
+      hash: POW_HASH,
+      proof: POW_PROOF,
+    };
+    await graphqlRequest({
+      source: registerMutation,
+      variableValues: { input: firstUser },
+    });
+    sandbox.resetHistory();
+
+    const secondUser = {
+      email: faker.internet.email(),
+      password: faker.internet.password(),
+      hash: POW_HASH,
+      proof: POW_PROOF,
+    };
+
+    const response = await graphqlRequest({
+      source: registerMutation,
+      variableValues: { input: secondUser },
+    });
+
+    expect(response).toEqual({
+      data: {
+        register: {
+          user: {
+            email: secondUser.email.toLowerCase(),
+            status: UserStatus.UNCONFIRMED,
+          },
+          status: AuthStatus.USER,
+        },
+      },
+    });
+
+    // Confirmation email should be sent for non-bootstrap users
+    sandbox.assert.calledOnce(sendEmail);
+  });
+});
+
 describe("register", function () {
   this.timeout(5000);
   const sandbox = sinon.createSandbox();
