@@ -150,7 +150,7 @@ export const Sidebar: React.FC<Props> = ({ children }) => {
       to: urlResolver.dashboard.home(role.organization.id.toString()),
       label: role.organization.name,
       disabled: organization.id === role.organization.id,
-    })
+    }),
   );
 
   organizationChangeOptions.unshift({
@@ -370,7 +370,7 @@ export const Sidebar: React.FC<Props> = ({ children }) => {
         >
           <div className="-mb-1 flex items-center justify-between text-lg font-medium text-gray-50">
             <span>
-              Orcha<span className="text-[rgb(111,231,210)]">.io</span>
+              Orcha<span className="text-[rgb(0,255,209)]">.run</span>
             </span>
             <span className="relative inline-block rounded-full bg-[rgb(111,231,210)] px-2 py-1 text-xs font-semibold leading-3 text-gray-900">
               BETA
