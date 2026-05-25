@@ -48,7 +48,7 @@ export const MeLoader: React.FC = () => {
       subTitle: "Try clearing your cookies",
     }),
     onCompleted: () => {
-      GQLClient.clearStore();
+      GQLClient.clearStore().catch(() => {});
       dispatch({ type: "LOGOUT_SUCCESS" });
       history.replace(urlResolver.auth.login());
     },

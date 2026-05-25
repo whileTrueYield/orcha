@@ -30,13 +30,11 @@ const rootReducer: typeof allReducers = (state, action) => {
   if (action.type === "LOGOUT_SUCCESS") {
     state = undefined as any;
   }
-  if (action.type === "LOGIN_SUCCESS") {
-    // clearStore wipes the cache without refetching watched queries.
-    // resetStore would refetch, but the new route's components fire
-    // their own queries on mount — racing with resetStore's refetch
-    // causes "Store reset while query was in flight".
-    GQLClient.clearStore();
-  }
+  // No cache clear on LOGIN_SUCCESS: before login the cache has no
+  // authenticated data to invalidate, and the new route's components
+  // fire their own queries from the network. Clearing here races with
+  // those queries ("Store reset while query was in flight").
+  // Logout already clears the cache, covering the switch-user case.
 
   return allReducers(state, action);
 };
