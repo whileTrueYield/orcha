@@ -30,7 +30,7 @@ const rootReducer: typeof allReducers = (state, action) => {
   if (action.type === "LOGOUT_SUCCESS") {
     state = undefined as any;
   }
-  if (action.type === "LOGIN_SUCCESS") {
+  if (action.type === "LOGIN_SUCCESS" && state?.me?.me) {
     GQLClient.resetStore();
   }
 
