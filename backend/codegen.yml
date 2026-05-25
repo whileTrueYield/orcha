@@ -1,0 +1,14 @@
+# Generate frontend TypeScript types from the Pothos schema SDL.
+# No running server needed — reads the schema file exported by scripts/export-schema.ts.
+#
+# Usage: yarn types (exports SDL then runs codegen)
+
+overwrite: true
+schema: "./schema.graphql"
+generates:
+  ../frontend/src/types/graphql.ts:
+    plugins:
+      - "typescript"
+    config:
+      avoidOptionals: true
+      maybeValue: "T | undefined"
