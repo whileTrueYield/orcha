@@ -223,7 +223,7 @@ static_sites:
       branch: main
       deploy_on_push: true
     source_dir: /
-    build_command: cp backend/src/generated/graphql.ts frontend/src/types/graphql.ts && cd frontend && yarn install --pure-lockfile && yarn build
+    build_command: cd frontend && yarn install --pure-lockfile && yarn build
     output_dir: frontend/build
     catchall_document: index.html
     envs:
