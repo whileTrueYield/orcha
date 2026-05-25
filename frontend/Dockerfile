@@ -1,4 +1,4 @@
-FROM node:18-alpine as base
+FROM node:22-alpine AS base
 ARG node_env=production
 ENV NODE_ENV $node_env
 WORKDIR /orcha
@@ -12,7 +12,7 @@ ADD tsconfig.json tsconfig.json
 ADD index.html index.html
 RUN yarn --pure-lockfile
 
-FROM base as test
+FROM base AS test
 ARG node_env=test
 ENV NODE_ENV $node_env
 COPY src src/
@@ -20,7 +20,7 @@ COPY public public/
 ADD .env .env
 CMD ["yarn", "test", "-w"]
 
-FROM base as build
+FROM base AS build
 COPY src src/
 COPY public public/
 ADD .env .env
@@ -49,7 +49,7 @@ ENV ORCHA_HOSTNAME $orcha_hostname
 ENV IMAGE_TAG $image_tag
 RUN ["yarn", "build"]
 
-FROM base as dev
+FROM base AS dev
 ARG node_env=development
 ENV NODE_ENV $node_env
 COPY src src/
@@ -61,7 +61,7 @@ CMD ["yarn", "start", "--no-open"]
 # Production stage — serves pre-built assets via nginx.
 # The build stage above compiles the Vite app; this stage copies the output
 # and relies on nginx's default CMD to serve it.
-FROM nginx:1.23-alpine as production
+FROM nginx:1.27-alpine AS production
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /orcha/dist /www-frontend
 CMD ["nginx", "-g", "daemon off;"]

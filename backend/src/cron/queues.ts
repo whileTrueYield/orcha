@@ -1,12 +1,10 @@
 import { Queue } from "bullmq";
 import { logger } from "../logger";
 import { config } from "../config";
+import { redisConfig } from "../redis";
 
 export const cronQueue = new Queue("cron", {
-  connection: {
-    host: process.env.REDIS_HOSTNAME || "127.0.0.1",
-    port: parseInt(process.env.REDIS_PORT || "6379"),
-  },
+  connection: redisConfig,
 });
 
 export async function initCron() {

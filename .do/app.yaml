@@ -1,0 +1,345 @@
+# ============================================================================
+# Orcha — Digital Ocean App Platform spec
+# ============================================================================
+#
+# Three services, two static sites, one worker on orcha.run (ADR #0002, #0003).
+# Prisma migrations run at API startup (idempotent, no-op when current).
+#
+# Managed resources (defined below, auto-wired via ${resource.VAR}):
+#   - Managed PostgreSQL 16 (orcha-db)
+#   - Managed Valkey 8 (orcha-redis)
+#   - DO Spaces (set S3_*, UPLOADS_*, DOCS_* env vars in DO console)
+#
+# Secrets: after creating the app, set values marked [SECRET] in the
+# DO console under each component's env var settings.
+#
+# ============================================================================
+
+name: orcha
+region: sfo
+
+domains:
+  - domain: app.orcha.run
+    type: PRIMARY
+  - domain: api.orcha.run
+    type: ALIAS
+  - domain: support.orcha.run
+    type: ALIAS
+  - domain: orcha.run
+    type: ALIAS
+
+# ---- Ingress (subdomain-based routing) -------------------------------------
+# Authority matching routes each subdomain to its component.
+# orcha.run routes to the frontend until a marketing site is added.
+
+ingress:
+  rules:
+    - match:
+        authority:
+          exact: api.orcha.run
+        path:
+          prefix: /ws
+      component:
+        name: hocuspocus
+    - match:
+        authority:
+          exact: api.orcha.run
+        path:
+          prefix: /
+      component:
+        name: api
+    - match:
+        authority:
+          exact: app.orcha.run
+        path:
+          prefix: /
+      component:
+        name: frontend
+    - match:
+        authority:
+          exact: support.orcha.run
+        path:
+          prefix: /
+      component:
+        name: support
+    - match:
+        authority:
+          exact: orcha.run
+        path:
+          prefix: /
+      component:
+        name: frontend
+
+# ---- App-level env vars --------------------------------------------------
+# Managed in DO console only — NOT in this file.
+# doctl apps update --spec overwrites everything, including env vars.
+# If you add envs here, they'll wipe whatever's set in the console.
+#
+# Required app-level vars (set in DO console):
+#   ORCHA_SESSION_SECRET, S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY,
+#   S3_REGION, UPLOADS_BUCKET, UPLOADS_CDN_URL, DOCS_BUCKET, DOCS_CDN_URL,
+#   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, SMTP_HOST, SMTP_PORT, SMTP_USER,
+#   SMTP_PASS, RESEND_API_KEY
+
+# ---- Managed databases ---------------------------------------------------
+
+databases:
+  - name: orcha-db
+    engine: PG
+    version: "16"
+    production: true
+    cluster_name: orcha-db
+    db_name: orcha
+    db_user: doadmin
+  - name: orcha-redis
+    engine: VALKEY
+    version: "8"
+    production: true
+    cluster_name: orcha-redis
+
+# ---- Services (HTTP-receiving) -------------------------------------------
+
+services:
+  # -- API server (GraphQL + REST) --
+  - name: api
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: true
+    source_dir: backend
+    dockerfile_path: backend/Dockerfile
+    http_port: 4000
+    instance_size_slug: professional-xs
+    instance_count: 1
+    health_check:
+      http_path: /alive
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      failure_threshold: 5
+    run_command: node dist/server.js
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: "${orcha-db.DATABASE_URL}"
+      - key: NODE_ENV
+        scope: RUN_TIME
+        value: production
+      - key: ORCHA_BACKEND_PORT
+        scope: RUN_TIME
+        value: "4000"
+      - key: ORCHA_WS_BACKEND_PORT
+        scope: RUN_TIME
+        value: "38268"
+      - key: ORCHA_HOSTNAME
+        scope: RUN_TIME
+        value: orcha.run
+      - key: ORCHA_DOMAIN
+        scope: RUN_TIME
+        value: orcha.run
+      - key: ORCHA_WEBAPP_URI
+        scope: RUN_TIME
+        value: https://app.orcha.run
+      - key: ORCHA_WWW_URI
+        scope: RUN_TIME
+        value: https://orcha.run
+      - key: ORCHA_API_URI
+        scope: RUN_TIME
+        value: https://api.orcha.run
+      - key: ORCHA_API_WS_URI
+        scope: RUN_TIME
+        value: wss://api.orcha.run/ws
+      - key: ORCHA_SUPPORT_URI
+        scope: RUN_TIME
+        value: https://support.orcha.run
+      - key: ORCHA_TEST_INTERFACE
+        scope: RUN_TIME
+        value: "false"
+      - key: NO_COLOR
+        scope: RUN_TIME
+        value: "true"
+      - key: ORCHA_AI_URI
+        scope: RUN_TIME
+        value: "${ai.PRIVATE_URL}"
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: "${orcha-redis.REDIS_URL}"
+
+  # -- Hocuspocus (WebSocket CRDT collaboration) --
+  - name: hocuspocus
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: true
+    source_dir: backend
+    dockerfile_path: backend/Dockerfile
+    http_port: 38268
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    run_command: node dist/hocuspocus/server.js
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: "${orcha-db.DATABASE_URL}"
+      - key: NODE_ENV
+        scope: RUN_TIME
+        value: production
+      - key: ORCHA_WS_BACKEND_PORT
+        scope: RUN_TIME
+        value: "38268"
+      - key: ORCHA_HOSTNAME
+        scope: RUN_TIME
+        value: orcha.run
+      - key: ORCHA_DOMAIN
+        scope: RUN_TIME
+        value: orcha.run
+      - key: ORCHA_API_WS_URI
+        scope: RUN_TIME
+        value: wss://api.orcha.run/ws
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: "${orcha-redis.REDIS_URL}"
+
+  # -- MCTS AI scheduler (internal only, called by cron worker) --
+  - name: ai
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: true
+    source_dir: ai
+    dockerfile_path: ai/Dockerfile
+    internal_ports:
+      - 8000
+    instance_size_slug: professional-xs
+    instance_count: 1
+
+# ---- Static sites (CDN-served, no compute) --------------------------------
+
+static_sites:
+  # -- Frontend (React SPA) --
+  - name: frontend
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: true
+    source_dir: /
+    build_command: cp backend/src/generated/graphql.ts frontend/src/types/graphql.ts && cd frontend && yarn install --pure-lockfile && yarn build
+    output_dir: frontend/build
+    catchall_document: index.html
+    envs:
+      - key: VITE_API_URI
+        scope: BUILD_TIME
+        value: https://api.orcha.run
+      - key: VITE_API_WS_URI
+        scope: BUILD_TIME
+        value: wss://api.orcha.run/ws
+      - key: VITE_GRAPHQL_URI
+        scope: BUILD_TIME
+        value: https://api.orcha.run/graphql
+      - key: VITE_UPLOADS_CDN_URL
+        scope: BUILD_TIME
+        value: https://orcha-uploads.sfo3.cdn.digitaloceanspaces.com
+      - key: VITE_SUPPORT_URI
+        scope: BUILD_TIME
+        value: https://support.orcha.run
+      - key: VITE_DOCUMENTATION_URI
+        scope: BUILD_TIME
+        value: https://api.orcha.run
+      - key: VITE_WEBSITE_DOMAIN
+        scope: BUILD_TIME
+        value: app.orcha.run
+      - key: VITE_VAPID_PUBLIC_KEY
+        scope: BUILD_TIME
+        value: BFYUfpTkC_8_C8qHD5_IWaTjwBE4HR0xgytWgNoCuNsmJTKwj62jnYtn3uuOBdRUSgnstIm6YiJxzS2HC2BpnMU
+      - key: VITE_DEMO_MODE
+        scope: BUILD_TIME
+        value: "false"
+
+  # -- Support widget --
+  - name: support
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: true
+    source_dir: support
+    build_command: yarn install --pure-lockfile && yarn webpack && yarn build
+    output_dir: build
+    catchall_document: index.html
+    envs:
+      - key: VITE_WEBSITE_NAME
+        scope: BUILD_TIME
+        value: Orcha Support
+      - key: VITE_SUPPORT_URI
+        scope: BUILD_TIME
+        value: https://support.orcha.run
+      - key: VITE_API_URI
+        scope: BUILD_TIME
+        value: https://api.orcha.run
+      - key: VITE_DOCUMENTATION_URI
+        scope: BUILD_TIME
+        value: https://api.orcha.run
+      - key: VITE_UPLOADS_CDN_URL
+        scope: BUILD_TIME
+        value: https://orcha-uploads.sfo3.cdn.digitaloceanspaces.com
+
+# ---- Workers (no HTTP) ---------------------------------------------------
+
+workers:
+  # -- Cron worker (BullMQ job processor) --
+  - name: cron
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: true
+    source_dir: backend
+    dockerfile_path: backend/Dockerfile
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    run_command: node dist/cron.js
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: "${orcha-db.DATABASE_URL}"
+      - key: NODE_ENV
+        scope: RUN_TIME
+        value: production
+      - key: ORCHA_BACKEND_PORT
+        scope: RUN_TIME
+        value: "4000"
+      - key: ORCHA_WS_BACKEND_PORT
+        scope: RUN_TIME
+        value: "38268"
+      - key: ORCHA_HOSTNAME
+        scope: RUN_TIME
+        value: orcha.run
+      - key: ORCHA_DOMAIN
+        scope: RUN_TIME
+        value: orcha.run
+      - key: ORCHA_WEBAPP_URI
+        scope: RUN_TIME
+        value: https://app.orcha.run
+      - key: ORCHA_WWW_URI
+        scope: RUN_TIME
+        value: https://orcha.run
+      - key: ORCHA_API_URI
+        scope: RUN_TIME
+        value: https://api.orcha.run
+      - key: ORCHA_API_WS_URI
+        scope: RUN_TIME
+        value: wss://api.orcha.run/ws
+      - key: ORCHA_SUPPORT_URI
+        scope: RUN_TIME
+        value: https://support.orcha.run
+      - key: ORCHA_TEST_INTERFACE
+        scope: RUN_TIME
+        value: "false"
+      - key: NO_COLOR
+        scope: RUN_TIME
+        value: "true"
+      # Resource references (can't inherit — need explicit wiring)
+      - key: ORCHA_AI_URI
+        scope: RUN_TIME
+        value: "${ai.PRIVATE_URL}"
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: "${orcha-redis.REDIS_URL}"

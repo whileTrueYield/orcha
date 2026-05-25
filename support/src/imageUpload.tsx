@@ -43,7 +43,7 @@ export const uploadImage = (imageContent: string, issueToken: string) => {
         method: "POST",
       });
 
-      return `${import.meta.env.VITE_UPLOAD_CDN_URI}/${data.fields.key}`;
+      return `${import.meta.env.VITE_UPLOADS_CDN_URL}/${data.fields.key}`;
     })
     .catch((error) => {
       window.alert(

@@ -1,5 +1,6 @@
 import { Worker, Job } from "bullmq";
 import { logger } from "../logger";
+import { redisConfig } from "../redis";
 import {
   publishDocumentationTask,
   unpublishDocumentationTask,
@@ -72,10 +73,7 @@ async function processorFn(job: Job) {
 }
 
 export const worker = new Worker("cron", processorFn, {
-  connection: {
-    host: process.env.REDIS_HOSTNAME || "127.0.0.1",
-    port: parseInt(process.env.REDIS_PORT || "6379"),
-  },
+  connection: redisConfig,
   autorun: false,
   concurrency: 5,
 });

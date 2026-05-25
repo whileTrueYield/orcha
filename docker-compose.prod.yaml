@@ -64,7 +64,7 @@ services:
   # --------------------------------------------------------------------------
   db:
     container_name: orcha-db
-    image: postgres:13
+    image: postgres:16
     restart: unless-stopped
     healthcheck:
       test: pg_isready -U ${__DOCKER_POSTGRES_USER} -d ${__DOCKER_POSTGRES_DB}
@@ -133,10 +133,10 @@ services:
     entrypoint: >
       /bin/sh -c "
       mc alias set orcha http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
-      mc mb --ignore-existing orcha/${__DOCKER_UPLOAD_S3_BUCKET};
-      mc anonymous set download orcha/${__DOCKER_UPLOAD_S3_BUCKET};
-      mc mb --ignore-existing orcha/${__DOCKER_DOCUMENTATION_S3_BUCKET};
-      mc anonymous set download orcha/${__DOCKER_DOCUMENTATION_S3_BUCKET};
+      mc mb --ignore-existing orcha/${__DOCKER_UPLOADS_BUCKET};
+      mc anonymous set download orcha/${__DOCKER_UPLOADS_BUCKET};
+      mc mb --ignore-existing orcha/${__DOCKER_DOCS_BUCKET};
+      mc anonymous set download orcha/${__DOCKER_DOCS_BUCKET};
       exit 0;
       "
     environment:
@@ -200,15 +200,14 @@ services:
       - ORCHA_API_WS_URI=wss://${ORCHA_DOMAIN}/ws
       - ORCHA_AI_URI=http://ai:${__DOCKER_ORCHA_AI_PORT}
       - ORCHA_WWW_URI=https://${ORCHA_DOMAIN}
-      - UPLOAD_S3_BUCKET=${__DOCKER_UPLOAD_S3_BUCKET}
-      - DOCUMENTATION_S3_BUCKET=${__DOCKER_DOCUMENTATION_S3_BUCKET}
-      - DOCUMENTATION_DISTRIBUTION_ID=${__DOCKER_DOCUMENTATION_DISTRIBUTION_ID:-}
-      - ORCHA_UPLOAD_CDN_URI=https://${ORCHA_DOMAIN}/uploads
-      - ORCHA_S3_ENDPOINT=http://minio:9000
-      - ORCHA_S3_PUBLIC_ENDPOINT=https://${ORCHA_DOMAIN}/uploads
-      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
-      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
-      - AWS_REGION=us-west-1
+      - UPLOADS_BUCKET=${__DOCKER_UPLOADS_BUCKET}
+      - DOCS_BUCKET=${__DOCKER_DOCS_BUCKET}
+      - UPLOADS_CDN_URL=https://${ORCHA_DOMAIN}/uploads
+      - DOCS_CDN_URL=https://${ORCHA_DOMAIN}/uploads
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - S3_REGION=us-west-1
       - NO_COLOR=true
       - VAPID_PUBLIC_KEY=${__DOCKER_VAPID_PUBLIC_KEY}
       - VAPID_PRIVATE_KEY=${__DOCKER_VAPID_PRIVATE_KEY}
@@ -265,14 +264,14 @@ services:
       - ORCHA_API_WS_URI=wss://${ORCHA_DOMAIN}/ws
       - ORCHA_AI_URI=http://ai:${__DOCKER_ORCHA_AI_PORT}
       - ORCHA_WWW_URI=https://${ORCHA_DOMAIN}
-      - UPLOAD_S3_BUCKET=${__DOCKER_UPLOAD_S3_BUCKET}
-      - DOCUMENTATION_S3_BUCKET=${__DOCKER_DOCUMENTATION_S3_BUCKET}
-      - DOCUMENTATION_DISTRIBUTION_ID=${__DOCKER_DOCUMENTATION_DISTRIBUTION_ID:-}
-      - ORCHA_UPLOAD_CDN_URI=https://${ORCHA_DOMAIN}/uploads
-      - ORCHA_S3_ENDPOINT=http://minio:9000
-      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
-      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
-      - AWS_REGION=us-west-1
+      - UPLOADS_BUCKET=${__DOCKER_UPLOADS_BUCKET}
+      - DOCS_BUCKET=${__DOCKER_DOCS_BUCKET}
+      - UPLOADS_CDN_URL=https://${ORCHA_DOMAIN}/uploads
+      - DOCS_CDN_URL=https://${ORCHA_DOMAIN}/uploads
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - S3_REGION=us-west-1
       - NO_COLOR=true
       - VAPID_PUBLIC_KEY=${__DOCKER_VAPID_PUBLIC_KEY}
       - VAPID_PRIVATE_KEY=${__DOCKER_VAPID_PRIVATE_KEY}
@@ -352,7 +351,7 @@ services:
       - VITE_SUPPORT_URI=https://${ORCHA_DOMAIN}/support
       - VITE_API_URI=https://${ORCHA_DOMAIN}/api
       - VITE_DOCUMENTATION_URI=https://${ORCHA_DOMAIN}/api
-      - VITE_UPLOAD_CDN_URI=https://${ORCHA_DOMAIN}/uploads
+      - VITE_UPLOADS_CDN_URL=https://${ORCHA_DOMAIN}/uploads
     expose:
       - ${__DOCKER_ORCHA_SUPPORT_PORT}
     labels:

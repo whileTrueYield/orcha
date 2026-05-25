@@ -11,6 +11,14 @@
  * The GraphQL schema is built by Pothos (see schema/index.ts).
  */
 
+// TODO: remove after DO deployment is verified
+process.stderr.write("[api] process started\n");
+
+process.on("uncaughtException", (err) => {
+  console.error("[uncaught]", err);
+  process.exit(1);
+});
+
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
 import session from "express-session";
@@ -29,7 +37,11 @@ import { corsCheckOrigin } from "./utils";
 import RedisStore from "connect-redis";
 import { getSchema } from "./models";
 
+// TODO: remove after DO deployment is verified
+process.stderr.write("[api] imports done, calling start()\n");
+
 async function start() {
+  process.stderr.write("[api] building schema...\n");
   const schema = await getSchema();
 
   // Apollo Server v4 — standalone server that produces middleware
@@ -39,34 +51,28 @@ async function start() {
     // Consider adding @apollo/server-plugin-response-cache if needed.
   });
 
+  process.stderr.write("[api] schema built, starting apollo...\n");
   await server.start();
+  process.stderr.write("[api] apollo started, mounting middleware...\n");
 
   // Initialize Redis-backed session store
   const redisStore = new RedisStore({ client: redis });
 
-  // The session parser relies on Redis for storage. This only
-  // takes care of the storage and encryption.
-  // The session definition can be found as a combined type AuthContext —
-  // it can be:
-  //   - GuestUserContext  (not authenticated)
-  //   - AuthRoleContext   (authenticated and using an organization)
-  //   - AuthUserContext   (authenticated but not within an organization)
   const sessionParser = session({
     store: redisStore,
     name: "sessionId",
-    proxy: config.isProd, // only prod mode is behind nginx
+    proxy: config.isProd,
     secret: config.sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
       secure: config.isProd,
-      maxAge: 1000 * 60 * 60 * 24 * 5 * 365, // 5 years
+      maxAge: 1000 * 60 * 60 * 24 * 5 * 365,
       sameSite: config.isProd ? "none" : "lax",
     },
   });
 
-  // Build the Express app with global middleware (CORS, session, body parser)
   const corsOptions = {
     credentials: true,
     origin: corsCheckOrigin(config.allowOrigin),
@@ -78,19 +84,16 @@ async function start() {
     jsonBodyParser(),
   ]);
 
-  // Mount Apollo v4 as Express middleware at /graphql.
+  // Mount Apollo v4 as Express middleware.
   // The context factory replaces the old MeContextMiddleware — it reads
   // the session and builds the `me` object before any resolver runs.
   app.use(
-    "/graphql",
+    `${config.apiPathPrefix}/graphql`,
     cors<cors.CorsRequest>(corsOptions),
     expressMiddleware(server, {
       context: async ({ req, res }) => {
         const orgIdStr = req.headers.organization as string;
 
-        // A user may hold multiple roles (one per organization).
-        // We read the organization header and select the matching role
-        // for the current request.
         if (orgIdStr) {
           const role = find(req.session.roles, {
             organizationId: parseInt(orgIdStr),
@@ -103,8 +106,6 @@ async function start() {
           }
         }
 
-        // Build the `me` context from the session — this is the logic
-        // that used to live in MeContextMiddleware.
         const { buildMeContext } = await import(
           "./middlewares/isAuthenticated"
         );
@@ -115,17 +116,20 @@ async function start() {
     }),
   );
 
-  // Launch the Express server
   app.listen({ port: config.port }, () => {
+    process.stderr.write(`[api] listening on port ${config.port}\n`);
     logger.info(
       `Server ready at http://${config.hostname}:${config.port}/graphql`,
     );
   });
 
-  // Start BullMQ cron jobs (reminders, auto-stop, scheduled emails, etc.)
   await initCron();
 
   return app;
 }
 
-start();
+// TODO: remove catch wrapper after DO deployment is verified
+start().catch((err) => {
+  console.error("[startup] fatal:", err);
+  process.exit(1);
+});

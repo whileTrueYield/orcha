@@ -1,7 +1,7 @@
 import "./CodeBlock.css";
 import "highlight.js/styles/atom-one-dark-reasonable.min.css";
 
-import { NodeViewContent, NodeViewWrapper } from "@tiptap/react";
+import { NodeViewContent, NodeViewWrapper, NodeViewProps } from "@tiptap/react";
 import React from "react";
 import { createLowlight, common } from "lowlight";
 import { ClipboardCopyIcon } from "@heroicons/react/outline";
@@ -14,17 +14,6 @@ lowlight.registerAlias({
   python: ["py"],
 });
 
-interface Props {
-  node: {
-    attrs: {
-      language: string;
-    };
-    content: any;
-  };
-  updateAttributes: (attrs: { language: string }) => void;
-  extension: any;
-}
-
 const getTextFromNode = (node: any) => {
   const content = node.content || [];
   const text = node.text || "";
@@ -32,7 +21,7 @@ const getTextFromNode = (node: any) => {
   return text + content.map(getTextFromNode).join("");
 };
 
-const CodeBlock: React.FC<Props> = (props) => {
+const CodeBlock: React.FC<NodeViewProps> = (props) => {
   const defaultLanguage = props.node.attrs.language;
   const updateAttributes = props.updateAttributes;
   const extension = props.extension;
@@ -42,7 +31,7 @@ const CodeBlock: React.FC<Props> = (props) => {
   const [copyLabel, setCopyLabel] = React.useState(copyIcon);
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(props.node.content.content[0].text);
+    navigator.clipboard.writeText(props.node.content.content[0].text ?? "");
     setCopyLabel(<span>Copied!</span>);
     setTimeout(() => {
       setCopyLabel(copyIcon);

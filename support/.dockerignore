@@ -4,6 +4,5 @@
 .vscode
 config
 README.md
-Dockerfile*
 .dockerignore
 node_modules

@@ -4,21 +4,25 @@
 //   s3       — for server-side operations (putObject, deleteObject)
 //   s3Client — for presigned URL generation (browser-facing)
 //
-// When ORCHA_S3_ENDPOINT is set, the backend talks to a local
-// S3-compatible store (MinIO) instead of real AWS. Credentials come from
-// the standard AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY env vars — set
-// them to the MinIO root user for dev, or real AWS creds for prod.
+// When S3_ENDPOINT is set, the backend talks to a local S3-compatible
+// store (MinIO) instead of real AWS. Credentials come from the
+// S3_ACCESS_KEY / S3_SECRET_KEY env vars.
 
 import { S3Client, S3, S3ClientConfig } from "@aws-sdk/client-s3";
 import { config } from "../../config";
 
-const s3Endpoint = process.env.ORCHA_S3_ENDPOINT;
-const s3PublicEndpoint = process.env.ORCHA_S3_PUBLIC_ENDPOINT;
+const s3Endpoint = process.env.S3_ENDPOINT;
+const s3PublicEndpoint = process.env.UPLOADS_CDN_URL;
 
 const baseConfig: S3ClientConfig = {
   region: config.region,
-  // MinIO doesn't support virtual-hosted-style bucket URLs
   forcePathStyle: !!s3Endpoint,
+  credentials: process.env.S3_ACCESS_KEY
+    ? {
+        accessKeyId: process.env.S3_ACCESS_KEY,
+        secretAccessKey: process.env.S3_SECRET_KEY!,
+      }
+    : undefined,
 };
 
 // Server-side operations use the internal Docker-network endpoint

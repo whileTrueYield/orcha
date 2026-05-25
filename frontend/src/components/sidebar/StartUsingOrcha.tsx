@@ -11,7 +11,7 @@ export const StartUsingOrcha: React.FC = () => {
         <span>Ready to sign up?</span>
         <a
           className="text-sm text-[rgb(111,231,210)] hover:text-[rgb(101,211,200)] hover:underline"
-          href="https://app.orcha.io/auth/register"
+          href="https://app.orcha.run/auth/register"
         >
           Start using Orcha
         </a>

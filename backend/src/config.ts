@@ -29,6 +29,9 @@ interface Config {
   wwwUri: string;
   region: string;
   uploadPrefix: string;
+  // Path prefix for API routes. Empty string for self-hosted (Traefik strips
+  // the prefix), "/api" for DO App Platform (preserves the prefix).
+  apiPathPrefix: string;
   email: {
     noReplyAddress: string;
     unsubscribeUri: string;
@@ -73,11 +76,12 @@ const testEnv = {
   ORCHA_API_URI: "http://api.example.com:4000",
   ORCHA_AI_URI: "http://api.example.com:8000",
   ORCHA_WWW_URI: "http://www.example.com:3030",
-  UPLOAD_S3_BUCKET: "upload.example.com",
+  UPLOADS_BUCKET: "upload.example.com",
+  DOCS_BUCKET: "documentation.example.com",
+  UPLOADS_CDN_URL: "https://upload.example.com",
+  DOCS_CDN_URL: "https://documentation.example.com",
+  S3_REGION: "us-west-1",
   DOCUMENTATION_DISTRIBUTION_ID: "MY_AWS_DISTRIBUTION_ID",
-  DOCUMENTATION_S3_BUCKET: "documentation.example.com",
-  ORCHA_UPLOAD_CDN_URI: "https://upload.example.com",
-  AWS_REGION: "us-west-1",
   DATABASE_URL: process.env.DATABASE_URL,
 };
 
@@ -96,11 +100,12 @@ const env = isTest
       ORCHA_API_WS_URI: process.env.ORCHA_API_WS_URI,
       ORCHA_AI_URI: process.env.ORCHA_AI_URI,
       ORCHA_WWW_URI: process.env.ORCHA_WWW_URI,
-      UPLOAD_S3_BUCKET: process.env.UPLOAD_S3_BUCKET,
-      DOCUMENTATION_S3_BUCKET: process.env.DOCUMENTATION_S3_BUCKET,
+      UPLOADS_BUCKET: process.env.UPLOADS_BUCKET,
+      DOCS_BUCKET: process.env.DOCS_BUCKET,
+      UPLOADS_CDN_URL: process.env.UPLOADS_CDN_URL,
+      DOCS_CDN_URL: process.env.DOCS_CDN_URL,
+      S3_REGION: process.env.S3_REGION,
       DOCUMENTATION_DISTRIBUTION_ID: process.env.DOCUMENTATION_DISTRIBUTION_ID,
-      ORCHA_UPLOAD_CDN_URI: process.env.ORCHA_UPLOAD_CDN_URI,
-      AWS_REGION: process.env.AWS_REGION,
       VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
       VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
     };
@@ -145,20 +150,20 @@ if (!env.ORCHA_WWW_URI) {
   throw Error("ORCHA_WWW_URI env variable is undefined");
 }
 
-if (!env.UPLOAD_S3_BUCKET) {
-  throw Error("UPLOAD_S3_BUCKET env variable is undefined");
+if (!env.UPLOADS_BUCKET) {
+  throw Error("UPLOADS_BUCKET env variable is undefined");
 }
 
-if (!env.DOCUMENTATION_S3_BUCKET) {
-  throw Error("DOCUMENTATION_S3_BUCKET env variable is undefined");
+if (!env.DOCS_BUCKET) {
+  throw Error("DOCS_BUCKET env variable is undefined");
 }
 
-if (!env.ORCHA_UPLOAD_CDN_URI) {
-  throw Error("ORCHA_UPLOAD_CDN_URI env variable is undefined");
+if (!env.UPLOADS_CDN_URL) {
+  throw Error("UPLOADS_CDN_URL env variable is undefined");
 }
 
-if (!env.AWS_REGION) {
-  throw Error("AWS_REGION env variable is undefined");
+if (!env.S3_REGION) {
+  throw Error("S3_REGION env variable is undefined");
 }
 
 export const config: Config = {
@@ -180,11 +185,12 @@ export const config: Config = {
   apiUri: env.ORCHA_API_URI,
   apiWsUri: env.ORCHA_API_WS_URI,
   apiWsPort: parseInt(env.ORCHA_WS_BACKEND_PORT),
-  uploadS3Bucket: env.UPLOAD_S3_BUCKET,
-  documentationS3Bucket: env.DOCUMENTATION_S3_BUCKET,
+  uploadS3Bucket: env.UPLOADS_BUCKET,
+  documentationS3Bucket: env.DOCS_BUCKET,
   documentationDistributionId: env.DOCUMENTATION_DISTRIBUTION_ID || undefined,
-  uploadCdnUri: env.ORCHA_UPLOAD_CDN_URI,
-  region: env.AWS_REGION,
+  uploadCdnUri: env.UPLOADS_CDN_URL,
+  region: env.S3_REGION,
+  apiPathPrefix: process.env.API_PATH_PREFIX || "",
   uploadPrefix: process.env.ORCHA_UPLOAD_PREFIX || "",
   assetRoot: resolve(__dirname, "../assets/"),
   email: {

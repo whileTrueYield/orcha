@@ -5,6 +5,5 @@
 _upload
 docs
 README.md
-Dockerfile*
 .dockerignore
 node_modules
