@@ -142,8 +142,8 @@ else
   # MinIO
   assert_contains "minio user" "^MINIO_ROOT_USER=orcha$" "$ENV_FILE"
   assert_var_set "minio password generated" "MINIO_ROOT_PASSWORD" "$ENV_FILE"
-  assert_contains "upload bucket" "^__DOCKER_UPLOAD_S3_BUCKET=orcha-uploads$" "$ENV_FILE"
-  assert_contains "docs bucket" "^__DOCKER_DOCUMENTATION_S3_BUCKET=orcha-docs$" "$ENV_FILE"
+  assert_contains "upload bucket" "^__DOCKER_UPLOADS_BUCKET=orcha-uploads$" "$ENV_FILE"
+  assert_contains "docs bucket" "^__DOCKER_DOCS_BUCKET=orcha-docs$" "$ENV_FILE"
 
   # SMTP-specific vars present
   assert_contains "SMTP host present" "^__DOCKER_SMTP_HOST=smtp.mailgun.org$" "$ENV_FILE"

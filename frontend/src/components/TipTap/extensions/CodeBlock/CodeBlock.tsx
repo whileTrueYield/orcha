@@ -31,7 +31,7 @@ const CodeBlock: React.FC<NodeViewProps> = (props) => {
   const [copyLabel, setCopyLabel] = React.useState(copyIcon);
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(props.node.content.content[0].text ?? "");
+    navigator.clipboard.writeText(props.node.textContent);
     setCopyLabel(<span>Copied!</span>);
     setTimeout(() => {
       setCopyLabel(copyIcon);

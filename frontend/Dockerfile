@@ -23,7 +23,9 @@ CMD ["yarn", "test", "-w"]
 FROM base AS build
 COPY src src/
 COPY public public/
-ADD .env .env
+# .env may not exist in prod builds where values come via build args.
+# Create an empty fallback so the Vite build doesn't fail.
+RUN touch .env
 
 # These defaults assume self-hosted dev with the included docker-compose.
 # For a production build, override with --build-arg, for example:
@@ -63,5 +65,5 @@ CMD ["yarn", "start", "--no-open"]
 # and relies on nginx's default CMD to serve it.
 FROM nginx:1.27-alpine AS production
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /orcha/dist /www-frontend
+COPY --from=build /orcha/build /www-frontend
 CMD ["nginx", "-g", "daemon off;"]

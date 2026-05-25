@@ -192,10 +192,8 @@ __DOCKER_VAPID_PRIVATE_KEY=${VAPID_PRIV}
 # --- MinIO (S3-compatible object storage) ---------------------------------
 MINIO_ROOT_USER=orcha
 MINIO_ROOT_PASSWORD=${MINIO_PASS}
-__DOCKER_UPLOAD_S3_BUCKET=orcha-uploads
-__DOCKER_DOCUMENTATION_S3_BUCKET=orcha-docs
-# CloudFront distribution ID — leave empty when using MinIO (no CDN).
-__DOCKER_DOCUMENTATION_DISTRIBUTION_ID=
+__DOCKER_UPLOADS_BUCKET=orcha-uploads
+__DOCKER_DOCS_BUCKET=orcha-docs
 
 # --- Email provider -------------------------------------------------------
 ${EMAIL_BLOCK}

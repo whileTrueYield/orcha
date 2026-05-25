@@ -1,6 +1,10 @@
 # Docker commands
-main: .env
+demo: .env
 	docker compose up -d
+
+dev:
+	docker compose -f docker-compose.yaml -f docker-compose.dev.yaml --env-file .env.dev up -d
+	docker compose -f docker-compose.yaml -f docker-compose.dev.yaml --env-file .env.dev watch
 
 .env:
 	cp .env.example .env
@@ -168,8 +172,9 @@ generate-types-if-necessary:
 help:
 	@echo "List of Orcha dev environment commands"
 	@echo "\n\033[1mDocker commands\033[0m"
-	@echo "make \t\tstarts the application (fastest)"
-	@echo "make rebuild \trebuild the docker images (recommended after a code pull)"
+	@echo "make demo \tStart the demo instance (seeded data, no auth)"
+	@echo "make dev \tStart dev instance (real auth, Mailpit on :8025)"
+	@echo "make rebuild \tRebuild the docker images (recommended after a code pull)"
 	@echo "make watch \twatch for code changes and update dockers images on changes"
 	@echo "make stop \tstops the docker image but maintain state"
 	@echo "make down \tstops docker images and delete state"

@@ -1,0 +1,64 @@
+# Development override — disables demo mode, isolates state from the demo
+# instance, and adds Mailpit as a local mail catcher.
+#
+# Usage: docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d
+#   or:  make dev
+#
+# Mailpit UI: http://localhost:8025
+# SMTP:       mailpit:1025 (inside Docker network)
+
+services:
+  db:
+    container_name: postgres-dev
+    volumes:
+      - dev-db-data:/var/lib/postgres
+
+  minio:
+    container_name: orcha-minio-dev
+    volumes:
+      - dev-minio-data:/data
+
+  mailpit:
+    container_name: orcha-mailpit
+    image: axllent/mailpit
+    ports:
+      - 8025:8025
+    expose:
+      - 1025
+
+  minio-init:
+    container_name: orcha-minio-init-dev
+    volumes: []
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set orcha http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
+      mc mb --ignore-existing orcha/${__DOCKER_UPLOADS_BUCKET};
+      mc anonymous set download orcha/${__DOCKER_UPLOADS_BUCKET};
+      mc mb --ignore-existing orcha/${__DOCKER_DOCS_BUCKET};
+      mc anonymous set download orcha/${__DOCKER_DOCS_BUCKET};
+      exit 0;
+      "
+
+  backend:
+    environment:
+      - DEMO_MODE=false
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_USER=
+      - SMTP_PASS=
+
+  cron:
+    environment:
+      - DEMO_MODE=false
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_USER=
+      - SMTP_PASS=
+
+  frontend:
+    environment:
+      - VITE_DEMO_MODE=false
+
+volumes:
+  dev-db-data:
+  dev-minio-data:
