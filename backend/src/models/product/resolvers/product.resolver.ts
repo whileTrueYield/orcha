@@ -17,9 +17,12 @@ import builder from "../../../schema/builder";
 import { ProductRef } from "../entity";
 import { PaginatedFeatures, PaginatedFeatureGroups } from "../../feature/entity";
 import { PaginatedTickets } from "../../ticket/entity";
+import { PaginatedWorkflows } from "../../workflow/entity";
 import { getPaginatedFeatures, getPaginatedFeatureGroups } from "../../feature/helper";
 import { getPaginatedTickets } from "../../ticket/helper";
+import { getPaginatedWorkflows } from "../../workflow/helper";
 import { AuthRoleContext } from "../../../types";
+import { ModelStageEnum } from "../../../schema/enums";
 
 // ---------------------------------------------------------------------------
 // Query
@@ -193,6 +196,37 @@ builder.prismaObjectField("Product", "features", (t) =>
         offset: args.offset ?? undefined,
         sort: args.sort as any,
         search: args.search ?? undefined,
+      }),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Computed field: workflows — paginated workflows for this product
+// ---------------------------------------------------------------------------
+
+builder.prismaObjectField("Product", "workflows", (t) =>
+  t.field({
+    type: PaginatedWorkflows,
+    authScopes: { hasRole: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+      stages: t.arg({ type: [ModelStageEnum], required: false }),
+    },
+    resolve: (product, args, ctx) =>
+      getPaginatedWorkflows({
+        productId: product.id,
+        organizationId: (ctx.me as AuthRoleContext).organizationId,
+        activeOnly: true,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: args.sort as any,
+        search: args.search ?? undefined,
+        stages: args.stages ?? undefined,
       }),
   }),
 );

@@ -38,7 +38,7 @@ export const ProductRef = builder.prismaObject("Product", {
     organizationId: t.exposeInt("organizationId"),
     organization: t.relation("organization"),
     // featureGroups is a paginated computed field — see product.resolver.ts
-    workflows: t.relation("workflows"),
+    // workflows is a paginated computed field — see product.resolver.ts
 
     workflowIds: t.intList({
       resolve: async (product, _args, ctx) => {
