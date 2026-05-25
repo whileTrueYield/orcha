@@ -45,6 +45,7 @@ const builder = new SchemaBuilder<{
   PrismaTypes: PrismaTypes;
   Context: AppContext<AuthContext>;
   AuthScopes: AuthScopes;
+  DefaultFieldNullability: false;
   Scalars: {
     ID: { Input: string; Output: string | number };
     DateTime: { Input: Date; Output: Date };
