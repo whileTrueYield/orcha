@@ -1,9 +1,7 @@
 import prisma from "../../prisma";
 import { clamp, trim } from "lodash";
-import { Organization } from "@generated/type-graphql";
+import { Organization, Prisma } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedOrganizations } from "./entity";
-import { Prisma } from ".prisma/client";
 
 interface GetPageArgs extends GetPageArgsFor<Organization> {}
 
@@ -22,7 +20,7 @@ export async function findOrganizationByName(
 
 export async function getPaginatedOrganizations(
   args: GetPageArgs
-): Promise<PaginatedOrganizations> {
+) {
   const { first, last, search } = args;
 
   // default offset to be at the start (or the end

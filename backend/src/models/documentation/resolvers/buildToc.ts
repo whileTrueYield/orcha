@@ -1,5 +1,5 @@
 import { keyBy, map, orderBy } from "lodash";
-import { DocumentationPage } from "../../entities";
+import { DocumentationPage } from "@prisma/client";
 
 export interface DocumentationTocTitle {
   id: number;

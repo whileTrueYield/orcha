@@ -1,48 +1,51 @@
-import { Arg, Query, Resolver, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Query resolvers for listing tags.
+ *
+ * Registers:
+ *  - Query.tags(...): PaginatedTag   — paginated list of org tags
+ *  - Query.miniTags: [MiniTag!]!     — lightweight list for dropdowns
+ *
+ * Both require a linked role (hasRole scope) and are scoped
+ * to the caller's organization.
+ */
 
-import { Tag } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { MiniTag, PaginatedTags } from "../entity";
+import builder from "../../../schema/builder";
+import { MiniTagRef, PaginatedTags } from "../entity";
 import { getPaginatedTags } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Tag)
-export class TagsResolver {
-  @Query((_returns) => PaginatedTags)
-  @UseMiddleware(hasRole())
-  async tags(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Tag,
-    @Arg("search", () => String, { nullable: true }) search: string
-  ): Promise<PaginatedTags> {
-    return getPaginatedTags({
-      organizationId: ctx.me.organizationId,
-      first,
-      last,
-      offset,
-      sort,
-      search,
-    });
-  }
+builder.queryField("tags", (t) =>
+  t.field({
+    type: PaginatedTags,
+    authScopes: { hasRole: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+    },
+    resolve: (_root, args, ctx) =>
+      getPaginatedTags({
+        organizationId: (ctx.me as AuthRoleContext).organizationId,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: args.sort as any,
+        search: args.search ?? undefined,
+      }),
+  }),
+);
 
-  @Query((_returns) => [MiniTag])
-  @UseMiddleware(hasRole())
-  async miniTags(@Ctx() ctx: AppContext<AuthRoleContext>): Promise<MiniTag[]> {
-    return ctx.prisma.tag.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-      },
-      select: {
-        name: true,
-        color: true,
-        id: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
-    });
-  }
-}
+builder.queryField("miniTags", (t) =>
+  t.field({
+    type: [MiniTagRef],
+    authScopes: { hasRole: true },
+    resolve: (_root, _args, ctx) =>
+      ctx.prisma.tag.findMany({
+        where: { organizationId: (ctx.me as AuthRoleContext).organizationId },
+        select: { id: true, name: true, color: true },
+        orderBy: { name: "asc" },
+      }),
+  }),
+);

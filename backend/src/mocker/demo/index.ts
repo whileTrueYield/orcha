@@ -1,4 +1,3 @@
-import "reflect-metadata";
 import { generateDemo } from "./generateDemo";
 import { exit } from "process";
 

@@ -1,92 +1,94 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-  Int,
-} from "type-graphql";
+/**
+ * Mutation: updateTimeOff — edit a time-off entry, merging overlaps.
+ *
+ * Registers: Mutation.updateTimeOff(timeOffId, input): TimeOff
+ *
+ * Auth: hasRole (any linked user).
+ */
 
-import { IsISO8601 } from "class-validator";
-import { TimeOff } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { UserInputError } from "apollo-server-express";
+import builder from "../../../schema/builder";
+import { GraphQLError } from "graphql";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class UpdateTimeOffInput {
-  @Field()
-  @IsISO8601({ strict: true })
-  startAt: string;
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-  @Field()
-  @IsISO8601({ strict: true })
-  stopAt: string;
-}
+const UpdateTimeOffInput = builder.inputType("UpdateTimeOffInput", {
+  fields: (t) => ({
+    startAt: t.string({ required: true }),
+    stopAt: t.string({ required: true }),
+  }),
+});
 
-@Resolver(TimeOff)
-export class UpdateTimeOffResolver {
-  @Mutation(() => TimeOff)
-  @UseMiddleware(hasRole())
-  async updateTimeOff(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("timeOffId", () => Int) timeOffId: number,
-    @Arg("input")
-    input: UpdateTimeOffInput
-  ): Promise<TimeOff> {
-    let { startAt, stopAt } = input;
+// ---------------------------------------------------------------------------
+// Mutation
+// ---------------------------------------------------------------------------
 
-    if (startAt === stopAt) {
-      throw new UserInputError("start and stop dates should not be identical");
-    }
+builder.mutationField("updateTimeOff", (t) =>
+  t.prismaField({
+    type: "TimeOff",
+    authScopes: { hasRole: true },
+    args: {
+      timeOffId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdateTimeOffInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      let { startAt, stopAt } = args.input;
 
-    // flip values if start date is after stop date
-    if (startAt > stopAt) {
-      [startAt, stopAt] = [stopAt, startAt];
-    }
-
-    const timeOff = await ctx.prisma.timeOff.findFirstOrThrow({
-      where: {
-        id: timeOffId,
-        organizationId: ctx.me.organizationId,
-        roleId: ctx.me.roleId,
-      },
-    });
-
-    // we'll merge all overlapping time off together (excluding the edited one)
-    const overlappingTimeOffs = await ctx.prisma.timeOff.findMany({
-      where: {
-        roleId: ctx.me.roleId,
-        organizationId: ctx.me.organizationId,
-        startAt: { lte: stopAt },
-        stopAt: { gte: startAt },
-        id: { not: timeOff.id },
-      },
-    });
-
-    for (const timeOff of overlappingTimeOffs) {
-      if (timeOff.startAt.toISOString() < startAt) {
-        startAt = timeOff.startAt.toISOString();
+      if (startAt === stopAt) {
+        throw new GraphQLError("start and stop dates should not be identical", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
       }
-      if (timeOff.stopAt.toISOString() > stopAt) {
-        stopAt = timeOff.stopAt.toISOString();
+
+      // flip values if start date is after stop date
+      if (startAt > stopAt) {
+        [startAt, stopAt] = [stopAt, startAt];
       }
-    }
 
-    await ctx.prisma.timeOff.deleteMany({
-      where: { id: { in: overlappingTimeOffs.map(({ id }) => id) } },
-    });
+      const timeOff = await ctx.prisma.timeOff.findFirstOrThrow({
+        where: {
+          id: args.timeOffId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          roleId: (ctx.me as AuthRoleContext).roleId,
+        },
+      });
 
-    return ctx.prisma.timeOff.update({
-      where: {
-        id: timeOff.id,
-      },
-      data: {
-        startAt,
-        stopAt,
-      },
-    });
-  }
-}
+      // we'll merge all overlapping time off together (excluding the edited one)
+      const overlappingTimeOffs = await ctx.prisma.timeOff.findMany({
+        where: {
+          roleId: (ctx.me as AuthRoleContext).roleId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          startAt: { lte: stopAt },
+          stopAt: { gte: startAt },
+          id: { not: timeOff.id },
+        },
+      });
+
+      for (const overlap of overlappingTimeOffs) {
+        if (overlap.startAt.toISOString() < startAt) {
+          startAt = overlap.startAt.toISOString();
+        }
+        if (overlap.stopAt.toISOString() > stopAt) {
+          stopAt = overlap.stopAt.toISOString();
+        }
+      }
+
+      await ctx.prisma.timeOff.deleteMany({
+        where: { id: { in: overlappingTimeOffs.map(({ id }) => id) } },
+      });
+
+      return ctx.prisma.timeOff.update({
+        ...query,
+        where: {
+          id: timeOff.id,
+        },
+        data: {
+          startAt,
+          stopAt,
+        },
+      });
+    },
+  }),
+);

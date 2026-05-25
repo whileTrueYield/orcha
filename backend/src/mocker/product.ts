@@ -10,7 +10,7 @@ import {
   Workflow,
 } from ".prisma/client";
 import prisma from "../prisma";
-import { ModelStage } from "@generated/type-graphql";
+import { ModelStage } from "@prisma/client";
 
 export const createProduct = async (
   organization: Organization,

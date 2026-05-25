@@ -1,17 +1,11 @@
-import { CreateWorkflowResolver } from "./createWorkflow.resolver";
-import { DeleteWorkflowResolver } from "./deleteWorkflow.resolver";
-import { MiniWorkflowsResolver } from "./miniWorkflows.resolver";
-import { UpdateWorkflowResolver } from "./updateWorkflow.resolver";
-import { WorkflowResolver } from "./workflow.resolver";
-import { WorkflowsResolver } from "./workflows.resolver";
-import { WorkflowStateResolver } from "./workflowState.resolver";
+/**
+ * Workflow resolver registrations — side-effect imports.
+ */
 
-export default [
-  CreateWorkflowResolver,
-  DeleteWorkflowResolver,
-  UpdateWorkflowResolver,
-  WorkflowResolver,
-  WorkflowStateResolver,
-  WorkflowsResolver,
-  MiniWorkflowsResolver,
-];
+import "./workflow.resolver";
+import "./workflows.resolver";
+import "./createWorkflow.resolver";
+import "./deleteWorkflow.resolver";
+import "./updateWorkflow.resolver";
+import "./miniWorkflows.resolver";
+import "./workflowState.resolver";

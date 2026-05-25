@@ -3,11 +3,11 @@ import {
   EstimateType,
   ModelStage,
   RoleStatus,
-} from "@generated/type-graphql";
+} from "@prisma/client";
 import { groupBy, keyBy, last, map, orderBy, sample, uniq } from "lodash";
 import fetch from "node-fetch";
 import prisma from "../prisma";
-import { RoleWorkDay, WorkWeekTime } from "../models/entities";
+import { RoleWorkDayShape as RoleWorkDay, WorkWeekTime } from "../models/entities";
 import { config } from "../config";
 import { subDays } from "date-fns";
 import { markdownToTipTapDoc } from "./demo/markdownToDoc";

@@ -1,20 +1,80 @@
-import { Field, ObjectType, registerEnumType } from "type-graphql";
-import { Organization, Role, User } from "@generated/type-graphql";
+/**
+ * Auth Pothos type registrations — the `Me` object and AuthStatus enum.
+ *
+ * `Me` is a composite type representing the current session state:
+ *   - GUEST:  no authenticated user
+ *   - USER:   authenticated but not linked to an organization
+ *   - LINKED: authenticated + organization + role
+ *
+ * It is not backed by a single Prisma model, so we use objectRef.
+ *
+ * Exports: MeRef, AuthStatusEnum.
+ *
+ * Assumes User, Organization, and Role Prisma objects are (or will be)
+ * registered on the builder before schema materialisation.
+ */
+
+import {
+  User as PrismaUser,
+  Organization as PrismaOrganization,
+  Role as PrismaRole,
+} from "@prisma/client";
+import builder from "../../schema/builder";
 import { AuthStatus } from "../../types";
+import { RoleRef } from "../role/entity";
+import { OrganizationRef } from "../organization/entity";
+import { UserRef } from "../user/entity";
 
-registerEnumType(AuthStatus, { name: "AuthStatus" });
+// ---------------------------------------------------------------------------
+// AuthStatus enum — non-Prisma, defined in src/types.ts
+// ---------------------------------------------------------------------------
 
-@ObjectType()
-export class Me {
-  @Field((_type) => Role, { nullable: true })
-  role?: Role;
+export const AuthStatusEnum = builder.enumType(AuthStatus, {
+  name: "AuthStatus",
+});
 
-  @Field((_type) => Organization, { nullable: true })
-  organization?: Organization;
+// ---------------------------------------------------------------------------
+// Me shape — plain TS interface replacing the decorated class
+// ---------------------------------------------------------------------------
 
-  @Field((_type) => User, { nullable: true })
-  user?: User;
-
-  @Field((_type) => AuthStatus)
+export interface MeShape {
+  role?: PrismaRole;
+  organization?: PrismaOrganization;
+  user?: PrismaUser;
   status: AuthStatus;
 }
+
+// ---------------------------------------------------------------------------
+// Me GraphQL object
+//
+// The nested Prisma models (role, user, organization) are exposed as nullable
+// fields. We reference them via builder.objectRef with string names so the
+// actual prismaObject definitions can live in their own model modules.
+// ---------------------------------------------------------------------------
+
+export const MeRef = builder.objectRef<MeShape>("Me");
+
+builder.objectType(MeRef, {
+  fields: (t) => ({
+    status: t.field({
+      type: AuthStatusEnum,
+      resolve: (parent) => parent.status,
+    }),
+
+    role: t.field({
+      type: RoleRef,
+      nullable: true,
+      resolve: (parent) => parent.role ?? null,
+    }),
+    organization: t.field({
+      type: OrganizationRef,
+      nullable: true,
+      resolve: (parent) => parent.organization ?? null,
+    }),
+    user: t.field({
+      type: UserRef,
+      nullable: true,
+      resolve: (parent) => parent.user ?? null,
+    }),
+  }),
+});

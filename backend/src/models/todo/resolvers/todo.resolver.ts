@@ -1,81 +1,72 @@
-import {
-  Arg,
-  Query,
-  Resolver,
-  Int,
-  FieldResolver,
-  Root,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
-import { Todo, Organization, Role } from "@generated/type-graphql";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
+/**
+ * Query resolvers for fetching a single Todo.
+ *
+ * Provides:
+ *  - todo(id):   fetch a specific todo by ID (scoped to org + owner)
+ *  - lastTodo:   fetch the most recent todo for the current user
+ *
+ * Both require hasRole auth scope.
+ */
 
-@Resolver(Todo)
-export class TodoResolver {
-  @Query(() => Todo!)
-  @UseMiddleware(hasRole())
-  async todo(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<Todo> {
-    const todo = await ctx.prisma.todo.findFirst({
-      where: {
-        id,
-        organizationId: ctx.me.organizationId,
-        ownerId: ctx.me.roleId,
-      },
-    });
+import { GraphQLError } from "graphql";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-    if (!todo) {
-      throw new UserInputError("This todo does not exist or has been deleted");
-    }
+// ---------------------------------------------------------------------------
+// todo — fetch a single todo by ID
+// ---------------------------------------------------------------------------
 
-    return todo;
-  }
+builder.queryField("todo", (t) =>
+  t.prismaField({
+    type: "Todo",
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-  @Query(() => Todo, { nullable: true })
-  @UseMiddleware(hasRole())
-  async lastTodo(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<Todo | null> {
-    return ctx.prisma.todo.findFirst({
-      where: {
-        organizationId: ctx.me.organizationId,
-        ownerId: ctx.me.roleId,
-      },
-      include: { owner: true },
-      orderBy: { id: "desc" },
-    });
-  }
+      const todo = await ctx.prisma.todo.findFirst({
+        ...query,
+        where: {
+          id: args.id,
+          organizationId: me.organizationId,
+          ownerId: me.roleId,
+        },
+      });
 
-  @FieldResolver((_returns) => Organization)
-  async organization(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() todo: Todo
-  ): Promise<Organization> {
-    if (todo.organization) {
-      return todo.organization;
-    }
+      if (!todo) {
+        throw new GraphQLError(
+          "This todo does not exist or has been deleted",
+          { extensions: { code: "BAD_USER_INPUT" } },
+        );
+      }
 
-    return ctx.prisma.organization.findUniqueOrThrow({
-      where: { id: todo.organizationId },
-    });
-  }
+      return todo;
+    },
+  }),
+);
 
-  @FieldResolver((_returns) => Role)
-  async owner(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() todo: Todo
-  ): Promise<Role> {
-    if (todo.owner) {
-      return todo.owner;
-    }
+// ---------------------------------------------------------------------------
+// lastTodo — fetch the most recent todo for the current user
+// ---------------------------------------------------------------------------
 
-    return ctx.prisma.role.findUniqueOrThrow({
-      where: { id: todo.ownerId },
-    });
-  }
-}
+builder.queryField("lastTodo", (t) =>
+  t.prismaField({
+    type: "Todo",
+    nullable: true,
+    authScopes: { hasRole: true },
+    resolve: (query, _root, _args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      return ctx.prisma.todo.findFirst({
+        ...query,
+        where: {
+          organizationId: me.organizationId,
+          ownerId: me.roleId,
+        },
+        orderBy: { id: "desc" },
+      });
+    },
+  }),
+);

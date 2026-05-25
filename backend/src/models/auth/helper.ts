@@ -2,7 +2,7 @@ import prisma from "../../prisma";
 import { compare, hash } from "bcrypt";
 import { config } from "../../config";
 import { createHash, randomBytes } from "crypto";
-import { PasswordLost, EmailConfirmation } from "@generated/type-graphql";
+import { PasswordLost, EmailConfirmation } from "@prisma/client";
 import { redis } from "../../redis";
 import { subSeconds } from "date-fns";
 import { logger } from "../../logger";
@@ -128,7 +128,7 @@ export async function requestConfirmation({
 }
 
 export const assertProofOfWork = async (
-  ip: string,
+  ip: string | undefined,
   hashWithDifficulty: string,
   proof: string,
 ) => {

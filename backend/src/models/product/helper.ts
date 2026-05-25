@@ -1,9 +1,7 @@
 import { clamp, trim } from "lodash";
-import { Product, ModelStage } from "@generated/type-graphql";
+import { Product, ModelStage, Prisma } from "@prisma/client";
 import prisma from "../../prisma";
-import { Prisma } from ".prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedProducts } from "./entity";
 
 export async function findProductByCode(
   code: string,
@@ -27,7 +25,7 @@ interface GetPageArgs extends GetPageArgsFor<Product> {
 
 export async function getPaginatedProducts(
   args: GetPageArgs
-): Promise<PaginatedProducts> {
+) {
   const { first, last, search, organizationId, stages } = args;
 
   // default offset to be at the start (or the end

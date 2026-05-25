@@ -8,7 +8,7 @@ import { getDocFromBytes } from "../../utils/yjs";
 
 export async function fetchProjectText(
   token: DocumentToken
-): Promise<Buffer | null> {
+): Promise<Uint8Array | null> {
   const project = await prisma.project.findFirst({
     where: {
       id: token.documentId,

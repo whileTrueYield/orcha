@@ -1,56 +1,44 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  Int,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
-import { MaxLength, Length } from "class-validator";
+/**
+ * Mutation: createFeatureGroup — create a new feature group under a product.
+ */
 
-import { FeatureGroup, FeatureGroupStatus } from "@generated/type-graphql";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { RoleType } from "@generated/type-graphql";
+import builder from "../../../schema/builder";
+import { FeatureGroupStatus } from "@prisma/client";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class CreateFeatureGroupInput {
-  @Field()
-  @Length(1, 128)
-  name: string;
+const CreateFeatureGroupInput = builder.inputType("CreateFeatureGroupInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+    productId: t.int({ required: true }),
+    description: t.string({ required: false }),
+  }),
+});
 
-  @Field(() => Int)
-  productId: number;
+builder.mutationField("createFeatureGroup", (t) =>
+  t.prismaField({
+    type: "FeatureGroup",
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      input: t.arg({ type: CreateFeatureGroupInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const product = await ctx.prisma.product.findFirstOrThrow({
+        where: {
+          id: args.input.productId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
 
-  @Field({ nullable: true })
-  @MaxLength(10 * 1024)
-  description?: string;
-}
-
-@Resolver(FeatureGroup)
-export class CreateFeatureGroupResolver {
-  @Mutation(() => FeatureGroup)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async createFeatureGroup(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input") input: CreateFeatureGroupInput
-  ): Promise<FeatureGroup> {
-    const product = await ctx.prisma.product.findFirstOrThrow({
-      where: {
-        id: input.productId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
-
-    return await ctx.prisma.featureGroup.create({
-      data: {
-        ...input,
-        status: FeatureGroupStatus.ACTIVE,
-        productId: product.id,
-        organizationId: ctx.me.organizationId,
-      },
-    });
-  }
-}
+      return ctx.prisma.featureGroup.create({
+        ...query,
+        data: {
+          name: args.input.name,
+          description: args.input.description,
+          status: FeatureGroupStatus.ACTIVE,
+          productId: product.id,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
+    },
+  }),
+);

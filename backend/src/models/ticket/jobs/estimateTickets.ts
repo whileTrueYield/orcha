@@ -5,10 +5,10 @@ import {
   RoleStatus,
   TicketWorkflowState,
   ScheduleStatus,
-} from "@generated/type-graphql";
+} from "@prisma/client";
 import { get, last, map, max, orderBy, uniq } from "lodash";
 import fetch from "node-fetch";
-import { RoleWorkDay, WorkWeekTime } from "../../role/entity";
+import { RoleWorkDayShape as RoleWorkDay, WorkWeekTime } from "../../role/entity";
 import prisma from "../../../prisma";
 import { Prisma, ScheduleItem, Ticket } from ".prisma/client";
 import { getProjectDescendantIds } from "../../project/helper";

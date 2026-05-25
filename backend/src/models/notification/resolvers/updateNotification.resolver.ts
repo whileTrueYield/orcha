@@ -1,48 +1,74 @@
-import { Arg, Resolver, Mutation, Int, Ctx, UseMiddleware } from "type-graphql";
+/**
+ * Mutation resolvers for marking Notifications as read/unread.
+ *
+ * Provides:
+ *  - readNotification(notificationId):   mark a notification as read
+ *  - unreadNotification(notificationId): mark a notification as unread
+ *
+ * Both require hasRole auth scope and verify org + role ownership.
+ */
 
-import { Notification } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Notification)
-export class UpdateNotificationResolver {
-  @Mutation(() => Notification)
-  @UseMiddleware(hasRole())
-  async readNotification(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("notificationId", () => Int) notificationId: number
-  ): Promise<Notification> {
-    const notification = await ctx.prisma.notification.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: notificationId,
-        roleId: ctx.me.roleId,
-      },
-    });
+// ---------------------------------------------------------------------------
+// readNotification mutation
+// ---------------------------------------------------------------------------
 
-    return ctx.prisma.notification.update({
-      where: { id: notification.id },
-      data: { isRead: true },
-    });
-  }
+builder.mutationField("readNotification", (t) =>
+  t.prismaField({
+    type: "Notification",
+    authScopes: { hasRole: true },
+    args: {
+      notificationId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-  @Mutation(() => Notification)
-  @UseMiddleware(hasRole())
-  async unreadNotification(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("notificationId", () => Int) notificationId: number
-  ): Promise<Notification> {
-    const notification = await ctx.prisma.notification.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: notificationId,
-        roleId: ctx.me.roleId,
-      },
-    });
+      const notification = await ctx.prisma.notification.findFirstOrThrow({
+        where: {
+          organizationId: me.organizationId,
+          id: args.notificationId,
+          roleId: me.roleId,
+        },
+      });
 
-    return ctx.prisma.notification.update({
-      where: { id: notification.id },
-      data: { isRead: false },
-    });
-  }
-}
+      return ctx.prisma.notification.update({
+        ...query,
+        where: { id: notification.id },
+        data: { isRead: true },
+      });
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// unreadNotification mutation
+// ---------------------------------------------------------------------------
+
+builder.mutationField("unreadNotification", (t) =>
+  t.prismaField({
+    type: "Notification",
+    authScopes: { hasRole: true },
+    args: {
+      notificationId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      const notification = await ctx.prisma.notification.findFirstOrThrow({
+        where: {
+          organizationId: me.organizationId,
+          id: args.notificationId,
+          roleId: me.roleId,
+        },
+      });
+
+      return ctx.prisma.notification.update({
+        ...query,
+        where: { id: notification.id },
+        data: { isRead: false },
+      });
+    },
+  }),
+);

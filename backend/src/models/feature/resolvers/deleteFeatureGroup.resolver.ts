@@ -1,28 +1,31 @@
-import { Arg, Resolver, Mutation, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Mutation: deleteFeatureGroup — delete a feature group and return its product.
+ */
 
-import { FeatureGroup, RoleType, Product } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(FeatureGroup)
-export class DeleteFeatureGroupResolver {
-  @Mutation((_returns) => Product)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async deleteFeatureGroup(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("featureGroupId", () => Int!) featureGroupId: number
-  ): Promise<Product> {
-    const featureGroup = await ctx.prisma.featureGroup.findFirstOrThrow({
-      where: {
-        id: featureGroupId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
+builder.mutationField("deleteFeatureGroup", (t) =>
+  t.prismaField({
+    type: "Product",
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      featureGroupId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const featureGroup = await ctx.prisma.featureGroup.findFirstOrThrow({
+        where: {
+          id: args.featureGroupId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
 
-    await ctx.prisma.featureGroup.delete({ where: { id: featureGroupId } });
+      await ctx.prisma.featureGroup.delete({ where: { id: args.featureGroupId } });
 
-    return ctx.prisma.product.findUniqueOrThrow({
-      where: { id: featureGroup.productId },
-    });
-  }
-}
+      return ctx.prisma.product.findUniqueOrThrow({
+        ...query,
+        where: { id: featureGroup.productId },
+      });
+    },
+  }),
+);

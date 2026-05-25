@@ -1,30 +1,31 @@
-import { Arg, Resolver, Mutation, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Mutation: deleteReport — soft-delete by setting stage to DELETED.
+ */
 
-import { Report, RoleType } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
 import { ModelStage } from "@prisma/client";
-import { FeatureFlags, hasFeature } from "../../../middlewares/featureFlag";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Report)
-export class DeleteReportResolver {
-  @Mutation((_returns) => Report)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  @UseMiddleware(hasFeature(FeatureFlags.REPORT))
-  async deleteReport(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("reportId", () => Int!) reportId: number
-  ): Promise<Report> {
-    const report = await ctx.prisma.report.findFirstOrThrow({
-      where: {
-        id: reportId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
+builder.mutationField("deleteReport", (t) =>
+  t.prismaField({
+    type: "Report",
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      reportId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const report = await ctx.prisma.report.findFirstOrThrow({
+        where: {
+          id: args.reportId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
 
-    return ctx.prisma.report.update({
-      where: { id: report.id },
-      data: { stage: ModelStage.DELETED },
-    });
-  }
-}
+      return ctx.prisma.report.update({
+        ...query,
+        where: { id: report.id },
+        data: { stage: ModelStage.DELETED },
+      });
+    },
+  }),
+);

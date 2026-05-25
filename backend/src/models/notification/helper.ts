@@ -1,9 +1,16 @@
+/**
+ * Pagination helper for Notifications.
+ *
+ * Builds a Prisma query with optional filters (role, search, unread)
+ * and returns a paginated result compatible with the PaginatedNotifications type.
+ *
+ * Exports: getPaginatedNotifications, NotificationAncestry.
+ */
+
 import prisma from "../../prisma";
 import { clamp, trim } from "lodash";
-import { Notification } from "@generated/type-graphql";
+import { Notification, Prisma } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedNotifications } from "./entity";
-import { Prisma } from ".prisma/client";
 
 interface GetPageArgs extends GetPageArgsFor<Notification> {
   roleId?: number;
@@ -11,13 +18,10 @@ interface GetPageArgs extends GetPageArgsFor<Notification> {
   unread?: boolean;
 }
 
-export async function getPaginatedNotifications(
-  args: GetPageArgs,
-): Promise<PaginatedNotifications> {
+export async function getPaginatedNotifications(args: GetPageArgs) {
   const { first, last, organizationId, roleId, search, unread } = args;
 
-  // default offset to be at the start (or the end
-  // depending on direction)
+  // default offset to be at the start (or the end depending on direction)
   const offset = args.offset ? args.offset : 0;
 
   // by default sort on createdAt
@@ -37,7 +41,7 @@ export async function getPaginatedNotifications(
     organizationId,
   };
 
-  // We allow search on notifications by body
+  // We allow search on notifications by title
   const query = trim(search);
   if (query) {
     notificationQuery.title = { contains: query, mode: "insensitive" };

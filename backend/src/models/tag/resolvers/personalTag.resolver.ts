@@ -1,59 +1,31 @@
-import {
-  Arg,
-  Query,
-  Resolver,
-  Int,
-  Ctx,
-  UseMiddleware,
-  FieldResolver,
-  Root,
-} from "type-graphql";
-import { Organization, PersonalTag, Role } from "@generated/type-graphql";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
+/**
+ * Query resolver for fetching a single PersonalTag by ID.
+ *
+ * Registers: Query.personalTag(id: Int!): PersonalTag!
+ *
+ * Requires a linked role. Scoped to the caller's organisation
+ * and owned by the caller's role.
+ */
 
-@Resolver(PersonalTag)
-export class PersonalTagResolver {
-  @Query(() => PersonalTag)
-  @UseMiddleware(hasRole())
-  async personalTag(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<PersonalTag> {
-    return await ctx.prisma.personalTag.findFirstOrThrow({
-      where: {
-        id,
-        organizationId: ctx.me.organizationId,
-        ownerId: ctx.me.roleId,
-      },
-    });
-  }
+import builder from "../../../schema/builder";
+import { PersonalTagRef } from "../entity";
+import { AuthRoleContext } from "../../../types";
 
-  @FieldResolver((_returns) => Organization)
-  async organization(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() tag: PersonalTag
-  ): Promise<Organization> {
-    if (tag.organization) {
-      return tag.organization;
-    }
-
-    return ctx.prisma.organization.findUniqueOrThrow({
-      where: { id: tag.organizationId },
-    });
-  }
-
-  @FieldResolver((_returns) => Role)
-  async owner(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() tag: PersonalTag
-  ): Promise<Role> {
-    if (tag.owner) {
-      return tag.owner;
-    }
-
-    return ctx.prisma.role.findUniqueOrThrow({
-      where: { id: tag.ownerId },
-    });
-  }
-}
+builder.queryField("personalTag", (t) =>
+  t.prismaField({
+    type: PersonalTagRef,
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) =>
+      ctx.prisma.personalTag.findFirstOrThrow({
+        ...query,
+        where: {
+          id: args.id,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          ownerId: (ctx.me as AuthRoleContext).roleId,
+        },
+      }),
+  }),
+);

@@ -1,58 +1,60 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-} from "type-graphql";
+/**
+ * Mutation resolver for creating a new Team.
+ *
+ * Registers: Mutation.createTeam(input: CreateTeamInput!): Team!
+ *
+ * Requires ADMIN or OWNER role. Validates that no team with the
+ * same code (case-insensitive) already exists in the organisation.
+ */
 
-import { Length, MaxLength } from "class-validator";
-import { Team, RoleType } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { UserInputError } from "apollo-server-express";
+import { GraphQLError } from "graphql";
+import builder from "../../../schema/builder";
+import { TeamRef } from "../entity";
 import { findTeamByCode } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class CreateTeamInput {
-  @Field()
-  @Length(1, 128)
-  name: string;
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-  @Field()
-  @Length(1, 10)
-  code: string;
+const CreateTeamInput = builder.inputType("CreateTeamInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+    code: t.string({ required: true }),
+    description: t.string({ required: false }),
+  }),
+});
 
-  @Field({ nullable: true })
-  @MaxLength(2048)
-  description: string;
-}
+// ---------------------------------------------------------------------------
+// Mutation
+// ---------------------------------------------------------------------------
 
-@Resolver(Team)
-export class CreateTeamResolver {
-  @Mutation(() => Team)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async createTeam(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input")
-    input: CreateTeamInput
-  ): Promise<Team> {
-    const teamUsingSameCode = await findTeamByCode(
-      input.code,
-      ctx.me.organizationId
-    );
+builder.mutationField("createTeam", (t) =>
+  t.prismaField({
+    type: TeamRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      input: t.arg({ type: CreateTeamInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const existing = await findTeamByCode(
+        args.input.code,
+        (ctx.me as AuthRoleContext).organizationId,
+      );
 
-    if (teamUsingSameCode) {
-      throw new UserInputError("A team with the same code already exists");
-    }
+      if (existing) {
+        throw new GraphQLError("A team with the same code already exists");
+      }
 
-    return ctx.prisma.team.create({
-      data: {
-        ...input,
-        organizationId: ctx.me.organizationId,
-      },
-    });
-  }
-}
+      return ctx.prisma.team.create({
+        ...query,
+        data: {
+          name: args.input.name,
+          code: args.input.code,
+          description: args.input.description ?? undefined,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
+    },
+  }),
+);

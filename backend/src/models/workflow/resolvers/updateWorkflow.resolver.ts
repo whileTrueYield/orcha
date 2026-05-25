@@ -1,117 +1,111 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  Int,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
+/**
+ * Mutations: updateWorkflowStage, updateWorkflow.
+ */
 
-import { Length, MaxLength } from "class-validator";
-import { Workflow, RoleType, ModelStage } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
+import builder from "../../../schema/builder";
+import { ModelStageEnum } from "../../../schema/enums";
 import { findWorkflowByName } from "../helper";
+import { GraphQLError } from "graphql";
 import { ModelStage as DbModelStage, Prisma } from "@prisma/client";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class UpdateWorkflowInput {
-  @Field()
-  @Length(1, 128)
-  name: string;
+const UpdateWorkflowInput = builder.inputType("UpdateWorkflowInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+    description: t.string({ required: false }),
+    color: t.string({ required: true }),
+    isDefaultWorkflow: t.boolean({ required: false }),
+  }),
+});
 
-  @Field({ nullable: true })
-  @MaxLength(2048)
-  description?: string;
+// ---------------------------------------------------------------------------
+// Mutation: updateWorkflowStage
+// ---------------------------------------------------------------------------
 
-  @Field()
-  @Length(1, 128)
-  color: string;
-
-  @Field(() => Boolean, { nullable: true })
-  isDefaultWorkflow?: boolean;
-}
-
-@Resolver(Workflow)
-export class UpdateWorkflowResolver {
-  @Mutation(() => Workflow)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updateWorkflowStage(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("workflowId", () => Int) workflowId: number,
-    @Arg("stage", () => ModelStage) stage: ModelStage
-  ): Promise<Workflow> {
-    const workflow = await ctx.prisma.workflow.findFirstOrThrow({
-      where: {
-        id: workflowId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
-
-    const allowedTransitions: { [key: string]: DbModelStage[] } = {
-      [ModelStage.DRAFT]: [DbModelStage.DELETED, DbModelStage.PUBLISHED],
-      [ModelStage.ARCHIVED]: [DbModelStage.DELETED, DbModelStage.PUBLISHED],
-      [ModelStage.PUBLISHED]: [DbModelStage.DELETED, DbModelStage.ARCHIVED],
-    };
-
-    if (
-      stage in allowedTransitions &&
-      allowedTransitions[stage].indexOf(workflow.stage)
-    ) {
-      return ctx.prisma.workflow.update({
-        where: { id: workflow.id },
-        data: { stage },
+builder.mutationField("updateWorkflowStage", (t) =>
+  t.prismaField({
+    type: "Workflow",
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      workflowId: t.arg.int({ required: true }),
+      stage: t.arg({ type: ModelStageEnum, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const workflow = await ctx.prisma.workflow.findFirstOrThrow({
+        where: {
+          id: args.workflowId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
       });
-    }
 
-    throw new UserInputError(`Cannot go from ${workflow.stage} to ${stage}`);
-  }
+      const allowedTransitions: { [key: string]: DbModelStage[] } = {
+        [DbModelStage.DRAFT]: [DbModelStage.DELETED, DbModelStage.PUBLISHED],
+        [DbModelStage.ARCHIVED]: [DbModelStage.DELETED, DbModelStage.PUBLISHED],
+        [DbModelStage.PUBLISHED]: [DbModelStage.DELETED, DbModelStage.ARCHIVED],
+      };
 
-  @Mutation(() => Workflow)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updateWorkflow(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("workflowId", () => Int) workflowId: number,
-    @Arg("input", () => UpdateWorkflowInput) input: UpdateWorkflowInput
-  ): Promise<Workflow> {
-    const updateData: Prisma.WorkflowUpdateInput = {
-      name: input.name,
-      description: input.description,
-      isDefaultWorkflow: input.isDefaultWorkflow,
-    };
-
-    const workflow = await ctx.prisma.workflow.findFirstOrThrow({
-      where: {
-        id: workflowId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
-
-    // When the name is changed we don't want to take an
-    // existing one
-    if (input.name && input.name !== workflow.name) {
-      const existingWorkflow = await findWorkflowByName(
-        input.name,
-        ctx.me.organizationId
-      );
-
-      if (existingWorkflow && existingWorkflow.id !== workflow.id) {
-        throw new UserInputError(
-          "A workflow with the same name already exists"
-        );
+      if (
+        args.stage in allowedTransitions &&
+        allowedTransitions[args.stage].indexOf(workflow.stage)
+      ) {
+        return ctx.prisma.workflow.update({
+          ...query,
+          where: { id: workflow.id },
+          data: { stage: args.stage },
+        });
       }
-    }
 
-    if (input.color) {
-      updateData.color = input.color;
-    }
+      throw new GraphQLError(`Cannot go from ${workflow.stage} to ${args.stage}`, { extensions: { code: "BAD_USER_INPUT" } });
+    },
+  }),
+);
 
-    return ctx.prisma.workflow.update({
-      where: { id: workflow.id },
-      data: updateData,
-    });
-  }
-}
+// ---------------------------------------------------------------------------
+// Mutation: updateWorkflow
+// ---------------------------------------------------------------------------
+
+builder.mutationField("updateWorkflow", (t) =>
+  t.prismaField({
+    type: "Workflow",
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      workflowId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdateWorkflowInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const updateData: Prisma.WorkflowUpdateInput = {
+        name: args.input.name,
+        description: args.input.description,
+        isDefaultWorkflow: args.input.isDefaultWorkflow ?? undefined,
+      };
+
+      const workflow = await ctx.prisma.workflow.findFirstOrThrow({
+        where: {
+          id: args.workflowId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
+
+      if (args.input.name && args.input.name !== workflow.name) {
+        const existingWorkflow = await findWorkflowByName(
+          args.input.name,
+          (ctx.me as AuthRoleContext).organizationId,
+        );
+
+        if (existingWorkflow && existingWorkflow.id !== workflow.id) {
+          throw new GraphQLError("A workflow with the same name already exists", { extensions: { code: "BAD_USER_INPUT" } });
+        }
+      }
+
+      if (args.input.color) {
+        updateData.color = args.input.color;
+      }
+
+      return ctx.prisma.workflow.update({
+        ...query,
+        where: { id: workflow.id },
+        data: updateData,
+      });
+    },
+  }),
+);

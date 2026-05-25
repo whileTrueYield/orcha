@@ -1,8 +1,7 @@
 import prisma from "../../prisma";
 import { clamp, trim, lowerCase } from "lodash";
-import { Role } from "@generated/type-graphql";
+import { Role } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedRoles } from "./entity";
 import { Prisma } from ".prisma/client";
 
 interface GetPageArgs extends GetPageArgsFor<Role> {
@@ -13,7 +12,7 @@ interface GetPageArgs extends GetPageArgsFor<Role> {
 
 export async function getPaginatedRoles(
   args: GetPageArgs
-): Promise<PaginatedRoles> {
+) {
   const { first, last, userId, teamId, search, organizationId } = args;
 
   // default offset to be at the start (or the end

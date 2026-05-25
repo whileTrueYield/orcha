@@ -1,9 +1,19 @@
+/**
+ * Pagination helper for Todos.
+ *
+ * Builds a Prisma query with optional filters (owner, search, dynamic)
+ * and returns a paginated result compatible with the PaginatedTodos type.
+ *
+ * The `dynamic` filter hides checked todos older than 5 minutes, giving
+ * the user a brief window to undo a check before it disappears from view.
+ *
+ * Exports: getPaginatedTodos.
+ */
+
 import prisma from "../../prisma";
 import { clamp, trim } from "lodash";
-import { Todo } from "@generated/type-graphql";
+import { Todo, Prisma } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedTodos } from "./entity";
-import { Prisma } from ".prisma/client";
 import { subMinutes } from "date-fns";
 
 interface GetPageArgs extends GetPageArgsFor<Todo> {
@@ -12,13 +22,10 @@ interface GetPageArgs extends GetPageArgsFor<Todo> {
   dynamic?: boolean;
 }
 
-export async function getPaginatedTodos(
-  args: GetPageArgs
-): Promise<PaginatedTodos> {
+export async function getPaginatedTodos(args: GetPageArgs) {
   const { first, last, organizationId, ownerId, search, dynamic } = args;
 
-  // default offset to be at the start (or the end
-  // depending on direction)
+  // default offset to be at the start (or the end depending on direction)
   const offset = args.offset ? args.offset : 0;
 
   // by default sort on createdAt
@@ -39,7 +46,7 @@ export async function getPaginatedTodos(
   };
 
   // we don't include any ticket that has been checked more
-  // than 2 minutes ago
+  // than 5 minutes ago
   if (dynamic) {
     todoQuery.OR = [
       { checkedAt: { gte: subMinutes(new Date(), 5) } },

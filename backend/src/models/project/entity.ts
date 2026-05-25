@@ -1,267 +1,389 @@
-import { Field, Float, Int, ObjectType } from "type-graphql";
-import { PaginatedNodes } from "../../utils/pagination";
-import {
-  Project,
-  ModelStage as ModelStageEnum,
-  TicketStatus as TicketStatusEnum,
-} from "@generated/type-graphql";
-import { TicketStatus, ModelStage } from "@prisma/client";
-import { Role, Feature, FeatureGroup, Workflow } from "../entities";
-
-@ObjectType()
-export class PaginatedProjects extends PaginatedNodes {
-  @Field(() => [Project])
-  nodes: Project[];
-}
-
-@ObjectType()
-export class ProjectAnalytics {
-  @Field(() => Int)
-  projectId: number;
-
-  @Field(() => Int)
-  organizationId: number;
-
-  @Field(() => Int)
-  scheduledTicketCount: number;
-
-  @Field(() => Int)
-  draftTicketCount: number;
-
-  @Field(() => Int)
-  inProgressTicketCount: number;
-
-  @Field(() => Int)
-  doneTicketCount: number;
-
-  @Field(() => Int)
-  unassignedTicketCount: number;
-
-  @Field(() => Int)
-  estimatedTicketCount: number;
-
-  @Field(() => Int)
-  unestimatedTicketCount: number;
-}
-
 /**
- * This is the model of a differential synch shadow stored
+ * Project Pothos type definitions.
+ *
+ * Exports:
+ *  - ProjectRef: prismaObject for Project (omits indexableContent, checklist, byPaths, secondaryByPaths)
+ *  - MiniProjectRef / ProjectAnalyticsRef / ProjectTicketRef / etc.
+ *  - PaginatedProjects: paginated wrapper
+ *  - ProjectTicketQueryCategoryEnum: enum for ticket category queries
+ *
+ * Note: Project.byPaths and Project.secondaryByPaths are NOT exposed (omitted fields).
+ * Project.indexableContent and Project.checklist are also NOT exposed.
  */
-@ObjectType()
-export class DS_Shadow {
-  @Field(() => String)
-  document: string;
 
-  @Field(() => Int)
-  client: number;
+import { TicketStatus, ModelStage } from "@prisma/client";
+import builder from "../../schema/builder";
+import {
+  ModelStageEnum,
+  TicketStatusEnum,
+} from "../../schema/enums";
+import { createPaginatedType } from "../../schema/pagination";
 
-  @Field(() => Int)
-  server: number;
-}
+// ---------------------------------------------------------------------------
+// Project prismaObject — omits indexableContent, checklist
+// ---------------------------------------------------------------------------
 
-// This is a restricted role set to allow for fast
-// queriying in the frontend using a fuzzy library
-@ObjectType()
-export class MiniProject {
-  @Field(() => Int)
+export const ProjectRef = builder.prismaObject("Project", {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    name: t.exposeString("name"),
+    duration: t.exposeInt("duration"),
+    stage: t.expose("stage", { type: ModelStageEnum }),
+    ancestorIsArchived: t.exposeBoolean("ancestorIsArchived"),
+    createdAt: t.expose("createdAt", { type: "DateTime" }),
+    updatedAt: t.expose("updatedAt", { type: "DateTime" }),
+    organizationId: t.exposeInt("organizationId"),
+    ownerId: t.exposeInt("ownerId", { nullable: true }),
+    authorId: t.exposeInt("authorId", { nullable: true }),
+    parentId: t.exposeInt("parentId", { nullable: true }),
+    organization: t.relation("organization"),
+    owner: t.relation("owner", { nullable: true }),
+    author: t.relation("author", { nullable: true }),
+    parent: t.relation("parent", { nullable: true }),
+    children: t.relation("children"),
+    // tickets is a simple relation — the old schema also returned Ticket[] (not paginated)
+    tickets: t.relation("tickets"),
+    pinnedByRoles: t.relation("pinnedByRoles"),
+    scheduleConfigs: t.relation("scheduleConfigs"),
+    // projectData and projectText are internal storage models — not exposed in the GraphQL schema
+    // DO NOT expose: indexableContent, checklist, byPaths, secondaryByPaths
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// MiniProject — lightweight shape for project trees
+// ---------------------------------------------------------------------------
+
+interface MiniProjectShape {
   id: number;
-
-  @Field()
   name: string;
-
-  @Field(() => Int, { nullable: true })
   parentId: number | null;
-
-  @Field(() => ModelStageEnum)
   stage: ModelStage;
-
-  @Field(() => Boolean)
   ancestorIsArchived: boolean;
 }
 
-@ObjectType()
-export class ProjectTicket {
-  @Field()
+export const MiniProjectRef = builder.objectRef<MiniProjectShape>("MiniProject");
+builder.objectType(MiniProjectRef, {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    name: t.exposeString("name"),
+    parentId: t.int({ nullable: true, resolve: (p) => p.parentId }),
+    stage: t.field({ type: ModelStageEnum, resolve: (p) => p.stage }),
+    ancestorIsArchived: t.exposeBoolean("ancestorIsArchived"),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// ProjectAnalytics — ticket count breakdown per project
+// ---------------------------------------------------------------------------
+
+interface ProjectAnalyticsShape {
+  projectId: number;
+  organizationId: number;
+  scheduledTicketCount: number;
+  draftTicketCount: number;
+  inProgressTicketCount: number;
+  doneTicketCount: number;
+  unassignedTicketCount: number;
+  estimatedTicketCount: number;
+  unestimatedTicketCount: number;
+}
+
+export const ProjectAnalyticsRef = builder.objectRef<ProjectAnalyticsShape>("ProjectAnalytics");
+builder.objectType(ProjectAnalyticsRef, {
+  fields: (t) => ({
+    projectId: t.exposeInt("projectId"),
+    organizationId: t.exposeInt("organizationId"),
+    scheduledTicketCount: t.exposeInt("scheduledTicketCount"),
+    draftTicketCount: t.exposeInt("draftTicketCount"),
+    inProgressTicketCount: t.exposeInt("inProgressTicketCount"),
+    doneTicketCount: t.exposeInt("doneTicketCount"),
+    unassignedTicketCount: t.exposeInt("unassignedTicketCount"),
+    estimatedTicketCount: t.exposeInt("estimatedTicketCount"),
+    unestimatedTicketCount: t.exposeInt("unestimatedTicketCount"),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// DS_Shadow — differential sync shadow document
+// ---------------------------------------------------------------------------
+
+interface DS_ShadowShape {
+  document: string;
+  client: number;
+  server: number;
+}
+
+export const DS_ShadowRef = builder.objectRef<DS_ShadowShape>("DS_Shadow");
+builder.objectType(DS_ShadowRef, {
+  fields: (t) => ({
+    document: t.exposeString("document"),
+    client: t.exposeInt("client"),
+    server: t.exposeInt("server"),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// ProjectTicket — ticket summary within a project page
+// ---------------------------------------------------------------------------
+
+interface ProjectTicketShape {
   id: number;
-
-  @Field()
   title: string;
-
-  @Field(() => Date)
   createdAt: Date;
-
-  @Field(() => TicketStatusEnum)
   status: TicketStatus;
-
-  @Field(() => ModelStageEnum)
   stage: ModelStage;
-
-  @Field({ nullable: true })
   localId?: number;
-
-  @Field({ nullable: true })
   productCode?: string;
 }
 
-@ObjectType()
-export class ProjectGoalStats {
-  @Field(() => Int)
+export const ProjectTicketRef = builder.objectRef<ProjectTicketShape>("ProjectTicket");
+builder.objectType(ProjectTicketRef, {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    title: t.exposeString("title"),
+    createdAt: t.field({ type: "DateTime", resolve: (p) => p.createdAt }),
+    status: t.field({ type: TicketStatusEnum, resolve: (p) => p.status }),
+    stage: t.field({ type: ModelStageEnum, resolve: (p) => p.stage }),
+    localId: t.int({ nullable: true, resolve: (p) => p.localId ?? null }),
+    productCode: t.string({ nullable: true, resolve: (p) => p.productCode ?? null }),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// ProjectGoalStats — ticket status counts per project
+// ---------------------------------------------------------------------------
+
+interface ProjectGoalStatsShape {
   id: number;
-
-  @Field(() => Int, { nullable: true })
   parentId: number | null;
-
-  @Field(() => String)
   name: string;
-
-  @Field(() => Int)
   total: number;
-
-  @Field(() => Int)
   done: number;
-
-  @Field(() => Int)
   scheduled: number;
-
-  @Field(() => Int)
   unScheduled: number;
-
-  @Field(() => Int)
   cancelled: number;
 }
 
-@ObjectType()
-export class TicketExport {
-  @Field(() => Int)
+export const ProjectGoalStatsRef = builder.objectRef<ProjectGoalStatsShape>("ProjectGoalStats");
+builder.objectType(ProjectGoalStatsRef, {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    parentId: t.int({ nullable: true, resolve: (p) => p.parentId }),
+    name: t.exposeString("name"),
+    total: t.exposeInt("total"),
+    done: t.exposeInt("done"),
+    scheduled: t.exposeInt("scheduled"),
+    unScheduled: t.exposeInt("unScheduled"),
+    cancelled: t.exposeInt("cancelled"),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// TicketExport — CSV export shape
+// ---------------------------------------------------------------------------
+
+interface TicketExportShape {
   id: number;
-
-  @Field()
   title: string;
-
-  @Field()
   description: string;
-
-  @Field()
   created_at: string;
-
-  @Field(() => TicketStatusEnum)
   status: TicketStatus;
-
-  @Field(() => ModelStageEnum)
   stage: ModelStage;
-
-  @Field()
   eta: string;
-
-  @Field()
   local_id: string;
-
-  @Field()
   product: string;
-
-  @Field()
   workflow: string;
-
-  @Field()
   owner_name: string;
-
-  @Field()
   owner_email: string;
-
-  @Field()
   project: string;
-
-  @Field()
   scheduled_at: string;
-
-  @Field()
   closed_at: string;
-
-  @Field()
   author_email: string;
-
-  @Field()
   author_name: string;
-
-  @Field()
   ancestor_tickets: string;
-
-  @Field()
   successor_tickets: string;
-
-  @Field()
   tags: string;
 }
 
-// Imported from page
-@ObjectType()
-export class RoleWorkload {
-  @Field(() => Role)
-  role: Role;
+export const TicketExportRef = builder.objectRef<TicketExportShape>("TicketExport");
+builder.objectType(TicketExportRef, {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    title: t.exposeString("title"),
+    description: t.exposeString("description"),
+    created_at: t.exposeString("created_at"),
+    status: t.field({ type: TicketStatusEnum, resolve: (p) => p.status }),
+    stage: t.field({ type: ModelStageEnum, resolve: (p) => p.stage }),
+    eta: t.exposeString("eta"),
+    local_id: t.exposeString("local_id"),
+    product: t.exposeString("product"),
+    workflow: t.exposeString("workflow"),
+    owner_name: t.exposeString("owner_name"),
+    owner_email: t.exposeString("owner_email"),
+    project: t.exposeString("project"),
+    scheduled_at: t.exposeString("scheduled_at"),
+    closed_at: t.exposeString("closed_at"),
+    author_email: t.exposeString("author_email"),
+    author_name: t.exposeString("author_name"),
+    ancestor_tickets: t.exposeString("ancestor_tickets"),
+    successor_tickets: t.exposeString("successor_tickets"),
+    tags: t.exposeString("tags"),
+  }),
+});
 
-  @Field(() => Float)
+// ---------------------------------------------------------------------------
+// RoleWorkload — hours attributed to a role
+// ---------------------------------------------------------------------------
+
+interface RoleWorkloadShape {
+  role: any;
   hours: number;
 }
 
-@ObjectType()
-export class FeatureDistribution {
-  @Field(() => Feature)
-  feature: Feature;
+export const RoleWorkloadRef = builder.objectRef<RoleWorkloadShape>("RoleWorkload");
+builder.objectType(RoleWorkloadRef, {
+  fields: (t) => ({
+    role: t.field({ type: "Role" as any, resolve: (p) => p.role }),
+    hours: t.exposeFloat("hours"),
+  }),
+});
 
-  @Field(() => FeatureGroup)
-  featureGroup: FeatureGroup;
+// ---------------------------------------------------------------------------
+// FeatureDistribution — hours per feature
+// ---------------------------------------------------------------------------
 
-  @Field(() => Float)
+interface FeatureDistributionShape {
+  feature: any;
+  featureGroup: any;
   hours: number;
 }
 
-@ObjectType()
-export class WorkflowDistribution {
-  @Field(() => Workflow)
-  workflow: Workflow;
+export const FeatureDistributionRef = builder.objectRef<FeatureDistributionShape>(
+  "FeatureDistribution",
+);
+builder.objectType(FeatureDistributionRef, {
+  fields: (t) => ({
+    feature: t.field({ type: "Feature" as any, resolve: (p) => p.feature }),
+    featureGroup: t.field({
+      type: "FeatureGroup" as any,
+      resolve: (p) => p.featureGroup,
+    }),
+    hours: t.exposeFloat("hours"),
+  }),
+});
 
-  @Field(() => Float)
+// ---------------------------------------------------------------------------
+// WorkflowDistribution — hours per workflow
+// ---------------------------------------------------------------------------
+
+interface WorkflowDistributionShape {
+  workflow: any;
   hours: number;
 }
 
-@ObjectType()
-export class ProjectGoalProgress {
-  @Field(() => Int)
+export const WorkflowDistributionRef = builder.objectRef<WorkflowDistributionShape>(
+  "WorkflowDistribution",
+);
+builder.objectType(WorkflowDistributionRef, {
+  fields: (t) => ({
+    workflow: t.field({
+      type: "Workflow" as any,
+      resolve: (p) => p.workflow,
+    }),
+    hours: t.exposeFloat("hours"),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// ProjectGoalProgress — progress tracking per project
+// ---------------------------------------------------------------------------
+
+interface ProjectGoalProgressShape {
   id: number;
-
-  @Field(() => Int, { nullable: true })
   parentId: number | null;
-
-  @Field(() => String)
   name: string;
-
-  @Field(() => Float)
   progress: number;
-
-  @Field(() => Float)
   accomplished: number;
-
-  @Field(() => Float)
   total: number;
-
-  @Field(() => Date)
   eta: Date;
 }
 
-@ObjectType()
-export class OpenTicketsByWorkflow {
-  @Field(() => Workflow)
-  workflow: Workflow;
+export const ProjectGoalProgressRef = builder.objectRef<ProjectGoalProgressShape>(
+  "ProjectGoalProgress",
+);
+builder.objectType(ProjectGoalProgressRef, {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    parentId: t.int({ nullable: true, resolve: (p) => p.parentId }),
+    name: t.exposeString("name"),
+    progress: t.exposeFloat("progress"),
+    accomplished: t.exposeFloat("accomplished"),
+    total: t.exposeFloat("total"),
+    eta: t.field({ type: "DateTime", resolve: (p) => p.eta }),
+  }),
+});
 
-  @Field(() => [TicketOpenByWorkflowDatum])
-  values: TicketOpenByWorkflowDatum[];
-}
+// ---------------------------------------------------------------------------
+// OpenTicketsByWorkflow / TicketOpenByWorkflowDatum
+// ---------------------------------------------------------------------------
 
-@ObjectType()
-export class TicketOpenByWorkflowDatum {
-  @Field(() => Date)
+interface TicketOpenByWorkflowDatumShape {
   date: Date;
-
-  @Field(() => Int)
   value: number;
 }
+
+export const TicketOpenByWorkflowDatumRef =
+  builder.objectRef<TicketOpenByWorkflowDatumShape>("TicketOpenByWorkflowDatum");
+builder.objectType(TicketOpenByWorkflowDatumRef, {
+  fields: (t) => ({
+    date: t.field({ type: "DateTime", resolve: (p) => p.date }),
+    value: t.exposeInt("value"),
+  }),
+});
+
+interface OpenTicketsByWorkflowShape {
+  workflow: any;
+  values: TicketOpenByWorkflowDatumShape[];
+}
+
+export const OpenTicketsByWorkflowRef = builder.objectRef<OpenTicketsByWorkflowShape>(
+  "OpenTicketsByWorkflow",
+);
+builder.objectType(OpenTicketsByWorkflowRef, {
+  fields: (t) => ({
+    workflow: t.field({
+      type: "Workflow" as any,
+      resolve: (p) => p.workflow,
+    }),
+    values: t.field({
+      type: [TicketOpenByWorkflowDatumRef],
+      resolve: (p) => p.values,
+    }),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// ProjectTicketQueryCategory enum — for projectTicketsForCategory query
+// ---------------------------------------------------------------------------
+
+export enum ProjectTicketQueryCategory {
+  Scheduled = "SCHEDULED",
+  Draft = "DRAFT",
+  InProgress = "IN_PROGRESS",
+  Done = "Done",
+  Estimated = "ESTIMATED",
+  Unestimated = "UNESTIMATED",
+  Unassigned = "UNASSIGNED",
+}
+
+export const ProjectTicketQueryCategoryEnum = builder.enumType(
+  ProjectTicketQueryCategory,
+  { name: "ProjectTicketQueryCategory" },
+);
+
+// ---------------------------------------------------------------------------
+// Paginated types
+// ---------------------------------------------------------------------------
+
+export const PaginatedProjects = createPaginatedType("Projects", ProjectRef);

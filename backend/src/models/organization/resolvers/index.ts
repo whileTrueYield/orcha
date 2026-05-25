@@ -1,13 +1,10 @@
-import { CreateOrganizationResolver } from "./createOrganization.resolver";
-import { UpdateOrganizationResolver } from "./updateOrganization.resolver";
-import { OrganizationResolver } from "./organization.resolver";
-import { OrganizationsResolver } from "./organizations.resolver";
-import { UpdateOrganizationPreferencesResolver } from "./updateOrganizationPreferences.resolver";
+/**
+ * Side-effect barrel — importing this module registers all Organisation
+ * queries and mutations on the Pothos builder.
+ */
 
-export default [
-  CreateOrganizationResolver,
-  UpdateOrganizationResolver,
-  OrganizationResolver,
-  OrganizationsResolver,
-  UpdateOrganizationPreferencesResolver,
-];
+import "./organization.resolver";
+import "./organizations.resolver";
+import "./createOrganization.resolver";
+import "./updateOrganization.resolver";
+import "./updateOrganizationPreferences.resolver";

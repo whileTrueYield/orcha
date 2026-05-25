@@ -1,40 +1,53 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-} from "type-graphql";
+/**
+ * Mutation resolver for updating Organisation preferences.
+ *
+ * Registers: Mutation.updateOrganizationPreferences(input): Organization!
+ *
+ * Requires ADMIN or OWNER role. Serialises the preferences to JSON
+ * and stores them in the `preferences` column.
+ */
 
-import { Organization, RoleType } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { OrganizationPreferences } from "../entity";
+import builder from "../../../schema/builder";
+import { OrganizationRef, OrganizationPreferencesShape } from "../entity";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class UpdateOrganizationPreferencesInput {
-  @Field((_type) => Boolean)
-  showOnboarding: boolean;
-}
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-@Resolver(Organization)
-export class UpdateOrganizationPreferencesResolver {
-  @Mutation(() => Organization)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updateOrganizationPreferences(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input", () => UpdateOrganizationPreferencesInput)
-    input: UpdateOrganizationPreferencesInput
-  ): Promise<Organization> {
-    const preferences: OrganizationPreferences = {
-      showOnboarding: input.showOnboarding,
-    };
+const UpdateOrganizationPreferencesInput = builder.inputType(
+  "UpdateOrganizationPreferencesInput",
+  {
+    fields: (t) => ({
+      showOnboarding: t.boolean({ required: true }),
+    }),
+  },
+);
 
-    return ctx.prisma.organization.update({
-      where: { id: ctx.me.roleId },
-      data: { preferences: JSON.stringify(preferences) },
-    });
-  }
-}
+// ---------------------------------------------------------------------------
+// Mutation
+// ---------------------------------------------------------------------------
+
+builder.mutationField("updateOrganizationPreferences", (t) =>
+  t.prismaField({
+    type: OrganizationRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      input: t.arg({
+        type: UpdateOrganizationPreferencesInput,
+        required: true,
+      }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const preferences: OrganizationPreferencesShape = {
+        showOnboarding: args.input.showOnboarding,
+      };
+
+      return ctx.prisma.organization.update({
+        ...query,
+        where: { id: (ctx.me as AuthRoleContext).roleId },
+        data: { preferences: JSON.stringify(preferences) },
+      });
+    },
+  }),
+);

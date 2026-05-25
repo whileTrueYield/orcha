@@ -1,4 +1,3 @@
-import "reflect-metadata";
 import initialWorkflows from "../models/organization/resolvers/initialWorkflows.json";
 import { flatten, map, random, range, sample, sampleSize, uniq } from "lodash";
 import { Feature, RoleType, Ticket } from ".prisma/client";

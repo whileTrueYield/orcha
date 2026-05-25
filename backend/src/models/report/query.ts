@@ -1,6 +1,6 @@
 import { ReportAggregateField, ReportGroupBy } from "@prisma/client";
 import prisma from "../../prisma";
-import { QueryAggregate } from "./entity";
+import { QueryAggregateShape } from "./entity";
 
 interface ReportQueryArg {
   organizationId: number;
@@ -33,7 +33,7 @@ type SelectTable = "ticket" | "scheduleItem";
 
 export async function processQuery(
   query: ReportQueryArg
-): Promise<QueryAggregate[]> {
+): Promise<QueryAggregateShape[]> {
   let selectBlock: string[];
   let selectTable: SelectTable = "ticket";
   let groupByMainBlock: string[] = [];
@@ -553,7 +553,7 @@ export async function processQuery(
   }
 
   try {
-    const results = await prisma.$queryRawUnsafe<QueryAggregate[]>(
+    const results = await prisma.$queryRawUnsafe<QueryAggregateShape[]>(
       select,
       ...sqlWhere.values
     );

@@ -1,26 +1,36 @@
-import { Query, Resolver, Ctx, UseMiddleware } from "type-graphql";
-import { FeatureFlag } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+/**
+ * FeatureFlag query — returns (or creates) the feature flag for the user's org.
+ *
+ * Exports: none (side-effect: registers `featureFlag` query on the builder).
+ *
+ * Assumes the caller is linked to an organization (hasRole auth scope).
+ */
 
-@Resolver(FeatureFlag)
-export class FeatureFlagResolver {
-  @Query(() => FeatureFlag)
-  @UseMiddleware(hasRole())
-  async featureFlag(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<FeatureFlag> {
-    const featureFlag = await ctx.prisma.featureFlag.findUnique({
-      where: { organizationId: ctx.me.organizationId },
-    });
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-    if (featureFlag) {
-      return featureFlag;
-    }
+builder.queryField("featureFlag", (t) =>
+  t.prismaField({
+    type: "FeatureFlag",
+    authScopes: { hasRole: true },
+    resolve: async (query, _root, _args, ctx) => {
+      // hasRole scope guarantees AuthRoleContext at runtime.
+      const me = ctx.me as AuthRoleContext;
 
-    // create the featureFlag object if none exist yet for that organization
-    return ctx.prisma.featureFlag.create({
-      data: { organizationId: ctx.me.organizationId },
-    });
-  }
-}
+      const featureFlag = await ctx.prisma.featureFlag.findUnique({
+        ...query,
+        where: { organizationId: me.organizationId },
+      });
+
+      if (featureFlag) {
+        return featureFlag;
+      }
+
+      // Lazily create the feature flag record when the org doesn't have one yet.
+      return ctx.prisma.featureFlag.create({
+        ...query,
+        data: { organizationId: me.organizationId },
+      });
+    },
+  }),
+);

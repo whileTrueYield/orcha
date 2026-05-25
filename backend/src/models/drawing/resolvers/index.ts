@@ -1,11 +1,11 @@
-import { CreateDrawingResolver } from "./createDrawing.resolver";
-import { DeleteDrawingResolver } from "./deleteDrawing.resolver";
-import { DrawingResolver } from "./drawing.resolver";
-import { UpdateDrawingResolver } from "./updateDrawing.resolver";
+/**
+ * Side-effect barrel — importing this file registers all drawing resolvers.
+ *
+ * The drawing.resolver module must be imported first because it registers
+ * the Drawing Prisma object type that the other resolvers reference.
+ */
 
-export default [
-  CreateDrawingResolver,
-  DeleteDrawingResolver,
-  DrawingResolver,
-  UpdateDrawingResolver,
-];
+import "./drawing.resolver";
+import "./createDrawing.resolver";
+import "./deleteDrawing.resolver";
+import "./updateDrawing.resolver";

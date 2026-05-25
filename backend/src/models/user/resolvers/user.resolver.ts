@@ -1,86 +1,92 @@
+/**
+ * Query resolver and field extensions for the User model.
+ *
+ * Provides:
+ *  - user(id):      fetch a user by ID (public, no auth required)
+ *  - preferences:   parsed UserPreferences from the JSON column
+ *  - role:          the user's Role within the current organization context
+ *
+ * The `roles` relation is exposed directly on the prismaObject (entity.ts).
+ * The `preferences` and `role` fields are added here because they need
+ * runtime logic (JSON parsing, org-scoped lookup).
+ */
+
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 import {
-  Arg,
-  Query,
-  Resolver,
-  Int,
-  FieldResolver,
-  Root,
-  UseMiddleware,
-  Ctx,
-} from "type-graphql";
-import { User, Role } from "@generated/type-graphql";
-import { PaginatedRoles } from "../../../models/role/entity";
-import { hasRole, isAuthenticated } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { getPaginatedRoles } from "../../role/helper";
-import { DEFAULT_USER_PREFERENCES, UserPreferences } from "../entity";
+  DEFAULT_USER_PREFERENCES,
+  UserPreferences,
+  UserPreferencesRef,
+} from "../entity";
 import { logger } from "../../../logger";
 
-@Resolver(User)
-export class UserResolver {
-  @Query(() => User)
-  async user(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<User> {
-    return ctx.prisma.user.findUniqueOrThrow({
-      where: { id },
-    });
-  }
+// ---------------------------------------------------------------------------
+// user query — fetch a single user by ID (public)
+// ---------------------------------------------------------------------------
 
-  @FieldResolver((_returns) => PaginatedRoles)
-  @UseMiddleware(isAuthenticated)
-  async roles(
-    @Root() user: User,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Role
-  ): Promise<PaginatedRoles> {
-    return getPaginatedRoles({
-      first,
-      last,
-      offset,
-      sort,
-      userId: user.id,
-    });
-  }
+builder.queryField("user", (t) =>
+  t.prismaField({
+    type: "User",
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) =>
+      ctx.prisma.user.findUniqueOrThrow({
+        ...query,
+        where: { id: args.id },
+      }),
+  }),
+);
 
-  @FieldResolver((_returns) => String)
-  @UseMiddleware(isAuthenticated)
-  async password(): Promise<string> {
-    return "";
-  }
+// ---------------------------------------------------------------------------
+// preferences field — parses the JSON preferences column into a typed object
+//
+// Falls back to DEFAULT_USER_PREFERENCES when the column is empty or
+// contains invalid JSON.
+// ---------------------------------------------------------------------------
 
-  // Role of the user within the organization's context
-  @FieldResolver((_returns) => Role)
-  @UseMiddleware(hasRole())
-  async role(
-    @Root() user: User,
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<Role> {
-    return await ctx.prisma.role.findUniqueOrThrow({
-      where: {
-        organizationId_userId: {
-          userId: user.id,
-          organizationId: ctx.me.organizationId,
-        },
-      },
-    });
-  }
-
-  @FieldResolver(() => UserPreferences)
-  async preferences(@Root() user: User): Promise<UserPreferences> {
-    try {
-      if (user.preferences) {
-        return { ...DEFAULT_USER_PREFERENCES, ...JSON.parse(user.preferences) };
+builder.prismaObjectField("User", "preferences", (t) =>
+  t.field({
+    type: UserPreferencesRef,
+    resolve: (user): UserPreferences => {
+      try {
+        if (user.preferences) {
+          return {
+            ...DEFAULT_USER_PREFERENCES,
+            ...JSON.parse(user.preferences),
+          };
+        }
+      } catch {
+        logger.warn(
+          `Could not parse preferences for user ${user.id}: ${user.preferences}`,
+        );
       }
-    } catch {
-      logger.warn(
-        `Could not parse preferences for user ${user.id}: ${user.preferences}`
-      );
-    }
 
-    return DEFAULT_USER_PREFERENCES;
-  }
-}
+      return DEFAULT_USER_PREFERENCES;
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// role field — the user's Role within the caller's organization context
+// ---------------------------------------------------------------------------
+
+builder.prismaObjectField("User", "role", (t) =>
+  t.prismaField({
+    type: "Role",
+    authScopes: { hasRole: true },
+    resolve: (query, user, _args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      return ctx.prisma.role.findUniqueOrThrow({
+        ...query,
+        where: {
+          organizationId_userId: {
+            userId: user.id,
+            organizationId: me.organizationId,
+          },
+        },
+      });
+    },
+  }),
+);

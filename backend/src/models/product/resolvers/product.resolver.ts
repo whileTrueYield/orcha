@@ -1,285 +1,226 @@
-import {
-  Arg,
-  Query,
-  Resolver,
-  Int,
-  FieldResolver,
-  Root,
-  Ctx,
-  UseMiddleware,
-  Mutation,
-} from "type-graphql";
-import {
-  Product,
-  RoleType,
-  Feature,
-  FeatureGroup,
-  FeatureGroupStatus,
-  Ticket,
-  Workflow,
-  Organization,
-  ModelStage,
-} from "@generated/type-graphql";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
-import { map, trim } from "lodash";
+/**
+ * Query and mutation resolvers for a single Product.
+ *
+ * Registers:
+ *  - Query.product(id: Int!): Product!
+ *  - Mutation.addFeatureGroup(productId, name): Product!
+ *  - Mutation.addWorkflows(productId, workflowIds): Product!
+ *  - Mutation.removeWorkflows(productId, workflowIds): Product!
+ *
+ * All require at least a linked role; mutations require ADMIN or OWNER.
+ */
+
+import { GraphQLError } from "graphql";
+import { FeatureGroupStatus } from "@prisma/client";
+import { trim } from "lodash";
+import builder from "../../../schema/builder";
+import { ProductRef } from "../entity";
+import { PaginatedFeatures } from "../../feature/entity";
 import { PaginatedTickets } from "../../ticket/entity";
-import { PaginatedWorkflows } from "../../workflow/entity";
-import { PaginatedFeatureGroups, PaginatedFeatures } from "../../entities";
-import {
-  getPaginatedFeatureGroups,
-  getPaginatedFeatures,
-} from "../../feature/helper";
-import { getPaginatedWorkflows } from "../../workflow/helper";
+import { getPaginatedFeatures } from "../../feature/helper";
 import { getPaginatedTickets } from "../../ticket/helper";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Product)
-export class ProductResolver {
-  @Query(() => Product)
-  @UseMiddleware(hasRole())
-  async product(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<Product> {
-    const product = await ctx.prisma.product.findFirst({
-      where: {
-        id,
-        organizationId: ctx.me.organizationId,
-      },
-      include: {
-        featureGroups: true,
-      },
-    });
+// ---------------------------------------------------------------------------
+// Query
+// ---------------------------------------------------------------------------
 
-    if (!product) {
-      throw new UserInputError(
-        "This product does not exist or has been deleted"
-      );
-    }
-
-    return product;
-  }
-
-  @Mutation((_returns) => Product)
-  @UseMiddleware(hasRole([RoleType.OWNER, RoleType.ADMIN]))
-  async addFeatureGroup(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("productId", () => Int) productId: number,
-    @Arg("name", () => String) name: string
-  ): Promise<Product> {
-    const product = await ctx.prisma.product.findFirst({
-      where: {
-        id: productId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
-
-    if (!product) {
-      throw new UserInputError(
-        "This product does not exist or has been deleted"
-      );
-    }
-
-    const existingFeatureGroup = await ctx.prisma.featureGroup.findFirst({
-      where: {
-        name: {
-          equals: trim(name.toLowerCase()),
-          mode: "insensitive",
+builder.queryField("product", (t) =>
+  t.prismaField({
+    type: ProductRef,
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const product = await ctx.prisma.product.findFirst({
+        ...query,
+        where: {
+          id: args.id,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
         },
-        organizationId: ctx.me.organizationId,
-        productId: productId,
-      },
-    });
+      });
 
-    if (existingFeatureGroup) {
-      throw new UserInputError("This feature already exists");
-    }
+      if (!product) {
+        throw new GraphQLError(
+          "This product does not exist or has been deleted",
+        );
+      }
 
-    await ctx.prisma.featureGroup.create({
-      data: {
-        name: name,
-        organizationId: ctx.me.organizationId,
-        productId: productId,
-        status: FeatureGroupStatus.ACTIVE,
-      },
-    });
+      return product;
+    },
+  }),
+);
 
-    return product;
-  }
+// ---------------------------------------------------------------------------
+// Mutations
+// ---------------------------------------------------------------------------
 
-  @Mutation(() => Product)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async addWorkflows(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("productId", () => Int) productId: number,
-    @Arg("workflowIds", () => [Int]) workflowIds: number[]
-  ): Promise<Product> {
-    // ensure the product belongs to the role's organization
-    const product = await ctx.prisma.product.findFirstOrThrow({
-      where: {
-        id: productId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
-
-    return ctx.prisma.product.update({
-      where: {
-        id: product.id,
-      },
-      data: {
-        workflows: {
-          connect: workflowIds.map((id) => ({ id })),
+builder.mutationField("addFeatureGroup", (t) =>
+  t.prismaField({
+    type: ProductRef,
+    authScopes: { hasRole: ["OWNER", "ADMIN"] },
+    args: {
+      productId: t.arg.int({ required: true }),
+      name: t.arg.string({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const product = await ctx.prisma.product.findFirst({
+        where: {
+          id: args.productId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
         },
-      },
-    });
-  }
+      });
 
-  @Mutation(() => Product)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async removeWorkflows(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("productId", () => Int) productId: number,
-    @Arg("workflowIds", () => [Int]) workflowIds: number[]
-  ): Promise<Product> {
-    const product = await ctx.prisma.product.findFirstOrThrow({
-      where: {
-        id: productId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
+      if (!product) {
+        throw new GraphQLError(
+          "This product does not exist or has been deleted",
+        );
+      }
 
-    return ctx.prisma.product.update({
-      where: { id: product.id },
-      data: {
-        workflows: {
-          disconnect: workflowIds.map((id) => ({ id })),
+      const existing = await ctx.prisma.featureGroup.findFirst({
+        where: {
+          name: {
+            equals: trim(args.name.toLowerCase()),
+            mode: "insensitive",
+          },
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          productId: args.productId,
         },
-      },
-    });
-  }
+      });
 
-  @FieldResolver((_returns) => PaginatedTickets)
-  @UseMiddleware(hasRole())
-  async tickets(
-    @Root() product: Product,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Ticket,
-    @Arg("search", () => String, { nullable: true }) search: string,
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<PaginatedTickets> {
-    return getPaginatedTickets({
-      first,
-      last,
-      offset,
-      sort,
-      organizationId: ctx.me.organizationId,
-      productId: product.id,
-      search,
-    });
-  }
+      if (existing) {
+        throw new GraphQLError("This feature already exists");
+      }
 
-  @FieldResolver((_returns) => PaginatedFeatureGroups)
-  @UseMiddleware(hasRole())
-  async featureGroups(
-    @Root() product: Product,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof FeatureGroup,
-    @Arg("search", () => String, { nullable: true }) search: string,
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<PaginatedFeatureGroups> {
-    return getPaginatedFeatureGroups({
-      productId: product.id,
-      organizationId: ctx.me.organizationId,
-      first,
-      last,
-      offset,
-      sort,
-      search,
-    });
-  }
+      await ctx.prisma.featureGroup.create({
+        data: {
+          name: args.name,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          productId: args.productId,
+          status: FeatureGroupStatus.ACTIVE,
+        },
+      });
 
-  /**
-   * Return the complete workfow IDs set for a given product and only
-   * their IDs.
-   * @param product
-   */
-  @FieldResolver((_returns) => [Int])
-  async workflowIds(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() product: Product
-  ): Promise<number[]> {
-    const rawResults = await ctx.prisma.workflow.findMany({
-      where: {
-        products: { some: { id: product.id } },
-        stage: { not: ModelStage.DELETED },
-      },
-      select: { id: true },
-    });
+      // Re-fetch with query includes for Pothos
+      return ctx.prisma.product.findUniqueOrThrow({
+        ...query,
+        where: { id: product.id },
+      });
+    },
+  }),
+);
 
-    return map(rawResults, (row) => row.id);
-  }
+builder.mutationField("addWorkflows", (t) =>
+  t.prismaField({
+    type: ProductRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      productId: t.arg.int({ required: true }),
+      workflowIds: t.arg.intList({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const product = await ctx.prisma.product.findFirstOrThrow({
+        where: {
+          id: args.productId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
 
-  @FieldResolver((_returns) => PaginatedFeatures)
-  @UseMiddleware(hasRole())
-  async features(
-    @Root() product: Product,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Feature,
-    @Arg("search", () => String, { nullable: true }) search: string,
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<PaginatedFeatures> {
-    return getPaginatedFeatures({
-      productId: product.id,
-      organizationId: ctx.me.organizationId,
-      first,
-      last,
-      offset,
-      sort,
-      search,
-    });
-  }
+      return ctx.prisma.product.update({
+        ...query,
+        where: { id: product.id },
+        data: {
+          workflows: {
+            connect: args.workflowIds.map((id) => ({ id })),
+          },
+        },
+      });
+    },
+  }),
+);
 
-  @FieldResolver((_returns) => Organization)
-  async organization(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() product: Product
-  ): Promise<Organization> {
-    if (product.organization) {
-      return product.organization;
-    }
-    return ctx.prisma.organization.findUniqueOrThrow({
-      where: { id: product.organizationId },
-    });
-  }
+builder.mutationField("removeWorkflows", (t) =>
+  t.prismaField({
+    type: ProductRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      productId: t.arg.int({ required: true }),
+      workflowIds: t.arg.intList({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const product = await ctx.prisma.product.findFirstOrThrow({
+        where: {
+          id: args.productId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
 
-  @FieldResolver((_returns) => PaginatedWorkflows)
-  async workflows(
-    @Root() product: Product,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Workflow,
-    @Arg("search", () => String, { nullable: true }) search: string,
-    @Arg("stages", () => [ModelStage], { nullable: true }) stages: ModelStage[],
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<PaginatedWorkflows> {
-    return getPaginatedWorkflows({
-      productId: product.id,
-      organizationId: ctx.me.organizationId,
-      activeOnly: true,
-      first,
-      last,
-      offset,
-      sort,
-      search,
-      stages,
-    });
-  }
-}
+      return ctx.prisma.product.update({
+        ...query,
+        where: { id: product.id },
+        data: {
+          workflows: {
+            disconnect: args.workflowIds.map((id) => ({ id })),
+          },
+        },
+      });
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Computed field: features — paginated features belonging to this product
+// ---------------------------------------------------------------------------
+
+builder.prismaObjectField("Product", "features", (t) =>
+  t.field({
+    type: PaginatedFeatures,
+    authScopes: { hasRole: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+    },
+    resolve: (product, args, ctx) =>
+      getPaginatedFeatures({
+        productId: product.id,
+        organizationId: (ctx.me as AuthRoleContext).organizationId,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: args.sort as any,
+        search: args.search ?? undefined,
+      }),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Computed field: tickets — paginated tickets belonging to this product
+// ---------------------------------------------------------------------------
+
+builder.prismaObjectField("Product", "tickets", (t) =>
+  t.field({
+    type: PaginatedTickets,
+    authScopes: { hasRole: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+    },
+    resolve: (product, args, ctx) =>
+      getPaginatedTickets({
+        productId: product.id,
+        organizationId: (ctx.me as AuthRoleContext).organizationId,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: args.sort as any,
+        search: args.search ?? undefined,
+      }),
+  }),
+);

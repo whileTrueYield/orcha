@@ -1,70 +1,89 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  Int,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
+/**
+ * Mutation resolvers for updating a Todo.
+ *
+ * Provides:
+ *  - updateTodo(todoId, input):       update a todo's body
+ *  - checkTodo(todoId, checked):      toggle a todo's checked state
+ *
+ * Both require hasRole auth scope and verify org/owner ownership.
+ */
 
-import { Length } from "class-validator";
-import { Todo } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class UpdateTodoInput {
-  @Field({ nullable: true })
-  @Length(1, 2048)
-  body: string;
-}
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-@Resolver(Todo)
-export class UpdateTodoResolver {
-  @Mutation(() => Todo)
-  @UseMiddleware(hasRole())
-  async updateTodo(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("todoId", () => Int) todoId: number,
-    @Arg("input", () => UpdateTodoInput) input: UpdateTodoInput
-  ): Promise<Todo> {
-    const todo = await ctx.prisma.todo.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: todoId,
-        ownerId: ctx.me.roleId,
-      },
-    });
+const UpdateTodoInput = builder.inputType("UpdateTodoInput", {
+  fields: (t) => ({
+    body: t.string({ required: false }),
+  }),
+});
 
-    return ctx.prisma.todo.update({
-      where: { id: todo.id },
-      data: input,
-    });
-  }
+// ---------------------------------------------------------------------------
+// updateTodo mutation
+// ---------------------------------------------------------------------------
 
-  @Mutation(() => Todo)
-  @UseMiddleware(hasRole())
-  async checkTodo(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("todoId", () => Int) todoId: number,
-    @Arg("checked", () => Boolean) checked: boolean
-  ): Promise<Todo> {
-    const todo = await ctx.prisma.todo.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: todoId,
-        ownerId: ctx.me.roleId,
-      },
-    });
+builder.mutationField("updateTodo", (t) =>
+  t.prismaField({
+    type: "Todo",
+    authScopes: { hasRole: true },
+    args: {
+      todoId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdateTodoInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    return ctx.prisma.todo.update({
-      where: { id: todo.id },
-      data: {
-        checked,
-        checkedAt: checked ? new Date() : null,
-      },
-    });
-  }
-}
+      const todo = await ctx.prisma.todo.findFirstOrThrow({
+        where: {
+          organizationId: me.organizationId,
+          id: args.todoId,
+          ownerId: me.roleId,
+        },
+      });
+
+      return ctx.prisma.todo.update({
+        ...query,
+        where: { id: todo.id },
+        data: { body: args.input.body ?? undefined },
+      });
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// checkTodo mutation
+// ---------------------------------------------------------------------------
+
+builder.mutationField("checkTodo", (t) =>
+  t.prismaField({
+    type: "Todo",
+    authScopes: { hasRole: true },
+    args: {
+      todoId: t.arg.int({ required: true }),
+      checked: t.arg.boolean({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      const todo = await ctx.prisma.todo.findFirstOrThrow({
+        where: {
+          organizationId: me.organizationId,
+          id: args.todoId,
+          ownerId: me.roleId,
+        },
+      });
+
+      return ctx.prisma.todo.update({
+        ...query,
+        where: { id: todo.id },
+        data: {
+          checked: args.checked,
+          checkedAt: args.checked ? new Date() : null,
+        },
+      });
+    },
+  }),
+);

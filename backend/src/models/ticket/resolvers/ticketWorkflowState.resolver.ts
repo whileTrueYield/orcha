@@ -1,224 +1,169 @@
-import {
-  Arg,
-  Ctx,
-  Field,
-  FieldResolver,
-  InputType,
-  Int,
-  Mutation,
-  Query,
-  Resolver,
-  Root,
-  UseMiddleware,
-} from "type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import {
-  Estimate,
-  Role,
-  ScheduleItem,
-  Ticket,
-  TicketWorkflowState,
-  TicketWorkflowStateNote,
-  WorkflowState,
-} from "@generated/type-graphql";
+/**
+ * Query and mutation resolvers for TicketWorkflowState.
+ *
+ * Registers:
+ *  - Query.ticketWorkflowState(id): TicketWorkflowState!
+ *  - Mutation.setChecklist(ticketWorkflowStateId, input): TicketWorkflowState!
+ *  - Mutation.skipTicketWorkflowState(id): TicketWorkflowState!
+ *
+ * The checklist is stored as a JSON string on the TicketWorkflowState model.
+ * setChecklist also computes todo/complete counts for quick aggregation.
+ */
+
+import { EstimateType, ModelStage } from "@prisma/client";
 import { partition } from "lodash";
-import { ChecklistItem } from "../entity";
-import { logger } from "../../../logger";
-import { EstimateType, ModelStage } from ".prisma/client";
+import builder from "../../../schema/builder";
+import { EstimateRef } from "../../schedule/resolvers/estimate.resolver";
+import { ChecklistItemRef } from "../entity";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-export class UpdateChecklistInput {
-  @Field()
-  label: string;
+// ---------------------------------------------------------------------------
+// Input type for checklist items
+// ---------------------------------------------------------------------------
 
-  @Field((_type) => Boolean, { nullable: true })
-  checked: boolean | null;
-}
+const UpdateChecklistInput = builder.inputType("UpdateChecklistInput", {
+  fields: (t) => ({
+    label: t.string({ required: true }),
+    checked: t.boolean({ required: false }),
+  }),
+});
 
-@Resolver(TicketWorkflowState)
-export class TicketWorkflowStateResolver {
-  @Query(() => TicketWorkflowState)
-  @UseMiddleware(hasRole())
-  async ticketWorkflowState(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<TicketWorkflowState> {
-    return ctx.prisma.ticketWorkflowState.findFirstOrThrow({
-      where: {
-        id: id,
-        workflowState: {
-          organizationId: ctx.me.organizationId,
-        },
-      },
-    });
-  }
+// ---------------------------------------------------------------------------
+// Query: ticketWorkflowState
+// ---------------------------------------------------------------------------
 
-  @Mutation(() => TicketWorkflowState)
-  @UseMiddleware(hasRole())
-  async setChecklist(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("ticketWorkflowStateId", () => Int)
-    ticketWorkflowStateId: number,
-    @Arg("input", () => [UpdateChecklistInput], { nullable: "items" })
-    input: UpdateChecklistInput[]
-  ): Promise<TicketWorkflowState> {
-    const ticketWorkflowState =
-      await ctx.prisma.ticketWorkflowState.findFirstOrThrow({
+builder.queryField("ticketWorkflowState", (t) =>
+  t.prismaField({
+    type: "TicketWorkflowState",
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+      return ctx.prisma.ticketWorkflowState.findFirstOrThrow({
+        ...query,
         where: {
-          id: ticketWorkflowStateId,
-          ticket: {
-            stage: { not: ModelStage.DELETED },
-            organizationId: ctx.me.organizationId,
+          id: args.id,
+          workflowState: {
+            organizationId: me.organizationId,
           },
         },
-        include: { ticket: true },
       });
+    },
+  }),
+);
 
-    // we'll extract the progress count to allow for quicker stats
-    const [completedItems, todoItems] = partition(input, { checked: true });
-    return ctx.prisma.ticketWorkflowState.update({
-      where: { id: ticketWorkflowState.id },
-      data: {
-        todo: todoItems.length,
-        complete: completedItems.length,
-        checklist: JSON.stringify(input),
-      },
-    });
-  }
+// ---------------------------------------------------------------------------
+// Mutation: setChecklist
+// ---------------------------------------------------------------------------
 
-  @Mutation(() => TicketWorkflowState)
-  @UseMiddleware(hasRole())
-  async skipTicketWorkflowState(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<TicketWorkflowState> {
-    const tws = await ctx.prisma.ticketWorkflowState.findFirstOrThrow({
-      where: {
-        id,
-        ticket: {
-          organizationId: ctx.me.organizationId,
-          stage: ModelStage.PUBLISHED,
-        },
-      },
-    });
+builder.mutationField("setChecklist", (t) =>
+  t.prismaField({
+    type: "TicketWorkflowState",
+    authScopes: { hasRole: true },
+    args: {
+      ticketWorkflowStateId: t.arg.int({ required: true }),
+      input: t.arg({ type: [UpdateChecklistInput], required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    return ctx.prisma.ticketWorkflowState.update({
-      where: {
-        id: tws.id,
-      },
-      data: {
-        isActive: false,
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => [ChecklistItem])
-  async checklist(
-    @Root() ticketWorkflowState: TicketWorkflowState
-  ): Promise<ChecklistItem[]> {
-    try {
-      return JSON.parse(ticketWorkflowState.checklist as string);
-    } catch (e) {
-      logger.error(
-        "Could not parse checklist on ticket workflow state ID %d",
-        ticketWorkflowState.id,
-        e
-      );
-      return [];
-    }
-  }
-
-  @FieldResolver((_returns) => Ticket)
-  async ticket(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticketWorkflowState: TicketWorkflowState
-  ): Promise<Ticket> {
-    if (ticketWorkflowState.ticket) {
-      return ticketWorkflowState.ticket;
-    } else {
-      return ctx.prisma.ticket.findUniqueOrThrow({
-        where: { id: ticketWorkflowState.ticketId },
-      });
-    }
-  }
-
-  @FieldResolver((_returns) => Role, { nullable: true })
-  async assignee(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticketWorkflowState: TicketWorkflowState
-  ): Promise<Role | null> {
-    if (ticketWorkflowState.assigneeId) {
-      if (ticketWorkflowState.assignee) {
-        return ticketWorkflowState.assignee;
-      } else {
-        return ctx.prisma.role.findUnique({
-          where: { id: ticketWorkflowState.assigneeId },
+      const ticketWorkflowState =
+        await ctx.prisma.ticketWorkflowState.findFirstOrThrow({
+          where: {
+            id: args.ticketWorkflowStateId,
+            ticket: {
+              stage: { not: ModelStage.DELETED },
+              organizationId: me.organizationId,
+            },
+          },
+          include: { ticket: true },
         });
-      }
-    }
 
-    return null;
-  }
-
-  @FieldResolver((_returns) => Estimate, { nullable: true })
-  async estimateSet(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticketWorkflowState: TicketWorkflowState
-  ): Promise<Estimate | null> {
-    return ctx.prisma.estimate.findFirst({
-      where: {
-        type: EstimateType.TicketWorkflowState,
-        id: ticketWorkflowState.id,
-      },
-      orderBy: {
-        epoch: "desc",
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => WorkflowState, { nullable: true })
-  async workflowState(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticketWorkflowState: TicketWorkflowState
-  ): Promise<WorkflowState | null> {
-    if (ticketWorkflowState.workflowStateId) {
-      if (ticketWorkflowState.workflowState) {
-        return ticketWorkflowState.workflowState;
-      }
-
-      return ctx.prisma.workflowState.findUniqueOrThrow({
-        where: { id: ticketWorkflowState.workflowStateId },
+      // Extract progress counts for quick stats
+      const [completedItems, todoItems] = partition(args.input, {
+        checked: true,
       });
-    }
 
-    return null;
-  }
+      return ctx.prisma.ticketWorkflowState.update({
+        ...query,
+        where: { id: ticketWorkflowState.id },
+        data: {
+          todo: todoItems.length,
+          complete: completedItems.length,
+          checklist: JSON.stringify(args.input),
+        },
+      });
+    },
+  }),
+);
 
-  @FieldResolver((_returns) => [ScheduleItem])
-  async scheduleItems(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticketWorkflowState: TicketWorkflowState
-  ): Promise<ScheduleItem[]> {
-    return ctx.prisma.scheduleItem.findMany({
-      where: { ticketWorkflowStateId: ticketWorkflowState.id },
-      include: { role: true },
-    });
-  }
+// ---------------------------------------------------------------------------
+// Mutation: skipTicketWorkflowState
+// ---------------------------------------------------------------------------
 
-  @FieldResolver((_returns) => [TicketWorkflowStateNote])
-  async ticketWorkflowStateNotes(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticketWorkflowState: TicketWorkflowState
-  ): Promise<TicketWorkflowStateNote[]> {
-    if (ticketWorkflowState.ticketWorkflowStateNotes) {
-      return ticketWorkflowState.ticketWorkflowStateNotes;
-    }
+builder.mutationField("skipTicketWorkflowState", (t) =>
+  t.prismaField({
+    type: "TicketWorkflowState",
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    return ctx.prisma.ticketWorkflowStateNote.findMany({
-      where: { ticketWorkflowStateId: ticketWorkflowState.id },
-      include: { author: true },
-      orderBy: { createdAt: "desc" },
-    });
-  }
-}
+      const tws = await ctx.prisma.ticketWorkflowState.findFirstOrThrow({
+        where: {
+          id: args.id,
+          ticket: {
+            organizationId: me.organizationId,
+            stage: ModelStage.PUBLISHED,
+          },
+        },
+      });
+
+      return ctx.prisma.ticketWorkflowState.update({
+        ...query,
+        where: { id: tws.id },
+        data: { isActive: false },
+      });
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Computed field: estimateSet — the latest Estimate for this workflow state
+// ---------------------------------------------------------------------------
+
+builder.prismaObjectField("TicketWorkflowState", "estimateSet", (t) =>
+  t.field({
+    type: EstimateRef,
+    nullable: true,
+    resolve: (tws, _args, ctx) =>
+      ctx.prisma.estimate.findFirst({
+        where: {
+          type: EstimateType.TicketWorkflowState,
+          id: tws.id,
+        },
+        orderBy: { epoch: "desc" },
+      }),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Computed field: checklist — parsed from JSON string on TicketWorkflowState
+// ---------------------------------------------------------------------------
+
+builder.prismaObjectField("TicketWorkflowState", "checklist", (t) =>
+  t.field({
+    type: [ChecklistItemRef],
+    resolve: (tws) => {
+      try {
+        return JSON.parse((tws as any).checklist as string) || [];
+      } catch {
+        return [];
+      }
+    },
+  }),
+);

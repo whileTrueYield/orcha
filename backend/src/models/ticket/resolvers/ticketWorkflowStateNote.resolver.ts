@@ -1,102 +1,45 @@
-import {
-  Arg,
-  Ctx,
-  Field,
-  FieldResolver,
-  InputType,
-  Int,
-  Query,
-  Resolver,
-  Root,
-  UseMiddleware,
-} from "type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import {
-  Role,
-  TicketWorkflowState,
-  TicketWorkflowStateNote,
-} from "@generated/type-graphql";
+/**
+ * Query resolver for TicketWorkflowStateNote.
+ *
+ * Registers: Query.ticketWorkflowStateNote(ticketWorkflowStateNoteId): TicketWorkflowStateNote!
+ *
+ * The field resolvers (ticketWorkflowState, fromTicketWorkflowState, author)
+ * are handled by Pothos relations defined on the prismaObject in entity.ts.
+ */
 
-@InputType()
-export class UpdateTicketWorkflowStateNoteInput {
-  @Field()
-  body: string;
-}
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(TicketWorkflowStateNote)
-export class TicketWorkflowStateNoteResolver {
-  @Query(() => TicketWorkflowStateNote)
-  @UseMiddleware(hasRole())
-  async ticketWorkflowStateNote(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("ticketWorkflowStateNoteId", () => Int)
-    ticketWorkflowStateNoteId: number
-  ): Promise<TicketWorkflowStateNote> {
-    return ctx.prisma.ticketWorkflowStateNote.findFirstOrThrow({
-      where: {
-        id: ticketWorkflowStateNoteId,
-        ticketWorkflowState: {
-          ticket: {
-            organizationId: ctx.me.organizationId,
+// ---------------------------------------------------------------------------
+// Query: ticketWorkflowStateNote
+// ---------------------------------------------------------------------------
+
+builder.queryField("ticketWorkflowStateNote", (t) =>
+  t.prismaField({
+    type: "TicketWorkflowStateNote",
+    authScopes: { hasRole: true },
+    args: {
+      ticketWorkflowStateNoteId: t.arg.int({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+      return ctx.prisma.ticketWorkflowStateNote.findFirstOrThrow({
+        ...query,
+        where: {
+          id: args.ticketWorkflowStateNoteId,
+          ticketWorkflowState: {
+            ticket: {
+              organizationId: me.organizationId,
+            },
           },
         },
-      },
-      include: {
-        author: true,
-        ticketWorkflowState: true,
-        fromTicketWorkflowState: true,
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => TicketWorkflowState)
-  async ticketWorkflowState(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticketWorkflowStateNote: TicketWorkflowStateNote
-  ): Promise<TicketWorkflowState | null> {
-    if (ticketWorkflowStateNote.ticketWorkflowStateId) {
-      if (ticketWorkflowStateNote.ticketWorkflowState) {
-        return ticketWorkflowStateNote.ticketWorkflowState;
-      }
-
-      return ctx.prisma.ticketWorkflowState.findUniqueOrThrow({
-        where: { id: ticketWorkflowStateNote.ticketWorkflowStateId },
+        include: {
+          ...query.include,
+          author: true,
+          ticketWorkflowState: true,
+          fromTicketWorkflowState: true,
+        },
       });
-    }
-
-    return null;
-  }
-
-  @FieldResolver((_returns) => TicketWorkflowState)
-  async fromTicketWorkflowState(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticketWorkflowStateNote: TicketWorkflowStateNote
-  ): Promise<TicketWorkflowState | null> {
-    if (ticketWorkflowStateNote.fromTicketWorkflowStateId) {
-      if (ticketWorkflowStateNote.fromTicketWorkflowState) {
-        return ticketWorkflowStateNote.fromTicketWorkflowState;
-      }
-
-      return ctx.prisma.ticketWorkflowState.findUniqueOrThrow({
-        where: { id: ticketWorkflowStateNote.fromTicketWorkflowStateId },
-      });
-    }
-
-    return null;
-  }
-
-  @FieldResolver((_returns) => Role)
-  async author(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticketWorkflowStateNote: TicketWorkflowStateNote
-  ): Promise<Role> {
-    if (ticketWorkflowStateNote.author) {
-      return ticketWorkflowStateNote.author;
-    }
-
-    return ctx.prisma.role.findUniqueOrThrow({
-      where: { id: ticketWorkflowStateNote.authorId },
-    });
-  }
-}
+    },
+  }),
+);

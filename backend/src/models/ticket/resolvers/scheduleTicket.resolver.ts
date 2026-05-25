@@ -1,184 +1,161 @@
-import { UserInputError } from "apollo-server-express";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import {
-  Arg,
-  Ctx,
-  Int,
-  Mutation,
-  Query,
-  Resolver,
-  UseMiddleware,
-} from "type-graphql";
-import {
-  Ticket,
-  TicketStatus,
-  ModelStage,
-  TicketWorkflowState,
-} from "@generated/type-graphql";
+/**
+ * Ticket scheduling mutations and queries:
+ *  - scheduleTicket, getUnscheduledDependencies, getAllUnscheduledDependencies
+ *
+ * Exports: assertCanScheduleTicket (used by schedule resolvers)
+ */
+
+import builder from "../../../schema/builder";
+import { GraphQLError } from "graphql";
+import { ModelStage, TicketStatus } from "@prisma/client";
 import { requestEstimate } from "../jobs/estimateTickets";
-import { difference, filter, intersection, map, uniq } from "lodash";
+import { filter, map } from "lodash";
+import { AuthRoleContext } from "../../../types";
+
+// ---------------------------------------------------------------------------
+// Shared assertion — exported for use by createScheduleItem
+// ---------------------------------------------------------------------------
 
 export const assertCanScheduleTicket = (
-  ticket: Ticket,
-  ticketWorkflowStates: TicketWorkflowState[]
+  ticket: any,
+  ticketWorkflowStates: any[],
 ): void => {
   if (ticket.status === TicketStatus.SCHEDULED) {
-    throw new UserInputError(`This ticket is already scheduled`);
+    throw new GraphQLError("This ticket is already scheduled", { extensions: { code: "BAD_USER_INPUT" } });
   }
 
   const activeStates = filter(ticketWorkflowStates, "isActive");
 
   if (activeStates.length === 0) {
-    throw new UserInputError(
-      `Scheduling requires at least one state to be active`
-    );
+    throw new GraphQLError("Scheduling requires at least one state to be active", { extensions: { code: "BAD_USER_INPUT" } });
   }
 
   for (const state of activeStates) {
     if (!state.assigneeId) {
-      throw new UserInputError(`Every active state needs to be assigned`);
+      throw new GraphQLError("Every active state needs to be assigned", { extensions: { code: "BAD_USER_INPUT" } });
     }
-    if (
-      !state.estimateMinimum ||
-      !state.estimateMostLikely ||
-      !state.estimateMaximum
-    ) {
-      throw new UserInputError(`Every active state needs have an estimate`);
+    if (!state.estimateMinimum || !state.estimateMostLikely || !state.estimateMaximum) {
+      throw new GraphQLError("Every active state needs have an estimate", { extensions: { code: "BAD_USER_INPUT" } });
     }
   }
 };
 
-@Resolver(Ticket)
-export class ScheduleTicketResolver {
-  @Mutation(() => Ticket)
-  @UseMiddleware(hasRole())
-  async scheduleTicket(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("ticketId", () => Int) ticketId: number
-  ): Promise<Ticket> {
-    const ticket = await ctx.prisma.ticket.findFirstOrThrow({
-      where: {
-        id: ticketId,
-        organizationId: ctx.me.organizationId,
-        stage: { not: ModelStage.DELETED },
-      },
-      include: { ticketWorkflowStates: { where: { isActive: true } } },
-    });
+// ---------------------------------------------------------------------------
+// Mutation: scheduleTicket
+// ---------------------------------------------------------------------------
 
-    assertCanScheduleTicket(ticket, ticket.ticketWorkflowStates);
-
-    // update the ticket status to a "scheduled" state
-    const updatedTicket = await ctx.prisma.ticket.update({
-      where: { id: ticket.id },
-      data: {
-        status: TicketStatus.SCHEDULED,
-        scheduledAt: new Date(),
-      },
-    });
-
-    await requestEstimate(ctx.me.organizationId);
-
-    return updatedTicket;
-  }
-
-  @Query(() => [Ticket])
-  @UseMiddleware(hasRole())
-  async getUnscheduledDependencies(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("ticketIds", () => [Int]) ticketIds: number[]
-  ): Promise<Ticket[]> {
-    return ctx.prisma.ticket.findMany({
-      where: {
-        successors: {
-          some: { id: { in: ticketIds } },
+builder.mutationField("scheduleTicket", (t) =>
+  t.prismaField({
+    type: "Ticket",
+    authScopes: { hasRole: true },
+    args: {
+      ticketId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const ticket = await ctx.prisma.ticket.findFirstOrThrow({
+        where: {
+          id: args.ticketId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          stage: { not: ModelStage.DELETED },
         },
-        organizationId: ctx.me.organizationId,
-        stage: ModelStage.PUBLISHED,
-        status: TicketStatus.UNSCHEDULED,
-      },
-      include: {
-        product: true,
-        workflow: true,
-        ancestors: true,
-      },
-    });
-  }
+        include: { ticketWorkflowStates: { where: { isActive: true } } },
+      });
 
-  /**
-   * This provides all the dependencies and their grand-children
-   * it stops as soon as
-   * @param ctx
-   * @param ticketIds
-   * @returns
-   */
-  @Query(() => [Ticket])
-  @UseMiddleware(hasRole())
-  async getAllUnscheduledDependencies(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("ticketIds", () => [Int]) ticketIds: number[]
-  ): Promise<Ticket[]> {
-    if (ticketIds.length === 0) {
-      return [];
-    }
+      assertCanScheduleTicket(ticket, ticket.ticketWorkflowStates);
 
-    // for performance sake, we'll capture all the ticket that aren't scheduled with a minimal
-    // data set
-    const allTickets = await ctx.prisma.ticket.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        successors: { some: {} }, // only tickets with a successor
-        status: TicketStatus.UNSCHEDULED,
-        stage: ModelStage.PUBLISHED,
-      },
-      select: {
-        id: true,
-        successors: {
-          select: {
-            id: true,
-          },
+      const updatedTicket = await ctx.prisma.ticket.update({
+        ...query,
+        where: { id: ticket.id },
+        data: { status: TicketStatus.SCHEDULED, scheduledAt: new Date() },
+      });
+
+      await requestEstimate((ctx.me as AuthRoleContext).organizationId);
+
+      return updatedTicket;
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Query: getUnscheduledDependencies
+// ---------------------------------------------------------------------------
+
+builder.queryField("getUnscheduledDependencies", (t) =>
+  t.prismaField({
+    type: ["Ticket"],
+    authScopes: { hasRole: true },
+    args: {
+      ticketIds: t.arg.intList({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) =>
+      ctx.prisma.ticket.findMany({
+        ...query,
+        where: {
+          successors: { some: { id: { in: args.ticketIds } } },
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          stage: ModelStage.PUBLISHED,
+          status: TicketStatus.UNSCHEDULED,
         },
-      },
-    });
+        include: { ...query.include, product: true, workflow: true, ancestors: true },
+      }),
+  }),
+);
 
-    let dependencyIds: number[] = ticketIds;
-    let dependencies: Ticket[] = [];
-    let max_iteration = 1000;
+// ---------------------------------------------------------------------------
+// Query: getAllUnscheduledDependencies
+// ---------------------------------------------------------------------------
 
-    // tickets we need to find dependencies for, this list
-    // evolves
-    let dependencyForTicketIds: number[] = ticketIds;
-    while (max_iteration > 0) {
-      dependencies = filter(
-        allTickets,
-        (ticket) =>
-          intersection(map(ticket.successors, "id"), dependencyForTicketIds)
-            .length > 0
-      ) as Ticket[];
+builder.queryField("getAllUnscheduledDependencies", (t) =>
+  t.prismaField({
+    type: ["Ticket"],
+    authScopes: { hasRole: true },
+    args: {
+      ticketIds: t.arg.intList({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      if (args.ticketIds.length === 0) return [];
 
-      if (dependencies.length) {
-        // for the next loopm, we store the ID of the ticket for which we'll look for ancestors
-        dependencyForTicketIds = map(dependencies, "id");
-        dependencyIds = uniq([...dependencyIds, ...dependencyForTicketIds]);
-      } else {
-        // there is no more dependencies to look for
-        break;
+      const allTickets = await ctx.prisma.ticket.findMany({
+        where: {
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          successors: { some: {} },
+          status: TicketStatus.UNSCHEDULED,
+          stage: ModelStage.PUBLISHED,
+        },
+        select: {
+          id: true,
+          successors: { select: { id: true } },
+        },
+      });
+
+      const ancestorMap = new Map<number, number[]>();
+      for (const ticket of allTickets) {
+        ancestorMap.set(ticket.id, map(ticket.successors, "id"));
       }
 
-      max_iteration = max_iteration - 1;
-    }
+      const resultIds = new Set<number>();
+      const queue = [...args.ticketIds];
 
-    return ctx.prisma.ticket.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        stage: ModelStage.PUBLISHED,
-        status: TicketStatus.UNSCHEDULED,
-        id: { in: difference(dependencyIds, ticketIds) },
-      },
-      include: {
-        product: true,
-        ticketWorkflowStates: true,
-      },
-    });
-  }
-}
+      while (queue.length > 0) {
+        const currentId = queue.pop()!;
+        for (const [ancestorId, successorIds] of ancestorMap) {
+          if (successorIds.includes(currentId) && !resultIds.has(ancestorId)) {
+            resultIds.add(ancestorId);
+            queue.push(ancestorId);
+          }
+        }
+      }
+
+      if (resultIds.size === 0) return [];
+
+      return ctx.prisma.ticket.findMany({
+        ...query,
+        where: {
+          id: { in: [...resultIds] },
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+        include: { ...query.include, product: true, workflow: true, ancestors: true },
+      });
+    },
+  }),
+);

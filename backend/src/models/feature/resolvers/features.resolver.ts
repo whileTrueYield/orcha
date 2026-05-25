@@ -1,32 +1,33 @@
-import { Arg, Query, Resolver, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Query: features — paginated features list.
+ */
 
-import { Feature } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
 import { PaginatedFeatures } from "../entity";
 import { getPaginatedFeatures } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Feature)
-export class FeaturesResolver {
-  @Query((_returns) => PaginatedFeatures)
-  @UseMiddleware(hasRole())
-  async features(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Feature,
-    @Arg("search", () => String, { nullable: true }) search: string,
-    @Arg("productId", () => Int, { nullable: true }) productId: number
-  ) {
-    return getPaginatedFeatures({
-      organizationId: ctx.me.organizationId,
-      productId,
-      first,
-      last,
-      offset,
-      sort,
-      search,
-    });
-  }
-}
+builder.queryField("features", (t) =>
+  t.field({
+    type: PaginatedFeatures,
+    authScopes: { hasRole: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+      productId: t.arg.int({ required: false }),
+    },
+    resolve: (_root, args, ctx) =>
+      getPaginatedFeatures({
+        organizationId: (ctx.me as AuthRoleContext).organizationId,
+        productId: args.productId ?? undefined,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: (args.sort as any) ?? undefined,
+        search: args.search ?? undefined,
+      }),
+  }),
+);

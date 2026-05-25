@@ -1,27 +1,37 @@
-import { Resolver, Ctx, Query, UseMiddleware, Arg, Int } from "type-graphql";
-import { CommentReply } from "@generated/type-graphql";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
+/**
+ * Query resolver for fetching replies to a comment.
+ *
+ * Provides:
+ *  - replies(commentId): list of CommentReply records (last 200, desc by date)
+ *
+ * Requires hasRole auth scope.
+ */
 
-@Resolver()
-export class CommentRepliesResolver {
-  @Query(() => [CommentReply])
-  @UseMiddleware(hasRole())
-  async replies(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("commentId", () => Int) commentId: number
-  ): Promise<CommentReply[]> {
-    return await ctx.prisma.commentReply.findMany({
-      where: {
-        comment: {
-          id: commentId,
-          organizationId: ctx.me.organizationId,
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
+
+builder.queryField("replies", (t) =>
+  t.prismaField({
+    type: ["CommentReply"],
+    authScopes: { hasRole: true },
+    args: {
+      commentId: t.arg.int({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      return ctx.prisma.commentReply.findMany({
+        ...query,
+        where: {
+          comment: {
+            id: args.commentId,
+            organizationId: me.organizationId,
+          },
         },
-      },
-      include: { author: true },
-      // capture the last 200
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    });
-  }
-}
+        // capture the last 200
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      });
+    },
+  }),
+);

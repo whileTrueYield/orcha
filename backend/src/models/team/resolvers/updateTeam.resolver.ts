@@ -1,70 +1,73 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  Int,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
+/**
+ * Mutation resolver for updating an existing Team.
+ *
+ * Registers: Mutation.updateTeam(teamId: Int!, input: UpdateTeamInput!): Team!
+ *
+ * Requires ADMIN or OWNER role. When the code changes, validates
+ * no other team in the organisation already uses it.
+ */
 
-import { Length, MaxLength, IsUrl } from "class-validator";
-import { Team, RoleType } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
+import { GraphQLError } from "graphql";
+import builder from "../../../schema/builder";
+import { TeamRef } from "../entity";
 import { findTeamByCode } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class UpdateTeamInput {
-  @Field({ nullable: true })
-  @Length(1, 128)
-  name: string;
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-  @Field({ nullable: true })
-  @Length(1, 10)
-  code: string;
+const UpdateTeamInput = builder.inputType("UpdateTeamInput", {
+  fields: (t) => ({
+    name: t.string({ required: false }),
+    code: t.string({ required: false }),
+    description: t.string({ required: false }),
+    coverUrl: t.string({ required: false }),
+  }),
+});
 
-  @Field({ nullable: true })
-  @MaxLength(2048)
-  description: string;
+// ---------------------------------------------------------------------------
+// Mutation
+// ---------------------------------------------------------------------------
 
-  @Field({ nullable: true })
-  @MaxLength(2048)
-  @IsUrl()
-  coverUrl?: string;
-}
+builder.mutationField("updateTeam", (t) =>
+  t.prismaField({
+    type: TeamRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      teamId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdateTeamInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const team = await ctx.prisma.team.findFirstOrThrow({
+        where: {
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          id: args.teamId,
+        },
+      });
 
-@Resolver(Team)
-export class UpdateTeamResolver {
-  @Mutation(() => Team)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updateTeam(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("teamId", () => Int) teamId: number,
-    @Arg("input", () => UpdateTeamInput) input: UpdateTeamInput
-  ): Promise<Team> {
-    const team = await ctx.prisma.team.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: teamId,
-      },
-    });
+      // Prevent code collisions when the team is being renamed
+      if (args.input.code && args.input.code !== team.code) {
+        const existing = await findTeamByCode(
+          args.input.code,
+          (ctx.me as AuthRoleContext).organizationId,
+        );
 
-    // When the code is changed we don't want to take an
-    // existing one
-    if (input.code && input.code !== team.code) {
-      const existingTeam = await findTeamByCode(
-        input.code,
-        ctx.me.organizationId
-      );
-
-      if (existingTeam && existingTeam.id !== team.id) {
-        throw new UserInputError("A team with the same code already exists");
+        if (existing && existing.id !== team.id) {
+          throw new GraphQLError("A team with the same code already exists");
+        }
       }
-    }
 
-    return ctx.prisma.team.update({ where: { id: team.id }, data: input });
-  }
-}
+      return ctx.prisma.team.update({
+        ...query,
+        where: { id: team.id },
+        data: {
+          name: args.input.name ?? undefined,
+          code: args.input.code ?? undefined,
+          description: args.input.description ?? undefined,
+          coverUrl: args.input.coverUrl ?? undefined,
+        },
+      });
+    },
+  }),
+);

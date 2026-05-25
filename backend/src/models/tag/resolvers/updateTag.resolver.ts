@@ -1,61 +1,70 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  Int,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
+/**
+ * Mutation resolver for updating an existing organisation-level Tag.
+ *
+ * Registers: Mutation.updateTag(tagId: Int!, input: UpdateTagInput!): Tag!
+ *
+ * Requires ADMIN or OWNER role. When the name changes, validates
+ * that no other tag in the organisation already uses that name
+ * (case-insensitive).
+ */
 
-import { Length } from "class-validator";
-import { Tag, RoleType } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
+import { GraphQLError } from "graphql";
+import builder from "../../../schema/builder";
+import { TagRef } from "../entity";
 import { findTagByName } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class UpdateTagInput {
-  @Field({ nullable: true })
-  @Length(1, 128)
-  name: string;
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-  @Field()
-  @Length(1, 128)
-  color: string;
-}
+const UpdateTagInput = builder.inputType("UpdateTagInput", {
+  fields: (t) => ({
+    name: t.string({ required: false }),
+    color: t.string({ required: true }),
+  }),
+});
 
-@Resolver(Tag)
-export class UpdateTagResolver {
-  @Mutation(() => Tag)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updateTag(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("tagId", () => Int) tagId: number,
-    @Arg("input", () => UpdateTagInput) input: UpdateTagInput
-  ): Promise<Tag> {
-    const tag = await ctx.prisma.tag.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: tagId,
-      },
-    });
+// ---------------------------------------------------------------------------
+// Mutation
+// ---------------------------------------------------------------------------
 
-    // When the tag name is changed we don't want to take an
-    // existing one
-    if (input.name && input.name !== tag.name) {
-      const existingTag = await findTagByName(
-        input.name,
-        ctx.me.organizationId
-      );
+builder.mutationField("updateTag", (t) =>
+  t.prismaField({
+    type: TagRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      tagId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdateTagInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const tag = await ctx.prisma.tag.findFirstOrThrow({
+        where: {
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          id: args.tagId,
+        },
+      });
 
-      if (existingTag && existingTag.id !== tag.id) {
-        throw new UserInputError("A tag with the same name already exists");
+      // Prevent name collisions when the tag is being renamed
+      if (args.input.name && args.input.name !== tag.name) {
+        const existing = await findTagByName(
+          args.input.name,
+          (ctx.me as AuthRoleContext).organizationId,
+        );
+
+        if (existing && existing.id !== tag.id) {
+          throw new GraphQLError("A tag with the same name already exists");
+        }
       }
-    }
 
-    return ctx.prisma.tag.update({ where: { id: tag.id }, data: input });
-  }
-}
+      return ctx.prisma.tag.update({
+        ...query,
+        where: { id: tag.id },
+        data: {
+          name: args.input.name ?? undefined,
+          color: args.input.color,
+        },
+      });
+    },
+  }),
+);

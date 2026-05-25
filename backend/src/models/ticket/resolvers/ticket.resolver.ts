@@ -1,576 +1,349 @@
-import {
-  Arg,
-  Query,
-  Resolver,
-  Int,
-  UseMiddleware,
-  Ctx,
-  Root,
-  FieldResolver,
-} from "type-graphql";
+/**
+ * Single-ticket query and computed field resolvers.
+ *
+ * Registers:
+ *  - Query.ticket(id, visited?): Ticket!
+ *  - Query.ticketTextAccessToken(id): String
+ *  - Query.ticketNotes(ticketId): [TicketWorkflowStateNote!]!
+ *  - Query.lastTicketWorkflowStateNote(ticketId): TicketWorkflowStateNote
+ *
+ * Also registers computed prismaObject fields on the Ticket type:
+ *  - isWatching: whether the current user watches this ticket
+ *  - description: reconstructed from the Yjs document stored in ticketText
+ *
+ * Relation fields (organization, product, author, owner, workflow, project,
+ * ticketWorkflowStates, ancestors, successors, tags, watchers, personalTags,
+ * scheduleItems, etc.) are handled by the Pothos prismaObject relations
+ * defined in entity.ts.
+ */
+
 import jwt from "jsonwebtoken";
-import {
-  Ticket,
-  TicketWorkflowState,
-  TicketWorkflowStateNote,
-  Organization,
-  Product,
-  Role,
-  ScheduleItem,
-  Workflow,
-  Tag,
-  PersonalTag,
-  TicketStatus,
-  Project,
-  Issue,
-} from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { PaginatedComments } from "../../comment/entity";
-import { getPaginatedComments } from "../../comment/helper";
-import { filter, find, last, without } from "lodash";
-import { ModelStage } from ".prisma/client";
+import { ModelStage, TicketStatus } from "@prisma/client";
+import { find, last, without } from "lodash";
+import { TiptapTransformer } from "@hocuspocus/transformer";
+import builder from "../../../schema/builder";
+import { TicketWorkflowStateRef } from "../entity";
+import { ScheduleItemRef } from "../../schedule/entity";
+import { AuthRoleContext } from "../../../types";
 import { getRolePreferences, updateRolePreferences } from "../../entities";
 import { config } from "../../../config";
 import { DocumentToken } from "../../../hocuspocus/documentToken";
 import { logger } from "../../../logger";
-import { TiptapTransformer } from "@hocuspocus/transformer";
 import { getDocFromBytes } from "../../../utils/yjs";
 
-@Resolver(Ticket)
-export class TicketResolver {
-  @Query(() => Ticket)
-  @UseMiddleware(hasRole())
-  async ticket(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number,
-    @Arg("visited", () => Boolean, { nullable: true }) visited: boolean
-  ): Promise<Ticket> {
-    const ticket = await ctx.prisma.ticket.findFirstOrThrow({
-      where: {
-        id,
-        organizationId: ctx.me.organizationId,
-        stage: { not: ModelStage.DELETED },
-      },
-      include: {
-        organization: true,
-        features: {
-          include: {
-            featureGroup: true,
-          },
-        },
-        project: true,
-        author: true,
-        owner: true,
-        watchers: true,
-        product: true,
-        workflow: true,
-        ticketWorkflowStates: {
-          orderBy: { position: "asc" },
-          include: {
-            scheduleItems: {
-              include: { role: true },
-            },
-            workflowState: true,
-            assignee: true,
-          },
-        },
-      },
-    });
+// ---------------------------------------------------------------------------
+// Query: ticket
+// ---------------------------------------------------------------------------
 
-    // When the ticket is being visited (and not just requested),
-    // add to the list of recently visited tickets
-    if (visited) {
-      const role = await ctx.me.getRole();
+builder.queryField("ticket", (t) =>
+  t.prismaField({
+    type: "Ticket",
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+      visited: t.arg.boolean({ required: false }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-      const preferences = getRolePreferences(role);
-      const objectId = `ticket:${id}:${ticket.product?.code || ""}:${
-        ticket.localId || ""
-      }:${ticket.title}`;
-
-      const recentlyVisited = [
-        objectId,
-        ...without(preferences.recentlyVisited, objectId),
-      ];
-
-      const updatedPreferences = updateRolePreferences(role, {
-        recentlyVisited: recentlyVisited.slice(0, 10),
-      });
-
-      await ctx.prisma.role.update({
-        where: { id: ctx.me.roleId },
-        data: { preferences: JSON.stringify(updatedPreferences) },
-      });
-    }
-
-    return ticket;
-  }
-
-  /**
-   * This token is used for by tiptap collaborative editor using
-   * web socket.
-   * It is valid for 15 minutes
-   */
-  @Query(() => String, { nullable: true })
-  @UseMiddleware(hasRole())
-  async ticketTextAccessToken(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<string> {
-    const ticket = await ctx.prisma.ticket.findFirstOrThrow({
-      where: {
-        id,
-        organizationId: ctx.me.organizationId,
-        stage: { not: ModelStage.DELETED },
-      },
-      include: {
-        project: true,
-      },
-    });
-
-    const readOnly =
-      ticket.project.ancestorIsArchived ||
-      ticket.project.stage === "ARCHIVED" ||
-      ticket.stage === "ARCHIVED";
-
-    const accessToken: DocumentToken = {
-      roleId: ctx.me.roleId,
-      orgId: ctx.me.organizationId,
-      documentId: ticket.id,
-      documentType: "ticketText",
-      mode: readOnly ? "read" : "write",
-    };
-
-    logger.info(
-      `creating access token for ticket ${ticket.title},\n${JSON.stringify(
-        accessToken,
-        null,
-        2
-      )}`
-    );
-
-    return jwt.sign(
-      accessToken,
-      config.sessionSecret,
-      { expiresIn: 900 } // Expire the token after 15 minutes.
-    );
-  }
-
-  @Query(() => [TicketWorkflowStateNote])
-  @UseMiddleware(hasRole())
-  async ticketNotes(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("ticketId", () => Int) ticketId: number
-  ): Promise<TicketWorkflowStateNote[]> {
-    return ctx.prisma.ticketWorkflowStateNote.findMany({
-      where: {
-        ticketWorkflowState: {
-          ticket: {
-            organizationId: ctx.me.organizationId,
-            id: ticketId,
-          },
-        },
-      },
-      include: {
-        author: true,
-        fromTicketWorkflowState: true,
-        ticketWorkflowState: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
-  }
-
-  @Query(() => TicketWorkflowStateNote, { nullable: true })
-  @UseMiddleware(hasRole())
-  async lastTicketWorkflowStateNote(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("ticketId", () => Int) ticketId: number
-  ): Promise<TicketWorkflowStateNote | null> {
-    return ctx.prisma.ticketWorkflowStateNote.findFirst({
-      where: { ticketWorkflowState: { ticketId } },
-      orderBy: { createdAt: "desc" },
-    });
-  }
-
-  @FieldResolver((_returns) => Organization)
-  async organization(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<Organization> {
-    if (ticket.organization) {
-      return ticket.organization;
-    }
-
-    return ctx.prisma.organization.findUniqueOrThrow({
-      where: { id: ticket.organizationId },
-    });
-  }
-
-  @FieldResolver((_returns) => ModelStage)
-  async stage(@Root() ticket: Ticket): Promise<ModelStage> {
-    if (ticket.project?.ancestorIsArchived) {
-      return ModelStage.ARCHIVED;
-    } else if (ticket.project?.stage === ModelStage.ARCHIVED) {
-      return ModelStage.ARCHIVED;
-    } else {
-      return ticket.stage;
-    }
-  }
-
-  @FieldResolver((_returns) => Boolean)
-  async isWatching(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<boolean> {
-    if (ticket.watchers) {
-      return !!find(ticket.watchers, { id: ctx.me.roleId });
-    } else {
-      return !!(await ctx.prisma.ticket.findFirst({
+      const ticket = await ctx.prisma.ticket.findFirstOrThrow({
+        ...query,
         where: {
-          id: ticket.id,
-          watchers: { some: { id: ctx.me.roleId } },
+          id: args.id,
+          organizationId: me.organizationId,
+          stage: { not: ModelStage.DELETED },
         },
-      }));
-    }
-  }
-
-  @FieldResolver((_returns) => Product, { nullable: true })
-  async product(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<Product | null> {
-    if (ticket.productId) {
-      if (ticket.product) {
-        return ticket.product;
-      }
-
-      return ctx.prisma.product.findUniqueOrThrow({
-        where: { id: ticket.productId },
-      });
-    }
-
-    return null;
-  }
-
-  @FieldResolver((_returns) => Role, { nullable: true })
-  async author(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<Role | null> {
-    if (ticket.authorId) {
-      if (ticket.author) {
-        return ticket.author;
-      }
-
-      return ctx.prisma.role.findUniqueOrThrow({
-        where: { id: ticket.authorId },
-      });
-    }
-    return null;
-  }
-
-  @FieldResolver((_returns) => Role, { nullable: true })
-  async owner(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<Role | null> {
-    if (ticket.ownerId) {
-      if (ticket.owner) {
-        return ticket.owner;
-      }
-
-      return ctx.prisma.role.findUnique({
-        where: { id: ticket.ownerId },
-      });
-    }
-
-    return null;
-  }
-
-  @FieldResolver((_returns) => TicketWorkflowState, { nullable: true })
-  async state(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<TicketWorkflowState | null> {
-    // only Published and Scheduled tickets have a current "state"
-    if (
-      ticket.stage === ModelStage.PUBLISHED &&
-      ticket.status === TicketStatus.SCHEDULED
-    ) {
-      const lastScheduleItem = await this.lastScheduleItem(ctx, ticket);
-
-      if (lastScheduleItem) {
-        if (lastScheduleItem.nextTicketWorkflowStateId) {
-          if (lastScheduleItem.nextTicketWorkflowState) {
-            return lastScheduleItem.nextTicketWorkflowState;
-          } else {
-            return ctx.prisma.ticketWorkflowState.findUnique({
-              where: {
-                id: lastScheduleItem.nextTicketWorkflowStateId,
-              },
-            });
-          }
-        }
-
-        if (lastScheduleItem.ticketWorkflowState) {
-          return lastScheduleItem.ticketWorkflowState;
-        }
-
-        return ctx.prisma.ticketWorkflowState.findUnique({
-          where: {
-            id: lastScheduleItem.ticketWorkflowStateId,
+        include: {
+          ...query.include,
+          organization: true,
+          features: { include: { featureGroup: true } },
+          project: true,
+          author: true,
+          owner: true,
+          watchers: true,
+          product: true,
+          workflow: true,
+          ticketWorkflowStates: {
+            orderBy: { position: "asc" },
+            include: {
+              scheduleItems: { include: { role: true } },
+              workflowState: true,
+              assignee: true,
+            },
           },
+        },
+      });
+
+      // Track recently visited tickets for the user's role
+      if (args.visited) {
+        const role = await me.getRole();
+        const preferences = getRolePreferences(role);
+        const objectId = `ticket:${args.id}:${(ticket as any).product?.code || ""}:${
+          ticket.localId || ""
+        }:${ticket.title}`;
+
+        const recentlyVisited = [
+          objectId,
+          ...without(preferences.recentlyVisited, objectId),
+        ];
+
+        const updatedPreferences = updateRolePreferences(role, {
+          recentlyVisited: recentlyVisited.slice(0, 10),
+        });
+
+        await ctx.prisma.role.update({
+          where: { id: me.roleId },
+          data: { preferences: JSON.stringify(updatedPreferences) },
         });
       }
 
-      return ctx.prisma.ticketWorkflowState.findFirst({
+      return ticket;
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Query: ticketTextAccessToken
+//
+// Returns a JWT for the TipTap collaborative editor websocket.
+// Valid for 15 minutes.
+// ---------------------------------------------------------------------------
+
+builder.queryField("ticketTextAccessToken", (t) =>
+  t.string({
+    nullable: true,
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: async (_root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      const ticket = await ctx.prisma.ticket.findFirstOrThrow({
         where: {
-          isActive: true,
-          ticket: {
-            id: ticket.id,
+          id: args.id,
+          organizationId: me.organizationId,
+          stage: { not: ModelStage.DELETED },
+        },
+        include: { project: true },
+      });
+
+      const readOnly =
+        ticket.project.ancestorIsArchived ||
+        ticket.project.stage === "ARCHIVED" ||
+        ticket.stage === "ARCHIVED";
+
+      const accessToken: DocumentToken = {
+        roleId: me.roleId,
+        orgId: me.organizationId,
+        documentId: ticket.id,
+        documentType: "ticketText",
+        mode: readOnly ? "read" : "write",
+      };
+
+      logger.info(
+        `creating access token for ticket ${ticket.title},\n${JSON.stringify(
+          accessToken,
+          null,
+          2,
+        )}`,
+      );
+
+      return jwt.sign(accessToken, config.sessionSecret, {
+        expiresIn: 900,
+      });
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Query: ticketNotes
+// ---------------------------------------------------------------------------
+
+builder.queryField("ticketNotes", (t) =>
+  t.prismaField({
+    type: ["TicketWorkflowStateNote"],
+    authScopes: { hasRole: true },
+    args: {
+      ticketId: t.arg.int({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+      return ctx.prisma.ticketWorkflowStateNote.findMany({
+        ...query,
+        where: {
+          ticketWorkflowState: {
+            ticket: {
+              organizationId: me.organizationId,
+              id: args.ticketId,
+            },
           },
         },
-        orderBy: {
-          position: "asc",
+        include: {
+          ...query.include,
+          author: true,
+          fromTicketWorkflowState: true,
+          ticketWorkflowState: true,
         },
+        orderBy: { createdAt: "desc" },
       });
-    }
+    },
+  }),
+);
 
-    return null;
-  }
+// ---------------------------------------------------------------------------
+// Query: lastTicketWorkflowStateNote
+// ---------------------------------------------------------------------------
 
-  @FieldResolver((_returns) => Project, { nullable: true })
-  async project(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<Project | null> {
-    if (ticket.projectId) {
-      if (ticket.project) {
-        return ticket.project;
-      }
-
-      return ctx.prisma.project.findFirst({
+builder.queryField("lastTicketWorkflowStateNote", (t) =>
+  t.prismaField({
+    type: "TicketWorkflowStateNote",
+    nullable: true,
+    authScopes: { hasRole: true },
+    args: {
+      ticketId: t.arg.int({ required: true }),
+    },
+    resolve: (query, _root, args, _ctx) =>
+      _ctx.prisma.ticketWorkflowStateNote.findFirst({
+        ...query,
         where: {
-          id: ticket.projectId,
+          ticketWorkflowState: { ticketId: args.ticketId },
         },
-      });
-    }
+        orderBy: { createdAt: "desc" },
+      }),
+  }),
+);
 
-    return null;
-  }
+// ---------------------------------------------------------------------------
+// Computed field: isWatching — whether the current user watches this ticket
+// ---------------------------------------------------------------------------
 
-  @FieldResolver((_returns) => [TicketWorkflowState])
-  async ticketWorkflowStates(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<TicketWorkflowState[]> {
-    if (ticket.ticketWorkflowStates) {
-      if (ticket.status === TicketStatus.UNSCHEDULED) {
-        // while unschedule we want all the possible state, so they
-        // can be activated and deactivated on the UI
-        return ticket.ticketWorkflowStates;
-      } else {
-        // only return the active state when the ticket is scheduled
-        return filter(ticket.ticketWorkflowStates, "isActive");
+builder.prismaObjectField("Ticket", "isWatching", (t) =>
+  t.boolean({
+    authScopes: { hasRole: true },
+    resolve: async (ticket, _args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      if ((ticket as any).watchers) {
+        return !!find((ticket as any).watchers, { id: me.roleId });
       }
-    }
 
-    return ctx.prisma.ticketWorkflowState.findMany({
-      where: {
-        ticketId: ticket.id,
-        isActive: ticket.status === TicketStatus.UNSCHEDULED ? undefined : true,
-      },
-    });
-  }
+      return !!(await ctx.prisma.ticket.findFirst({
+        where: {
+          id: ticket.id,
+          watchers: { some: { id: me.roleId } },
+        },
+      }));
+    },
+  }),
+);
 
-  @FieldResolver((_returns) => [Ticket])
-  async ancestors(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<Ticket[]> {
-    if (ticket.ancestors) {
-      return ticket.ancestors;
-    }
+// ---------------------------------------------------------------------------
+// Computed field: description — reconstructed from the Yjs ticketText document
+//
+// The description is no longer stored on the ticket directly. It lives in
+// the ticketText table as a Yjs byte array for collaborative editing.
+// This field enables read-only rendering in a TipTap editor.
+// ---------------------------------------------------------------------------
 
-    return ctx.prisma.ticket.findMany({
-      where: {
-        successors: { some: { id: ticket.id } },
-      },
-    });
-  }
+builder.prismaObjectField("Ticket", "description", (t) =>
+  t.string({
+    nullable: true,
+    resolve: async (ticket, _args, ctx) => {
+      let ticketText = (ticket as any).ticketText;
+      if (!ticketText) {
+        ticketText = await ctx.prisma.ticketText.findFirst({
+          where: { ticketId: ticket.id },
+        });
+      }
 
-  /**
-   * The description is not part of the ticket anymore but
-   * is the text stored in the ticketText table. This table
-   * contains a int array of bytes that represent its yjs
-   * value for collaborative editing.
-   *
-   * This field is to allow read only display in a TipTap editor
-   */
-  @FieldResolver((_returns) => String, { nullable: true })
-  async description(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<string | null> {
-    let ticketText = ticket.ticketText;
-    if (!ticket.ticketText) {
-      ticketText = await ctx.prisma.ticketText.findFirst({
+      if (ticketText && ticketText.bytes) {
+        const doc = getDocFromBytes(ticketText.bytes);
+        return JSON.stringify(TiptapTransformer.fromYdoc(doc).default);
+      }
+
+      return null;
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Computed field: lastScheduleItem — the most recent schedule item for this ticket
+// ---------------------------------------------------------------------------
+
+builder.prismaObjectField("Ticket", "lastScheduleItem", (t) =>
+  t.field({
+    type: ScheduleItemRef,
+    nullable: true,
+    resolve: async (ticket, _args, ctx) => {
+      if ((ticket as any).scheduleItems) {
+        return last((ticket as any).scheduleItems) || null;
+      }
+
+      return ctx.prisma.scheduleItem.findFirst({
         where: { ticketId: ticket.id },
+        orderBy: { stoppedAt: "desc" },
+        include: { ticketWorkflowState: true },
       });
-    }
+    },
+  }),
+);
 
-    if (ticketText && ticketText.bytes) {
-      const doc = getDocFromBytes(ticketText.bytes);
-      return JSON.stringify(TiptapTransformer.fromYdoc(doc).default);
-    }
+// ---------------------------------------------------------------------------
+// Computed field: state — the current workflow state of a scheduled ticket
+//
+// Only published+scheduled tickets have a meaningful current state.
+// Derived from the last schedule item's next or current workflow state,
+// or falls back to the first active workflow state.
+// ---------------------------------------------------------------------------
 
-    return null;
-  }
+builder.prismaObjectField("Ticket", "state", (t) =>
+  t.field({
+    type: TicketWorkflowStateRef,
+    nullable: true,
+    resolve: async (ticket, _args, ctx) => {
+      if (
+        ticket.stage === ModelStage.PUBLISHED &&
+        ticket.status === TicketStatus.SCHEDULED
+      ) {
+        // Resolve lastScheduleItem inline
+        const lastSI: any = (ticket as any).scheduleItems
+          ? last((ticket as any).scheduleItems)
+          : await ctx.prisma.scheduleItem.findFirst({
+              where: { ticketId: ticket.id },
+              orderBy: { stoppedAt: "desc" },
+              include: {
+                ticketWorkflowState: true,
+                nextTicketWorkflowState: true,
+              },
+            });
 
-  @FieldResolver((_returns) => [Ticket])
-  async successors(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<Ticket[]> {
-    if (ticket.successors) {
-      return ticket.successors;
-    }
+        if (lastSI) {
+          if (lastSI.nextTicketWorkflowStateId) {
+            if (lastSI.nextTicketWorkflowState) {
+              return lastSI.nextTicketWorkflowState;
+            }
+            return ctx.prisma.ticketWorkflowState.findUnique({
+              where: { id: lastSI.nextTicketWorkflowStateId },
+            });
+          }
 
-    return ctx.prisma.ticket.findMany({
-      where: {
-        ancestors: { some: { id: ticket.id } },
-      },
-    });
-  }
+          if (lastSI.ticketWorkflowState) {
+            return lastSI.ticketWorkflowState;
+          }
 
-  @FieldResolver((_returns) => ScheduleItem, { nullable: true })
-  async lastScheduleItem(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<ScheduleItem | null> {
-    if (ticket.scheduleItems) {
-      return last(ticket.scheduleItems) || null;
-    }
+          return ctx.prisma.ticketWorkflowState.findUnique({
+            where: { id: lastSI.ticketWorkflowStateId },
+          });
+        }
 
-    return ctx.prisma.scheduleItem.findFirst({
-      where: { ticketId: ticket.id },
-      orderBy: { stoppedAt: "desc" },
-      include: { ticketWorkflowState: true },
-    });
-  }
-
-  @FieldResolver((_returns) => [ScheduleItem])
-  async scheduleItems(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<ScheduleItem[]> {
-    if (ticket.scheduleItems) {
-      return ticket.scheduleItems;
-    }
-
-    return ctx.prisma.scheduleItem.findMany({
-      where: { ticketId: ticket.id },
-      include: { role: { include: { user: true } } },
-    });
-  }
-
-  @FieldResolver((_returns) => [Tag])
-  async tags(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<Tag[]> {
-    if (ticket.tags) {
-      return ticket.tags;
-    }
-
-    return ctx.prisma.tag.findMany({
-      where: {
-        tickets: { some: { id: ticket.id } },
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => [Role])
-  async watchers(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<Role[]> {
-    if (ticket.watchers) {
-      return ticket.watchers;
-    }
-
-    return ctx.prisma.role.findMany({
-      where: {
-        ticketsWatched: { some: { id: ticket.id } },
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => [PersonalTag])
-  async personalTags(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<PersonalTag[]> {
-    if (ticket.personalTags) {
-      return ticket.personalTags;
-    }
-
-    return ctx.prisma.personalTag.findMany({
-      where: {
-        tickets: { some: { id: ticket.id } },
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => [Issue])
-  async issues(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<Issue[]> {
-    if (ticket.cases) {
-      return ticket.cases;
-    }
-
-    return ctx.prisma.issue.findMany({
-      where: {
-        ticket: { id: ticket.id },
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => Workflow, { nullable: true })
-  async workflow(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() ticket: Ticket
-  ): Promise<Workflow | null> {
-    if (ticket.workflowId) {
-      if (ticket.workflow) {
-        return ticket.workflow;
+        return ctx.prisma.ticketWorkflowState.findFirst({
+          where: { isActive: true, ticket: { id: ticket.id } },
+          orderBy: { position: "asc" },
+        });
       }
 
-      return ctx.prisma.workflow.findUniqueOrThrow({
-        where: { id: ticket.workflowId },
-      });
-    }
-
-    return null;
-  }
-
-  @FieldResolver((_returns) => PaginatedComments)
-  async comments(
-    @Root() ticket: Ticket,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("search", () => String, { nullable: true }) search: string
-  ): Promise<PaginatedComments> {
-    return getPaginatedComments({
-      first,
-      last,
-      offset,
-      search,
-      ticketId: ticket.id,
-      organizationId: ticket.organizationId,
-    });
-  }
-}
+      return null;
+    },
+  }),
+);

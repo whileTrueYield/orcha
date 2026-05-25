@@ -1,62 +1,67 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  Int,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
+/**
+ * Mutation resolver for updating an existing PersonalTag.
+ *
+ * Registers: Mutation.updatePersonalTag(tagId: Int!, input: UpdatePersonalTagInput!): PersonalTag!
+ *
+ * Requires ADMIN or OWNER role. When the name changes, validates
+ * no other personal tag for this owner already uses that name.
+ */
 
-import { Length } from "class-validator";
-import { PersonalTag, RoleType } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
+import { GraphQLError } from "graphql";
+import builder from "../../../schema/builder";
+import { PersonalTagRef } from "../entity";
 import { findPersonalTagByName } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class UpdatePersonalTagInput {
-  @Field({ nullable: true })
-  @Length(1, 128)
-  name: string;
-}
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-@Resolver(PersonalTag)
-export class UpdatePersonalTagResolver {
-  @Mutation(() => PersonalTag)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updatePersonalTag(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("tagId", () => Int) tagId: number,
-    @Arg("input", () => UpdatePersonalTagInput) input: UpdatePersonalTagInput
-  ): Promise<PersonalTag> {
-    const personalTag = await ctx.prisma.personalTag.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        ownerId: ctx.me.roleId,
-        id: tagId,
-      },
-    });
+const UpdatePersonalTagInput = builder.inputType("UpdatePersonalTagInput", {
+  fields: (t) => ({
+    name: t.string({ required: false }),
+  }),
+});
 
-    // When the personalTag name is changed we don't want to take an
-    // existing one
-    if (input.name && input.name !== personalTag.name) {
-      const existingPersonalTag = await findPersonalTagByName(
-        input.name,
-        ctx.me.organizationId,
-        ctx.me.roleId
-      );
+// ---------------------------------------------------------------------------
+// Mutation
+// ---------------------------------------------------------------------------
 
-      if (existingPersonalTag && existingPersonalTag.id !== personalTag.id) {
-        throw new UserInputError("A tag with the same name already exists");
+builder.mutationField("updatePersonalTag", (t) =>
+  t.prismaField({
+    type: PersonalTagRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      tagId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdatePersonalTagInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const personalTag = await ctx.prisma.personalTag.findFirstOrThrow({
+        where: {
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          ownerId: (ctx.me as AuthRoleContext).roleId,
+          id: args.tagId,
+        },
+      });
+
+      // Prevent name collisions when renaming
+      if (args.input.name && args.input.name !== personalTag.name) {
+        const existing = await findPersonalTagByName(
+          args.input.name,
+          (ctx.me as AuthRoleContext).organizationId,
+          (ctx.me as AuthRoleContext).roleId,
+        );
+
+        if (existing && existing.id !== personalTag.id) {
+          throw new GraphQLError("A tag with the same name already exists");
+        }
       }
-    }
 
-    return ctx.prisma.personalTag.update({
-      where: { id: personalTag.id },
-      data: input,
-    });
-  }
-}
+      return ctx.prisma.personalTag.update({
+        ...query,
+        where: { id: personalTag.id },
+        data: { name: args.input.name ?? undefined },
+      });
+    },
+  }),
+);

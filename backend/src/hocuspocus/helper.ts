@@ -6,5 +6,5 @@ import * as Y from "yjs";
  * @returns
  */
 export const getInitialYjsDocument = () => {
-  return Buffer.from(Y.encodeStateAsUpdate(new Y.Doc()));
+  return Y.encodeStateAsUpdate(new Y.Doc());
 };

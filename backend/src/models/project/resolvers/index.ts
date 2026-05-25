@@ -1,17 +1,11 @@
-import { CreateProjectResolver } from "./createProject.resolver";
-import { UpdateProjectResolver } from "./updateProject.resolver";
-import { ProjectResolver } from "./project.resolver";
-import { ProjectsResolver } from "./projects.resolver";
-import { DeleteProjectResolver } from "./deleteProject.resolver";
-import { MiniProjectResolver } from "./miniProjects.resolver";
-import { ProjectAnalyticsResolver } from "./projectAnalytics.resolver";
+/**
+ * Project resolver registrations — side-effect imports.
+ */
 
-export default [
-  CreateProjectResolver,
-  UpdateProjectResolver,
-  ProjectResolver,
-  ProjectsResolver,
-  DeleteProjectResolver,
-  MiniProjectResolver,
-  ProjectAnalyticsResolver,
-];
+import "./createProject.resolver";
+import "./deleteProject.resolver";
+import "./miniProjects.resolver";
+import "./project.resolver";
+import "./projectAnalytics.resolver";
+import "./projects.resolver";
+import "./updateProject.resolver";

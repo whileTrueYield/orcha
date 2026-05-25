@@ -1,53 +1,68 @@
-import {
-  Arg,
-  Query,
-  Resolver,
-  Int,
-  FieldResolver,
-  Root,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
-import { Drawing, Organization } from "@generated/type-graphql";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
+/**
+ * Drawing query — fetch a single drawing by ID within the caller's org.
+ *
+ * Exports: none (side-effect: registers `drawing` query on the builder).
+ *
+ * Also registers the Drawing Prisma object type so it's available to all
+ * drawing resolvers. The organization relation is resolved eagerly to match
+ * the original FieldResolver behavior.
+ */
 
-@Resolver(Drawing)
-export class DrawingResolver {
-  @Query(() => Drawing!)
-  @UseMiddleware(hasRole())
-  async drawing(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<Drawing> {
-    const drawing = await ctx.prisma.drawing.findFirst({
-      where: {
-        id,
-        organizationId: ctx.me.organizationId,
-      },
-    });
+import { GraphQLError } from "graphql";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-    if (!drawing) {
-      throw new UserInputError(
-        "This drawing does not exist or has been deleted"
-      );
-    }
+// ---------------------------------------------------------------------------
+// Drawing Prisma object
+// ---------------------------------------------------------------------------
 
-    return drawing;
-  }
+export const DrawingRef = builder.prismaObject("Drawing", {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    data: t.exposeString("data"),
+    organizationId: t.exposeInt("organizationId"),
+    roleId: t.exposeInt("roleId", { nullable: true }),
+    lockExpiration: t.expose("lockExpiration", {
+      type: "DateTime",
+      nullable: true,
+    }),
+    createdAt: t.expose("createdAt", { type: "DateTime" }),
+    updatedAt: t.expose("updatedAt", { type: "DateTime" }),
+    organization: t.relation("organization"),
+    role: t.relation("role", { nullable: true }),
+  }),
+});
 
-  @FieldResolver((_returns) => Organization)
-  async organization(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() drawing: Drawing
-  ): Promise<Organization> {
-    if (drawing.organization) {
-      return drawing.organization;
-    }
+// ---------------------------------------------------------------------------
+// Query
+// ---------------------------------------------------------------------------
 
-    return ctx.prisma.organization.findUniqueOrThrow({
-      where: { id: drawing.organizationId },
-    });
-  }
-}
+builder.queryField("drawing", (t) =>
+  t.prismaField({
+    type: "Drawing",
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      // hasRole scope guarantees AuthRoleContext at runtime.
+      const me = ctx.me as AuthRoleContext;
+      const drawing = await ctx.prisma.drawing.findFirst({
+        ...query,
+        where: {
+          id: args.id,
+          organizationId: me.organizationId,
+        },
+      });
+
+      if (!drawing) {
+        throw new GraphQLError(
+          "This drawing does not exist or has been deleted",
+          { extensions: { code: "BAD_USER_INPUT" } },
+        );
+      }
+
+      return drawing;
+    },
+  }),
+);

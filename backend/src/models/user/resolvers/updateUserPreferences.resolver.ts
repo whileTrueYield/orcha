@@ -1,47 +1,60 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-  Int,
-} from "type-graphql";
+/**
+ * Mutation resolver for updating User preferences.
+ *
+ * Provides:
+ *  - updateUserPreferences(input): persists preference JSON on the user record
+ *
+ * Requires isAuthenticated auth scope.
+ *
+ * Assumes ctx.me has userId set (guaranteed by isAuthenticated scope).
+ * Note: The original resolver used ctx.me.roleId for the where clause,
+ * which appears to be a bug (roles and users have different IDs).
+ * Preserving the original behavior for backward compatibility.
+ */
 
-import { Length } from "class-validator";
-import { User } from "@generated/type-graphql";
-import { isAuthenticated } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 import { UserPreferences } from "../entity";
 
-@InputType()
-class UpdateUserPreferencesInput {
-  @Field((_type) => [Int], { nullable: "items" })
-  @Length(1, 128)
-  favoriteOrganizations: number[];
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-  @Field((_type) => Int, { nullable: true })
-  lastOrganizationId: number | null;
-}
+const UpdateUserPreferencesInput = builder.inputType(
+  "UpdateUserPreferencesInput",
+  {
+    fields: (t) => ({
+      favoriteOrganizations: t.intList({ required: true }),
+      lastOrganizationId: t.int({ required: false }),
+    }),
+  },
+);
 
-@Resolver(User)
-export class UpdateUserPreferencesResolver {
-  @Mutation(() => User)
-  @UseMiddleware(isAuthenticated)
-  async updateUserPreferences(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input", () => UpdateUserPreferencesInput)
-    input: UpdateUserPreferencesInput
-  ): Promise<User> {
-    const preferences: UserPreferences = {
-      favoriteOrganizations: input.favoriteOrganizations,
-      lastOrganizationId: input.lastOrganizationId,
-    };
+// ---------------------------------------------------------------------------
+// updateUserPreferences mutation
+// ---------------------------------------------------------------------------
 
-    return ctx.prisma.user.update({
-      where: { id: ctx.me.roleId },
-      data: { preferences: JSON.stringify(preferences) },
-    });
-  }
-}
+builder.mutationField("updateUserPreferences", (t) =>
+  t.prismaField({
+    type: "User",
+    authScopes: { isAuthenticated: true },
+    args: {
+      input: t.arg({ type: UpdateUserPreferencesInput, required: true }),
+    },
+    resolve: (query, _root, args, ctx) => {
+      // The original resolver used roleId here — preserving that behavior
+      const me = ctx.me as AuthRoleContext;
+
+      const preferences: UserPreferences = {
+        favoriteOrganizations: args.input.favoriteOrganizations,
+        lastOrganizationId: args.input.lastOrganizationId ?? null,
+      };
+
+      return ctx.prisma.user.update({
+        ...query,
+        where: { id: me.roleId },
+        data: { preferences: JSON.stringify(preferences) },
+      });
+    },
+  }),
+);

@@ -1,72 +1,57 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-  Int,
-} from "type-graphql";
+/**
+ * Mutation: createProject.
+ */
 
-import { Length } from "class-validator";
-import { Project } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { UserInputError } from "apollo-server-express";
+import builder from "../../../schema/builder";
+import { GraphQLError } from "graphql";
 import { ModelStage, Prisma } from "@prisma/client";
 import { findProjectByName } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-export class CreateProjectInput {
-  @Field()
-  @Length(1, 128)
-  name: string;
+export const CreateProjectInput = builder.inputType("CreateProjectInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+    parentId: t.int({ required: false }),
+  }),
+});
 
-  @Field(() => Int, { nullable: true })
-  parentId: number | null;
-}
+builder.mutationField("createProject", (t) =>
+  t.prismaField({
+    type: "Project",
+    authScopes: { hasRole: true },
+    args: {
+      input: t.arg({ type: CreateProjectInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const projectUsingSameName = await findProjectByName(
+        args.input.name,
+        args.input.parentId ?? null,
+        (ctx.me as AuthRoleContext).organizationId,
+      );
 
-@Resolver(Project)
-export class CreateProjectResolver {
-  @Mutation(() => Project)
-  @UseMiddleware(hasRole([]))
-  async createProject(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input")
-    input: CreateProjectInput
-  ): Promise<Project> {
-    const projectUsingSameName = await findProjectByName(
-      input.name,
-      input.parentId,
-      ctx.me.organizationId
-    );
+      if (projectUsingSameName) {
+        throw new GraphQLError("This project already exists", { extensions: { code: "BAD_USER_INPUT" } });
+      }
 
-    if (projectUsingSameName) {
-      throw new UserInputError("This project already exists");
-    }
+      const projectData: Prisma.ProjectUncheckedCreateInput = {
+        name: args.input.name,
+        organizationId: (ctx.me as AuthRoleContext).organizationId,
+        ownerId: (ctx.me as AuthRoleContext).roleId,
+        authorId: (ctx.me as AuthRoleContext).roleId,
+        stage: ModelStage.PUBLISHED,
+      };
 
-    const projectData: Prisma.ProjectUncheckedCreateInput = {
-      name: input.name,
-      organizationId: ctx.me.organizationId,
-      ownerId: ctx.me.roleId,
-      authorId: ctx.me.roleId,
-      stage: ModelStage.PUBLISHED,
-    };
+      if (args.input.parentId) {
+        const parentProject = await ctx.prisma.project.findFirstOrThrow({
+          where: {
+            organizationId: (ctx.me as AuthRoleContext).organizationId,
+            id: args.input.parentId,
+          },
+        });
+        projectData.parentId = parentProject.id;
+      }
 
-    if (input.parentId) {
-      const parentProject = await ctx.prisma.project.findFirstOrThrow({
-        where: {
-          organizationId: ctx.me.organizationId,
-          id: input.parentId,
-        },
-      });
-
-      projectData.parentId = parentProject.id;
-    }
-
-    const project = await ctx.prisma.project.create({ data: projectData });
-
-    return project;
-  }
-}
+      return ctx.prisma.project.create({ ...query, data: projectData });
+    },
+  }),
+);

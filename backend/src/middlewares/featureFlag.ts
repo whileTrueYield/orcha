@@ -1,7 +1,14 @@
-import { MiddlewareFn } from "type-graphql";
-import { AppContext, AuthStatus, AuthContext } from "../types";
-import { AuthenticationError } from "apollo-server-express";
-import { get, isArray } from "lodash";
+/**
+ * Feature flag assertion helper.
+ *
+ * Checks the FeatureFlag record for an organization and throws a
+ * GraphQLError if the requested feature is not enabled.
+ *
+ * Exports: FeatureFlags enum, assertFeatureFlag.
+ */
+
+import { GraphQLError } from "graphql";
+import { get } from "lodash";
 import prisma from "../prisma";
 
 export enum FeatureFlags {
@@ -10,35 +17,26 @@ export enum FeatureFlags {
   REPORT = "report",
 }
 
-export const hasFeature =
-  (
-    featureFlags: FeatureFlags[] | FeatureFlags
-  ): MiddlewareFn<AppContext<AuthContext>> =>
-  async ({ context }, next) => {
-    if (context.me.status === AuthStatus.LINKED) {
-      context.me.organizationId;
-      const orgFeatureFlag = await prisma.featureFlag.findFirst({
-        where: { organizationId: context.me.organizationId },
-      });
+// ---------------------------------------------------------------------------
+// assertFeatureFlag — standalone guard for Pothos resolvers
+//
+// Usage inside a Pothos resolve function:
+//   await assertFeatureFlag(ctx.me.organizationId, FeatureFlags.SUPPORT);
+// ---------------------------------------------------------------------------
 
-      if (orgFeatureFlag) {
-        if (isArray(featureFlags)) {
-          // if we received an array of feature flags:
-          // @UseMiddleware(hasFeature(["support", "documentation"]))
-          for (const featureFlag of featureFlags) {
-            if (get(orgFeatureFlag, featureFlag) === true) {
-              return next();
-            }
-          }
-        } else {
-          // if we received a single feature flag:
-          // @UseMiddleware(hasFeature("documentation"))
-          if (get(orgFeatureFlag, featureFlags) === true) {
-            return next();
-          }
-        }
-      }
-    }
+export async function assertFeatureFlag(
+  organizationId: number,
+  featureFlag: FeatureFlags,
+): Promise<void> {
+  const orgFeatureFlag = await prisma.featureFlag.findFirst({
+    where: { organizationId },
+  });
 
-    throw new AuthenticationError("Access to this feature is restricted");
-  };
+  if (orgFeatureFlag && get(orgFeatureFlag, featureFlag) === true) {
+    return;
+  }
+
+  throw new GraphQLError("Access to this feature is restricted", {
+    extensions: { code: "UNAUTHENTICATED" },
+  });
+}

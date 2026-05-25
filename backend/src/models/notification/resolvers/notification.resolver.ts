@@ -1,98 +1,72 @@
-import {
-  Arg,
-  Query,
-  Resolver,
-  Int,
-  FieldResolver,
-  Root,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
-import { Notification, Organization, Role } from "@generated/type-graphql";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
+/**
+ * Query resolvers for fetching a single Notification.
+ *
+ * Provides:
+ *  - notification(id):    fetch a specific notification by ID (scoped to org + role)
+ *  - lastNotification:    fetch the most recent notification for the current user
+ *
+ * Both require hasRole auth scope.
+ */
 
-@Resolver(Notification)
-export class NotificationResolver {
-  @Query(() => Notification!)
-  @UseMiddleware(hasRole())
-  async notification(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<Notification> {
-    const notification = await ctx.prisma.notification.findFirst({
-      where: {
-        id,
-        organizationId: ctx.me.organizationId,
-        roleId: ctx.me.roleId,
-      },
-      include: { role: true },
-    });
+import { GraphQLError } from "graphql";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-    if (!notification) {
-      throw new UserInputError(
-        "This notification does not exist or has been deleted"
-      );
-    }
+// ---------------------------------------------------------------------------
+// notification — fetch a single notification by ID
+// ---------------------------------------------------------------------------
 
-    return notification;
-  }
+builder.queryField("notification", (t) =>
+  t.prismaField({
+    type: "Notification",
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-  @Query(() => Notification, { nullable: true })
-  @UseMiddleware(hasRole())
-  async lastNotification(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<Notification | null> {
-    return ctx.prisma.notification.findFirst({
-      where: {
-        organizationId: ctx.me.organizationId,
-        roleId: ctx.me.roleId,
-      },
-      include: { role: true },
-      orderBy: { id: "desc" },
-    });
-  }
+      const notification = await ctx.prisma.notification.findFirst({
+        ...query,
+        where: {
+          id: args.id,
+          organizationId: me.organizationId,
+          roleId: me.roleId,
+        },
+      });
 
-  @FieldResolver((_returns) => Organization)
-  async organization(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() notification: Notification
-  ): Promise<Organization> {
-    if (notification.organization) {
-      return notification.organization;
-    }
+      if (!notification) {
+        throw new GraphQLError(
+          "This notification does not exist or has been deleted",
+          { extensions: { code: "BAD_USER_INPUT" } },
+        );
+      }
 
-    return ctx.prisma.organization.findUniqueOrThrow({
-      where: { id: notification.organizationId },
-    });
-  }
+      return notification;
+    },
+  }),
+);
 
-  @FieldResolver((_returns) => Role)
-  async role(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() notification: Notification
-  ): Promise<Role> {
-    if (notification.role) {
-      return notification.role;
-    }
+// ---------------------------------------------------------------------------
+// lastNotification — fetch the most recent notification for the current user
+// ---------------------------------------------------------------------------
 
-    return ctx.prisma.role.findUniqueOrThrow({
-      where: { id: notification.roleId },
-    });
-  }
+builder.queryField("lastNotification", (t) =>
+  t.prismaField({
+    type: "Notification",
+    nullable: true,
+    authScopes: { hasRole: true },
+    resolve: (query, _root, _args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-  @FieldResolver((_returns) => Role)
-  async actor(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() notification: Notification
-  ): Promise<Role> {
-    if (notification.actor) {
-      return notification.actor;
-    }
-
-    return ctx.prisma.role.findUniqueOrThrow({
-      where: { id: notification.actorId },
-    });
-  }
-}
+      return ctx.prisma.notification.findFirst({
+        ...query,
+        where: {
+          organizationId: me.organizationId,
+          roleId: me.roleId,
+        },
+        orderBy: { id: "desc" },
+      });
+    },
+  }),
+);

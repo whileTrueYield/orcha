@@ -1,8 +1,7 @@
 import prisma from "../../prisma";
 import { clamp, trim, without } from "lodash";
-import { Project } from "@generated/type-graphql";
+import { Project } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedProjects } from "./entity";
 import { Prisma, ModelStage, TicketStatus } from ".prisma/client";
 
 /**
@@ -151,7 +150,7 @@ interface GetPaginatedProjectsArgs extends GetPageArgsFor<Project> {
 // when working with pages
 export async function getPaginatedProjects(
   args: GetPaginatedProjectsArgs
-): Promise<PaginatedProjects> {
+) {
   const { first, last, organizationId, search, parentId } = args;
 
   // default offset to be at the start (or the end

@@ -1,33 +1,42 @@
-import { Arg, Query, Resolver, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Query resolver for fetching paginated Notifications.
+ *
+ * Provides:
+ *  - myNotifications(first, last, offset, sort, search, unread): paginated list
+ *
+ * Delegates to getPaginatedNotifications helper. Requires hasRole auth scope.
+ */
 
-import { Notification } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { getPaginatedNotifications } from "../helper";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 import { PaginatedNotifications } from "../entity";
+import { getPaginatedNotifications } from "../helper";
 
-@Resolver(Notification)
-export class NotificationsResolver {
-  @Query((_returns) => PaginatedNotifications)
-  @UseMiddleware(hasRole())
-  async myNotifications(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Notification,
-    @Arg("search", () => String, { nullable: true }) search: string,
-    @Arg("unread", () => Boolean, { nullable: true }) unread: boolean
-  ) {
-    return getPaginatedNotifications({
-      organizationId: ctx.me.organizationId,
-      roleId: ctx.me.roleId,
-      first,
-      last,
-      offset,
-      sort,
-      search,
-      unread,
-    });
-  }
-}
+builder.queryField("myNotifications", (t) =>
+  t.field({
+    type: PaginatedNotifications,
+    authScopes: { hasRole: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+      unread: t.arg.boolean({ required: false }),
+    },
+    resolve: (_root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      return getPaginatedNotifications({
+        organizationId: me.organizationId,
+        roleId: me.roleId,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: args.sort as any,
+        search: args.search ?? undefined,
+        unread: args.unread ?? undefined,
+      });
+    },
+  }),
+);

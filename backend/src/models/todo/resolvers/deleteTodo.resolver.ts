@@ -1,25 +1,34 @@
-import { Arg, Resolver, Mutation, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Mutation resolver for deleting a Todo.
+ *
+ * Provides:
+ *  - deleteTodo(todoId): deletes a todo owned by the current user
+ *
+ * Requires hasRole auth scope. Verifies org + owner before deleting.
+ */
 
-import { Todo } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Todo)
-export class DeleteTodoResolver {
-  @Mutation((_returns) => Todo)
-  @UseMiddleware(hasRole([]))
-  async deleteTodo(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("todoId", () => Int!) todoId: number
-  ): Promise<Todo> {
-    const todo = await ctx.prisma.todo.findFirstOrThrow({
-      where: {
-        id: todoId,
-        organizationId: ctx.me.organizationId,
-        ownerId: ctx.me.roleId,
-      },
-    });
+builder.mutationField("deleteTodo", (t) =>
+  t.prismaField({
+    type: "Todo",
+    authScopes: { hasRole: true },
+    args: {
+      todoId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    return ctx.prisma.todo.delete({ where: { id: todo.id } });
-  }
-}
+      const todo = await ctx.prisma.todo.findFirstOrThrow({
+        where: {
+          id: args.todoId,
+          organizationId: me.organizationId,
+          ownerId: me.roleId,
+        },
+      });
+
+      return ctx.prisma.todo.delete({ ...query, where: { id: todo.id } });
+    },
+  }),
+);

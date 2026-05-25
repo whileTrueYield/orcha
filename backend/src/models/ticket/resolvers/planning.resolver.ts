@@ -1,21 +1,26 @@
-import { TicketStatus, ModelStage, Ticket } from "@generated/type-graphql";
+/**
+ * Planning queries and mutations for ticket scheduling workflows.
+ *
+ * Registers:
+ *  - Query.planningTickets: [PlanningTicket!]!
+ *  - Query.planningDeliveredTickets(fromDate, toDate): [PlanningTicket!]!
+ *  - Query.getUnscheduledTickets(...pagination): PaginatedTickets!
+ *  - Query.getScheduledTickets: [Ticket!]!
+ *  - Query.planningProjection(ticketIds, scheduleConfigs): [PlanningTicket!]!
+ *  - Mutation.commitScheduleChanges(removeTicketIds, addTicketIds, scheduleConfigs): Boolean!
+ *
+ * Planning views show scheduled/delivered tickets with their ETAs.
+ * commitScheduleChanges atomically schedules and unschedules tickets
+ * and persists schedule configuration.
+ */
+
+import { ModelStage, TicketStatus } from "@prisma/client";
 import { addMonths } from "date-fns";
 import { isEmpty, keyBy, last, map } from "lodash";
-import {
-  Arg,
-  Ctx,
-  Field,
-  InputType,
-  Int,
-  Mutation,
-  Query,
-  Resolver,
-  UseMiddleware,
-} from "type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { UpdateScheduleConfig } from "../../schedule/resolvers/ScheduleConfig.resolver";
-import { PaginatedTickets, PlanningTicket } from "../entity";
+import builder from "../../../schema/builder";
+import { PlanningTicketRef } from "../entity";
+import { PaginatedTickets } from "../entity";
+import { AuthRoleContext } from "../../../types";
 import { getPaginatedTickets } from "../helper";
 import {
   buildUid,
@@ -23,441 +28,457 @@ import {
   requestEstimate,
 } from "../jobs/estimateTickets";
 import { assertCanScheduleTicket } from "./scheduleTicket.resolver";
+import { UpdateScheduleConfigInput } from "../../schedule/resolvers/ScheduleConfig.resolver";
 
-@InputType()
-class ScheduleItemForEstimateObjInput {
-  @Field()
-  id: number;
-}
+// ---------------------------------------------------------------------------
+// Input types for schedule config (used by commitScheduleChanges and
+// planningProjection)
+// ---------------------------------------------------------------------------
 
-@InputType()
-class ScheduleConfigForEstimateInput {
-  @Field()
-  priority: number;
+const ScheduleItemForEstimateObjInput = builder.inputType(
+  "ScheduleItemForEstimateObjInput",
+  {
+    fields: (t) => ({
+      id: t.int({ required: true }),
+    }),
+  },
+);
 
-  @Field(() => [ScheduleItemForEstimateObjInput])
-  tags: ScheduleItemForEstimateObjInput[];
+const ScheduleConfigForEstimateInput = builder.inputType(
+  "ScheduleConfigForEstimateInput",
+  {
+    fields: (t) => ({
+      priority: t.int({ required: true }),
+      tags: t.field({
+        type: [ScheduleItemForEstimateObjInput],
+        required: true,
+      }),
+      features: t.field({
+        type: [ScheduleItemForEstimateObjInput],
+        required: true,
+      }),
+      projects: t.field({
+        type: [ScheduleItemForEstimateObjInput],
+        required: true,
+      }),
+      products: t.field({
+        type: [ScheduleItemForEstimateObjInput],
+        required: true,
+      }),
+      workflows: t.field({
+        type: [ScheduleItemForEstimateObjInput],
+        required: true,
+      }),
+      tickets: t.field({
+        type: [ScheduleItemForEstimateObjInput],
+        required: true,
+      }),
+    }),
+  },
+);
 
-  @Field(() => [ScheduleItemForEstimateObjInput])
-  features: ScheduleItemForEstimateObjInput[];
+// ---------------------------------------------------------------------------
+// Query: planningTickets
+// ---------------------------------------------------------------------------
 
-  @Field(() => [ScheduleItemForEstimateObjInput])
-  projects: ScheduleItemForEstimateObjInput[];
+builder.queryField("planningTickets", (t) =>
+  t.field({
+    type: [PlanningTicketRef],
+    authScopes: { hasRole: true },
+    resolve: async (_root, _args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-  @Field(() => [ScheduleItemForEstimateObjInput])
-  products: ScheduleItemForEstimateObjInput[];
-
-  @Field(() => [ScheduleItemForEstimateObjInput])
-  workflows: ScheduleItemForEstimateObjInput[];
-
-  @Field(() => [ScheduleItemForEstimateObjInput])
-  tickets: ScheduleItemForEstimateObjInput[];
-}
-
-@Resolver((_of) => PlanningTicket)
-export class PlanningResolver {
-  @Query((_returns) => [PlanningTicket])
-  @UseMiddleware(hasRole())
-  async planningTickets(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<PlanningTicket[]> {
-    const tickets = await ctx.prisma.ticket.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        stage: ModelStage.PUBLISHED,
-        status: { in: [TicketStatus.SCHEDULED] },
-        eta: { not: null, lt: addMonths(new Date(), 6) },
-        localId: { not: null },
-      },
-      include: {
-        product: {
-          select: {
-            code: true,
-            name: true,
-          },
+      const tickets = await ctx.prisma.ticket.findMany({
+        where: {
+          organizationId: me.organizationId,
+          stage: ModelStage.PUBLISHED,
+          status: { in: [TicketStatus.SCHEDULED] },
+          eta: { not: null, lt: addMonths(new Date(), 6) },
+          localId: { not: null },
         },
-        workflow: {
-          select: {
-            name: true,
-          },
+        include: {
+          product: { select: { code: true, name: true } },
+          workflow: { select: { name: true } },
+          project: { select: { name: true } },
         },
-        project: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        eta: "asc",
-      },
-    });
+        orderBy: { eta: "asc" },
+      });
 
-    return tickets.map(
-      (ticket): PlanningTicket => ({
+      return tickets.map((ticket) => ({
         id: ticket.id,
         title: ticket.title,
         status: ticket.status,
         productCode: ticket.product?.code || "N/A",
-        // localId and eta are asserted in the query
         localId: ticket.localId!,
         eta: ticket.eta!,
         milestone: ticket.milestone,
         workflowName: ticket.workflow?.name || "N/A",
         productName: ticket.product?.name || "N/A",
         projectName: ticket.project?.name || "N/A",
-      })
-    );
-  }
+      }));
+    },
+  }),
+);
 
-  @Query((_returns) => [PlanningTicket])
-  @UseMiddleware(hasRole())
-  async planningDeliveredTickets(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("fromDate", () => Date) fromDate: Date,
-    @Arg("toDate", () => Date) toDate: Date
-  ): Promise<PlanningTicket[]> {
-    const tickets = await ctx.prisma.ticket.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        stage: ModelStage.PUBLISHED,
-        status: { in: [TicketStatus.CANCELLED, TicketStatus.DONE] },
-        localId: { not: null },
-        closedAt: { gte: fromDate, lte: toDate },
-      },
-      include: {
-        product: {
-          select: {
-            code: true,
-            name: true,
-          },
-        },
-        workflow: {
-          select: {
-            name: true,
-          },
-        },
-        project: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        eta: "asc",
-      },
-    });
+// ---------------------------------------------------------------------------
+// Query: planningDeliveredTickets
+// ---------------------------------------------------------------------------
 
-    return tickets.map(
-      (ticket): PlanningTicket => ({
+builder.queryField("planningDeliveredTickets", (t) =>
+  t.field({
+    type: [PlanningTicketRef],
+    authScopes: { hasRole: true },
+    args: {
+      fromDate: t.arg({ type: "DateTime", required: true }),
+      toDate: t.arg({ type: "DateTime", required: true }),
+    },
+    resolve: async (_root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      const tickets = await ctx.prisma.ticket.findMany({
+        where: {
+          organizationId: me.organizationId,
+          stage: ModelStage.PUBLISHED,
+          status: { in: [TicketStatus.CANCELLED, TicketStatus.DONE] },
+          localId: { not: null },
+          closedAt: { gte: args.fromDate, lte: args.toDate },
+        },
+        include: {
+          product: { select: { code: true, name: true } },
+          workflow: { select: { name: true } },
+          project: { select: { name: true } },
+        },
+        orderBy: { eta: "asc" },
+      });
+
+      return tickets.map((ticket) => ({
         id: ticket.id,
         title: ticket.title,
         status: ticket.status,
         productCode: ticket.product?.code || "N/A",
-        // localId and eta are asserted in the query
         localId: ticket.localId!,
         eta: ticket.closedAt!,
         milestone: ticket.milestone,
         workflowName: ticket.workflow?.name || "N/A",
         productName: ticket.product?.name || "N/A",
         projectName: ticket.project?.name || "N/A",
-      })
-    );
-  }
+      }));
+    },
+  }),
+);
 
-  @Mutation(() => Boolean)
-  @UseMiddleware(hasRole())
-  async commitScheduleChanges(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("removeTicketIds", () => [Int], { nullable: "items" })
-    removeTicketIds: number[],
-    @Arg("addTicketIds", () => [Int], { nullable: "items" })
-    addTicketIds: number[],
-    @Arg("scheduleConfigs", () => [UpdateScheduleConfig], { nullable: "items" })
-    scheduleConfigs: UpdateScheduleConfig[]
-  ): Promise<boolean> {
-    const ticketsToUnschedule = await ctx.prisma.ticket.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        stage: ModelStage.PUBLISHED,
-        status: TicketStatus.SCHEDULED,
-        id: { in: removeTicketIds },
-      },
-      include: {
-        workflow: true,
-        product: true,
-        project: true,
-      },
-    });
+// ---------------------------------------------------------------------------
+// Mutation: commitScheduleChanges
+// ---------------------------------------------------------------------------
 
-    const ticketsToSchedule = await ctx.prisma.ticket.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: { in: addTicketIds },
-      },
-      include: { ticketWorkflowStates: { where: { isActive: true } } },
-    });
+builder.mutationField("commitScheduleChanges", (t) =>
+  t.boolean({
+    authScopes: { hasRole: true },
+    args: {
+      removeTicketIds: t.arg.intList({ required: true }),
+      addTicketIds: t.arg.intList({ required: true }),
+      scheduleConfigs: t.arg({
+        type: [UpdateScheduleConfigInput],
+        required: true,
+      }),
+    },
+    resolve: async (_root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    // make sure all the selected ticket can be scheduled before
-    // doing any changes
-    for (const ticket of ticketsToSchedule) {
-      assertCanScheduleTicket(ticket, ticket.ticketWorkflowStates);
-    }
-
-    const now = new Date();
-
-    // We schedule all the ticket that can be scheduled.
-    await ctx.prisma.ticket.updateMany({
-      where: { id: { in: addTicketIds } },
-      data: {
-        status: TicketStatus.SCHEDULED,
-        scheduledAt: now,
-      },
-    });
-
-    // ...And unschedule all the tickets to be unscheduled
-    await ctx.prisma.ticket.updateMany({
-      where: { id: { in: map(ticketsToUnschedule, "id") } },
-      data: {
-        status: TicketStatus.UNSCHEDULED,
-        scheduledAt: null,
-      },
-    });
-
-    // and close all work that haven't been finished on them
-    await ctx.prisma.scheduleItem.updateMany({
-      where: {
-        ticketId: { in: map(ticketsToUnschedule, "id") },
-        stoppedAt: null,
-      },
-      data: {
-        done: true,
-        stoppedAt: now,
-      },
-    });
-
-    // Set schedule config
-    // We're starting by deleting any old schedule config
-    await ctx.prisma.scheduleConfig.deleteMany({
-      where: { organizationId: ctx.me.organizationId },
-    });
-
-    for (const filter of scheduleConfigs) {
-      // Verify that all the objects referred to are part of
-      // the user's organization
-      const products = await ctx.prisma.product.findMany({
+      const ticketsToUnschedule = await ctx.prisma.ticket.findMany({
         where: {
-          organizationId: ctx.me.organizationId,
-          id: { in: filter.productIds },
+          organizationId: me.organizationId,
+          stage: ModelStage.PUBLISHED,
+          status: TicketStatus.SCHEDULED,
+          id: { in: args.removeTicketIds },
         },
+        include: { workflow: true, product: true, project: true },
       });
 
-      const projects = await ctx.prisma.project.findMany({
+      const ticketsToSchedule = await ctx.prisma.ticket.findMany({
         where: {
-          organizationId: ctx.me.organizationId,
-          id: { in: filter.projectIds },
+          organizationId: me.organizationId,
+          id: { in: args.addTicketIds },
         },
+        include: { ticketWorkflowStates: { where: { isActive: true } } },
       });
 
-      const tags = await ctx.prisma.tag.findMany({
-        where: {
-          organizationId: ctx.me.organizationId,
-          id: { in: filter.tagIds },
-        },
-      });
-
-      const workflows = await ctx.prisma.workflow.findMany({
-        where: {
-          organizationId: ctx.me.organizationId,
-          id: { in: filter.workflowIds },
-        },
-      });
-
-      const tickets = await ctx.prisma.ticket.findMany({
-        where: {
-          organizationId: ctx.me.organizationId,
-          id: { in: filter.ticketIds },
-        },
-      });
-
-      if (
-        isEmpty(products) &&
-        isEmpty(tags) &&
-        isEmpty(tickets) &&
-        isEmpty(workflows) &&
-        isEmpty(projects)
-      ) {
-        continue;
+      // Validate all tickets can be scheduled before making changes
+      for (const ticket of ticketsToSchedule) {
+        assertCanScheduleTicket(ticket, ticket.ticketWorkflowStates);
       }
 
-      await ctx.prisma.scheduleConfig.create({
-        data: {
-          organizationId: ctx.me.organizationId,
-          priority: filter.priority,
-          products: {
-            connect: products.map(({ id }) => ({ id })),
-          },
-          tags: { connect: tags.map(({ id }) => ({ id })) },
-          tickets: { connect: tickets.map(({ id }) => ({ id })) },
-          projects: { connect: projects.map(({ id }) => ({ id })) },
-          workflows: { connect: workflows.map(({ id }) => ({ id })) },
-        },
+      const now = new Date();
+
+      // Schedule the new tickets
+      await ctx.prisma.ticket.updateMany({
+        where: { id: { in: args.addTicketIds } },
+        data: { status: TicketStatus.SCHEDULED, scheduledAt: now },
       });
-    }
 
-    await requestEstimate(ctx.me.organizationId, true);
+      // Unschedule the removed tickets
+      await ctx.prisma.ticket.updateMany({
+        where: { id: { in: map(ticketsToUnschedule, "id") } },
+        data: { status: TicketStatus.UNSCHEDULED, scheduledAt: null },
+      });
 
-    return true;
-  }
+      // Close any active work on unscheduled tickets
+      await ctx.prisma.scheduleItem.updateMany({
+        where: {
+          ticketId: { in: map(ticketsToUnschedule, "id") },
+          stoppedAt: null,
+        },
+        data: { done: true, stoppedAt: now },
+      });
 
-  @Query((_returns) => PaginatedTickets)
-  @UseMiddleware(hasRole())
-  async getUnscheduledTickets(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Ticket,
-    @Arg("search", () => String, { nullable: true }) search: string,
-    @Arg("productId", () => Int, { nullable: true }) productId: number,
-    @Arg("workflowId", () => Int, { nullable: true }) workflowId: number,
-    @Arg("tagId", () => Int, { nullable: true }) tagId: number,
-    @Arg("projectId", () => Int, { nullable: true }) projectId: number,
-    @Arg("isReadyToSchedule", () => Boolean, { nullable: true })
-    isReadyToSchedule: boolean
-  ): Promise<PaginatedTickets> {
-    return getPaginatedTickets({
-      roleId: ctx.me.roleId,
-      organizationId: ctx.me.organizationId,
-      stages: [ModelStage.PUBLISHED],
-      statuses: [TicketStatus.UNSCHEDULED],
-      first,
-      last,
-      offset,
-      sort,
-      search,
-      productId,
-      workflowId,
-      tagId,
-      isReadyToSchedule,
-      projectId,
-      recursive: true,
-      publishedProjectOnly: true,
-    });
-  }
+      // Persist schedule configuration — delete old configs first
+      await ctx.prisma.scheduleConfig.deleteMany({
+        where: { organizationId: me.organizationId },
+      });
 
-  @Query((_returns) => [Ticket])
-  @UseMiddleware(hasRole())
-  async getScheduledTickets(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<Ticket[]> {
-    return ctx.prisma.ticket.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        stage: ModelStage.PUBLISHED,
-        status: TicketStatus.SCHEDULED,
-      },
-      include: {
-        workflow: true,
-        product: true,
-        project: true,
-        tags: true,
-        ticketWorkflowStates: {
-          include: {
-            assignee: true,
+      for (const filter of args.scheduleConfigs) {
+        const products = await ctx.prisma.product.findMany({
+          where: {
+            organizationId: me.organizationId,
+            id: { in: filter.productIds },
           },
-        },
-      },
-    });
-  }
+        });
 
-  @Query((_returns) => [PlanningTicket])
-  @UseMiddleware(hasRole())
-  async planningProjection(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("ticketIds", () => [Int]) ticketIds: number[],
-    @Arg("scheduleConfigs", () => [ScheduleConfigForEstimateInput], {
-      nullable: "items",
-    })
-    scheduleConfigs: ScheduleConfigForEstimateInput[]
-  ): Promise<PlanningTicket[]> {
-    const scheduledTickets = await ctx.prisma.ticket.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        stage: ModelStage.PUBLISHED,
-        id: { in: ticketIds },
-        // exclude ticket with non active assignnee
-        ticketWorkflowStates: {
-          none: {
-            isActive: true,
-            assignee: {
-              status: { not: "ACCEPTED" },
-            },
+        const projects = await ctx.prisma.project.findMany({
+          where: {
+            organizationId: me.organizationId,
+            id: { in: filter.projectIds },
           },
-        },
-      },
-      include: {
-        product: true,
-        workflow: true,
-        project: true,
-        scheduleItems: {
-          // capture only the most recent schedule item
-          orderBy: { stoppedAt: "desc" },
-          take: 1,
-          include: {
-            ticketWorkflowState: true,
-            nextTicketWorkflowState: true,
+        });
+
+        const tags = await ctx.prisma.tag.findMany({
+          where: {
+            organizationId: me.organizationId,
+            id: { in: filter.tagIds },
           },
-        },
-        ticketWorkflowStates: {
-          where: { isActive: true },
-          orderBy: { position: "asc" },
-        },
-        ancestors: {
-          include: {
-            ticketWorkflowStates: {
-              where: { isActive: true },
-              orderBy: { position: "asc" },
-            },
+        });
+
+        const workflows = await ctx.prisma.workflow.findMany({
+          where: {
+            organizationId: me.organizationId,
+            id: { in: filter.workflowIds },
           },
-        },
-      },
-    });
+        });
 
-    const snapshots = keyBy(
-      await estimateTickets(
-        ctx.me.organizationId,
-        scheduledTickets,
-        scheduleConfigs,
-        true
-      ),
-      "uid"
-    );
+        const tickets = await ctx.prisma.ticket.findMany({
+          where: {
+            organizationId: me.organizationId,
+            id: { in: filter.ticketIds },
+          },
+        });
 
-    // now that we have the snapshot, we need to attach the latest snapshot
-    // to the tickets and return this information
-    const planningTickets: PlanningTicket[] = [];
+        if (
+          isEmpty(products) &&
+          isEmpty(tags) &&
+          isEmpty(tickets) &&
+          isEmpty(workflows) &&
+          isEmpty(projects)
+        ) {
+          continue;
+        }
 
-    for (const ticket of scheduledTickets) {
-      const lastState = last(ticket.ticketWorkflowStates);
-      if (lastState) {
-        const uid = buildUid("TicketWorkflowState", lastState.id);
-
-        planningTickets.push({
-          id: ticket.id,
-          title: ticket.title,
-          status: ticket.status,
-          localId: ticket.localId || 0,
-          // estimates are provided in seconds, not millisecond
-          eta: new Date(snapshots[uid].end_p80 * 1000),
-          milestone: ticket.milestone,
-          workflowName: ticket.workflow?.name || "n/a",
-          productCode: ticket.product?.code || "n/a",
-          productName: ticket.product?.name || "n/a",
-          projectName: ticket.project?.name || "n/a",
+        await ctx.prisma.scheduleConfig.create({
+          data: {
+            organizationId: me.organizationId,
+            priority: filter.priority,
+            products: { connect: products.map(({ id }) => ({ id })) },
+            tags: { connect: tags.map(({ id }) => ({ id })) },
+            tickets: { connect: tickets.map(({ id }) => ({ id })) },
+            projects: { connect: projects.map(({ id }) => ({ id })) },
+            workflows: { connect: workflows.map(({ id }) => ({ id })) },
+          },
         });
       }
-    }
 
-    return planningTickets;
-  }
-}
+      await requestEstimate(me.organizationId, true);
+
+      return true;
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Query: getUnscheduledTickets
+// ---------------------------------------------------------------------------
+
+builder.queryField("getUnscheduledTickets", (t) =>
+  t.field({
+    type: PaginatedTickets,
+    authScopes: { hasRole: true },
+    args: {
+      last: t.arg.int({ required: false }),
+      first: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+      productId: t.arg.int({ required: false }),
+      workflowId: t.arg.int({ required: false }),
+      tagId: t.arg.int({ required: false }),
+      projectId: t.arg.int({ required: false }),
+      isReadyToSchedule: t.arg.boolean({ required: false }),
+    },
+    resolve: (_root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+      return getPaginatedTickets({
+        roleId: me.roleId,
+        organizationId: me.organizationId,
+        stages: [ModelStage.PUBLISHED],
+        statuses: [TicketStatus.UNSCHEDULED],
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: (args.sort as any) ?? undefined,
+        search: args.search ?? undefined,
+        productId: args.productId ?? undefined,
+        workflowId: args.workflowId ?? undefined,
+        tagId: args.tagId ?? undefined,
+        isReadyToSchedule: args.isReadyToSchedule ?? undefined,
+        projectId: args.projectId ?? undefined,
+        recursive: true,
+        publishedProjectOnly: true,
+      });
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Query: getScheduledTickets
+// ---------------------------------------------------------------------------
+
+builder.queryField("getScheduledTickets", (t) =>
+  t.prismaField({
+    type: ["Ticket"],
+    authScopes: { hasRole: true },
+    resolve: (query, _root, _args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+      return ctx.prisma.ticket.findMany({
+        ...query,
+        where: {
+          organizationId: me.organizationId,
+          stage: ModelStage.PUBLISHED,
+          status: TicketStatus.SCHEDULED,
+        },
+        include: {
+          ...query.include,
+          workflow: true,
+          product: true,
+          project: true,
+          tags: true,
+          ticketWorkflowStates: { include: { assignee: true } },
+        },
+      });
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Query: planningProjection
+// ---------------------------------------------------------------------------
+
+builder.queryField("planningProjection", (t) =>
+  t.field({
+    type: [PlanningTicketRef],
+    authScopes: { hasRole: true },
+    args: {
+      ticketIds: t.arg.intList({ required: true }),
+      scheduleConfigs: t.arg({
+        type: [ScheduleConfigForEstimateInput],
+        required: true,
+      }),
+    },
+    resolve: async (_root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      const scheduledTickets = await ctx.prisma.ticket.findMany({
+        where: {
+          organizationId: me.organizationId,
+          stage: ModelStage.PUBLISHED,
+          id: { in: args.ticketIds },
+          // Exclude tickets with non-active assignees
+          ticketWorkflowStates: {
+            none: {
+              isActive: true,
+              assignee: { status: { not: "ACCEPTED" } },
+            },
+          },
+        },
+        include: {
+          product: true,
+          workflow: true,
+          project: true,
+          scheduleItems: {
+            orderBy: { stoppedAt: "desc" },
+            take: 1,
+            include: {
+              ticketWorkflowState: true,
+              nextTicketWorkflowState: true,
+            },
+          },
+          ticketWorkflowStates: {
+            where: { isActive: true },
+            orderBy: { position: "asc" },
+          },
+          ancestors: {
+            include: {
+              ticketWorkflowStates: {
+                where: { isActive: true },
+                orderBy: { position: "asc" },
+              },
+            },
+          },
+        },
+      });
+
+      const snapshots = keyBy(
+        await estimateTickets(
+          me.organizationId,
+          scheduledTickets,
+          args.scheduleConfigs,
+          true,
+        ),
+        "uid",
+      );
+
+      const planningTickets: Array<{
+        id: number;
+        title: string;
+        status: TicketStatus;
+        localId: number;
+        eta: Date;
+        milestone: boolean;
+        workflowName: string;
+        productCode: string;
+        productName: string;
+        projectName: string;
+      }> = [];
+
+      for (const ticket of scheduledTickets) {
+        const lastState = last(ticket.ticketWorkflowStates);
+        if (lastState) {
+          const uid = buildUid("TicketWorkflowState", lastState.id);
+
+          planningTickets.push({
+            id: ticket.id,
+            title: ticket.title,
+            status: ticket.status,
+            localId: ticket.localId || 0,
+            // Estimates are in seconds, not milliseconds
+            eta: new Date(snapshots[uid].end_p80 * 1000),
+            milestone: ticket.milestone,
+            workflowName: ticket.workflow?.name || "n/a",
+            productCode: ticket.product?.code || "n/a",
+            productName: ticket.product?.name || "n/a",
+            projectName: ticket.project?.name || "n/a",
+          });
+        }
+      }
+
+      return planningTickets;
+    },
+  }),
+);

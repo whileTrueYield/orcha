@@ -1,11 +1,12 @@
 import { clamp, trim } from "lodash";
-import { Report, ModelStage } from "@generated/type-graphql";
+import { Report, ModelStage } from "@prisma/client";
 import prisma from "../../prisma";
 import { Prisma, ReportAggregateField, ReportGroupBy } from ".prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { FilterElement, PaginatedReports, ReportAggregate } from "./entity";
-import { Field, InputType } from "type-graphql";
-import { Matches } from "class-validator";
+import { FilterElementShape, QueryAggregateShape } from "./entity";
+// TODO: DateFilterElement was a TypeGraphQL @InputType. In Pothos it will be
+// defined as a builder inputType in the report resolver files. For now, keep
+// it as a plain TS class since it's only consumed by helper logic below.
 import { isValid } from "date-fns";
 
 interface GetReportsArgs extends GetPageArgsFor<Report> {
@@ -23,7 +24,7 @@ interface GetReportsArgs extends GetPageArgsFor<Report> {
 export function toFilterElement<T extends { id: number }>(
   name: string,
   label: Extract<keyof T, string>
-): (record: T) => FilterElement {
+): (record: T) => FilterElementShape {
   return (record: T) => ({
     id: `${name}:${record.id}`,
     label: `${record[label]}`,
@@ -33,7 +34,7 @@ export function toFilterElement<T extends { id: number }>(
 
 export async function getPaginatedReports(
   args: GetReportsArgs
-): Promise<PaginatedReports> {
+) {
   const { first, last, search, organizationId, stages } = args;
 
   // default offset to be at the start (or the end
@@ -114,7 +115,7 @@ type SelectTable = "ticket" | "scheduleItem" | "ticketWorkflowState";
 
 export async function getTicketAggregateForReport(
   args: ReportAggArgs
-): Promise<ReportAggregate[]> {
+): Promise<QueryAggregateShape[]> {
   let selectBlock: string[];
   let selectTable: SelectTable = "ticket";
   let groupByMainBlock: string[] = [];
@@ -468,7 +469,7 @@ GROUP BY ${groupByMainBlock.join(" , ")};`;
 
   console.log(sqlWhere);
   try {
-    const results = await prisma.$queryRawUnsafe<ReportAggregate[]>(
+    const results = await prisma.$queryRawUnsafe<QueryAggregateShape[]>(
       select,
       ...sqlWhere.values
     );
@@ -542,14 +543,8 @@ class SqlWhere {
   }
 }
 
-@InputType()
 export class DateFilterElement {
-  @Field(() => String)
-  @Matches(/^\d{4}-\d{2}-\d{2}$/)
   beforeDate?: string;
-
-  @Field(() => String)
-  @Matches(/^\d{4}-\d{2}-\d{2}$/)
   afterDate?: string;
 }
 

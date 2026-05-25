@@ -9,7 +9,7 @@ import { notifyMentionedUsersInProject } from "../../models/notification/createN
 
 export async function storeProjectText(
   token: DocumentToken,
-  state: Buffer,
+  state: Uint8Array<ArrayBuffer>,
 ): Promise<null> {
   logger.info("storing project text");
   const project = await prisma.project.findFirst({

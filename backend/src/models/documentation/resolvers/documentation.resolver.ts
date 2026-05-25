@@ -1,163 +1,140 @@
-import {
-  Arg,
-  Query,
-  Resolver,
-  Int,
-  FieldResolver,
-  Root,
-  Ctx,
-  UseMiddleware,
-  Mutation,
-  InputType,
-  Field,
-} from "type-graphql";
-import {
-  Documentation,
-  DocumentationPage,
-  Organization,
-  RoleType,
-} from "@generated/type-graphql";
-import { Length, MaxLength } from "class-validator";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
-import { MiniDocumentationPage } from "../entity";
+/**
+ * Query and mutation resolvers for a single Documentation.
+ *
+ * Registers:
+ *  - Query.documentation(id: Int!): Documentation!
+ *  - Mutation.createDocumentationPage(documentationId, input): DocumentationPage!
+ *  - Mutation.deleteDocumentationPageFromDoc(documentationPageId): Documentation!
+ *
+ * The documentation query requires hasRole and the DOCUMENTATION feature flag.
+ *
+ * IDEA: The feature flag check (`hasFeature`) was a TypeGraphQL middleware.
+ * Pothos doesn't have an equivalent built-in, so we check it manually in
+ * the resolver body. If feature-gating becomes common, consider a Pothos
+ * plugin or a shared helper.
+ */
+
+import { GraphQLError } from "graphql";
 import { ModelStage } from "@prisma/client";
-import { FeatureFlags, hasFeature } from "../../../middlewares/featureFlag";
+import builder from "../../../schema/builder";
+import { DocumentationRef, DocumentationPageRef } from "../entity";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class CreateDocumentationPageInput {
-  @Field()
-  @Length(1, 256)
-  title: string;
+// ---------------------------------------------------------------------------
+// Input type for creating a documentation page
+// ---------------------------------------------------------------------------
 
-  @Field()
-  @MaxLength(1024 * 32)
-  body: string;
-}
+const CreateDocumentationPageInput = builder.inputType(
+  "CreateDocumentationPageInput",
+  {
+    fields: (t) => ({
+      title: t.string({ required: true }),
+      body: t.string({ required: true }),
+    }),
+  },
+);
 
-@Resolver(Documentation)
-export class DocumentationResolver {
-  @Query(() => Documentation)
-  @UseMiddleware(hasRole())
-  @UseMiddleware(hasFeature(FeatureFlags.DOCUMENTATION))
-  async documentation(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<Documentation> {
-    const documentation = await ctx.prisma.documentation.findFirst({
-      where: {
-        id,
-        organizationId: ctx.me.organizationId,
-      },
-    });
+// ---------------------------------------------------------------------------
+// Query
+// ---------------------------------------------------------------------------
 
-    if (!documentation) {
-      throw new UserInputError(
-        "This documentation does not exist or has been deleted"
-      );
-    }
-
-    return documentation;
-  }
-
-  @FieldResolver((_returns) => [MiniDocumentationPage])
-  @UseMiddleware(hasRole())
-  async titles(
-    @Root() documentation: Documentation,
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<MiniDocumentationPage[]> {
-    return await ctx.prisma.documentationPage.findMany({
-      where: {
-        documentationId: documentation.id,
-      },
-      select: {
-        title: true,
-        position: true,
-        id: true,
-        parentId: true,
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => Organization)
-  async organization(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() documentation: Documentation
-  ): Promise<Organization> {
-    if (documentation.organization) {
-      return documentation.organization;
-    }
-    return ctx.prisma.organization.findUniqueOrThrow({
-      where: { id: documentation.organizationId },
-    });
-  }
-
-  @Mutation(() => DocumentationPage)
-  @UseMiddleware(hasRole())
-  async createDocumentationPage(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("documentationId", () => Int)
-    documentationId: number,
-    @Arg("input")
-    input: CreateDocumentationPageInput
-  ): Promise<DocumentationPage> {
-    const documentation = await ctx.prisma.documentation.findFirst({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: documentationId,
-        stage: { not: ModelStage.DELETED },
-      },
-    });
-
-    if (!documentation) {
-      throw new UserInputError(
-        "This documentation does not exist or has been deleted"
-      );
-    }
-
-    return ctx.prisma.documentationPage.create({
-      data: {
-        documentationId: documentation.id,
-        organizationId: ctx.me.organizationId,
-        title: input.title,
-        body: input.body,
-      },
-      include: {
-        documentation: true,
-      },
-    });
-  }
-
-  @Mutation((_returns) => Documentation)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async deleteDocumentationPage(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("documentationPageId", () => Int!) documentationPageId: number
-  ): Promise<Documentation> {
-    const documentationPage =
-      await ctx.prisma.documentationPage.findFirstOrThrow({
+builder.queryField("documentation", (t) =>
+  t.prismaField({
+    type: DocumentationRef,
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const documentation = await ctx.prisma.documentation.findFirst({
+        ...query,
         where: {
-          id: documentationPageId,
-          organizationId: ctx.me.organizationId,
+          id: args.id,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
         },
       });
 
-    const documentationId = documentationPage.documentationId;
+      if (!documentation) {
+        throw new GraphQLError(
+          "This documentation does not exist or has been deleted",
+        );
+      }
 
-    await ctx.prisma.documentationPage.delete({
-      where: { id: documentationPage.id },
-    });
+      return documentation;
+    },
+  }),
+);
 
-    return ctx.prisma.documentation.findFirstOrThrow({
-      where: { id: documentationId },
-      include: {
-        documentationPages: {
-          include: {
-            children: true,
-          },
+// ---------------------------------------------------------------------------
+// Mutations
+// ---------------------------------------------------------------------------
+
+builder.mutationField("createDocumentationPage", (t) =>
+  t.prismaField({
+    type: DocumentationPageRef,
+    authScopes: { hasRole: true },
+    args: {
+      documentationId: t.arg.int({ required: true }),
+      input: t.arg({ type: CreateDocumentationPageInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const documentation = await ctx.prisma.documentation.findFirst({
+        where: {
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          id: args.documentationId,
+          stage: { not: ModelStage.DELETED },
         },
-      },
-    });
-  }
-}
+      });
+
+      if (!documentation) {
+        throw new GraphQLError(
+          "This documentation does not exist or has been deleted",
+        );
+      }
+
+      return ctx.prisma.documentationPage.create({
+        ...query,
+        data: {
+          documentationId: documentation.id,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          title: args.input.title,
+          body: args.input.body,
+        },
+      });
+    },
+  }),
+);
+
+/**
+ * Deletes a documentation page and returns the parent Documentation
+ * with its remaining pages. Named differently from the standalone
+ * `deleteDocumentationPage` mutation to avoid a GraphQL name collision.
+ */
+builder.mutationField("deleteDocumentationPageFromDoc", (t) =>
+  t.prismaField({
+    type: DocumentationRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      documentationPageId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const page = await ctx.prisma.documentationPage.findFirstOrThrow({
+        where: {
+          id: args.documentationPageId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
+
+      const documentationId = page.documentationId;
+
+      await ctx.prisma.documentationPage.delete({
+        where: { id: page.id },
+      });
+
+      return ctx.prisma.documentation.findFirstOrThrow({
+        ...query,
+        where: { id: documentationId },
+      });
+    },
+  }),
+);

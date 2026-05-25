@@ -1,8 +1,7 @@
 import prisma from "../../prisma";
 import { clamp, max, min } from "lodash";
-import { ScheduleItem } from "@generated/type-graphql";
+import { ScheduleItem } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedScheduleItems } from "./entity";
 import { Prisma, ModelStage, TicketStatus } from ".prisma/client";
 import { WorkWeekTime } from "../entities";
 import { TzCalendar } from "../../utils/calendar";
@@ -21,7 +20,7 @@ interface GetPageArgs extends GetPageArgsFor<ScheduleItem> {
  */
 export async function getPaginatedScheduleItems(
   args: GetPageArgs
-): Promise<PaginatedScheduleItems> {
+) {
   const { first, last, ticketId, organizationId, roleId } = args;
 
   // default offset to be at the start (or the end
@@ -165,7 +164,7 @@ interface GetMyUnfinishedScheduleItemsArgs {
 export const getMyUnfinishedScheduleItems = async ({
   organizationId,
   roleId,
-}: GetMyUnfinishedScheduleItemsArgs): Promise<ScheduleItem[]> => {
+}: GetMyUnfinishedScheduleItemsArgs) => {
   // Capture the last schedule item on every open task
   // of the organization
   const items = await prisma.scheduleItem.findMany({

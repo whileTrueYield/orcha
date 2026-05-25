@@ -1,11 +1,11 @@
-import { UpdateNotificationResolver } from "./updateNotification.resolver";
-import { NotificationResolver } from "./notification.resolver";
-import { NotificationsResolver } from "./notifications.resolver";
-import { DeleteNotificationResolver } from "./deleteNotification.resolver";
+/**
+ * Side-effect barrel for Notification resolvers.
+ *
+ * Importing this module registers all Notification query and mutation fields
+ * on the Pothos builder. No exports — purely side-effect imports.
+ */
 
-export default [
-  UpdateNotificationResolver,
-  NotificationResolver,
-  NotificationsResolver,
-  DeleteNotificationResolver,
-];
+import "./notification.resolver";
+import "./notifications.resolver";
+import "./updateNotification.resolver";
+import "./deleteNotification.resolver";

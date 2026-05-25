@@ -1,145 +1,169 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  Int,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
+/**
+ * UpdateDrawing, getDrawingLock, and releaseDrawingLock mutations.
+ *
+ * Exports: none (side-effect: registers three mutations on the builder).
+ *
+ * Drawing locking uses an optimistic-concurrency check (updatedAt) and a
+ * time-limited lock (5 minutes). The `canLockDrawing` helper determines
+ * whether the caller can acquire or extend the lock.
+ */
 
-import { Drawing } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
-import { addMinutes } from "date-fns";
-import { canLockDrawing } from "../helper";
+import { GraphQLError } from "graphql";
 import { Prisma } from "@prisma/client";
+import { addMinutes } from "date-fns";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
+import { canLockDrawing } from "../helper";
 
-@InputType()
-class UpdateDrawingInput {
-  @Field()
-  data: string;
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-  @Field(() => Date)
-  updatedAt: Date;
+const UpdateDrawingInput = builder.inputType("UpdateDrawingInput", {
+  fields: (t) => ({
+    data: t.string({ required: true }),
+    updatedAt: t.field({ type: "DateTime", required: true }),
+    renewLock: t.boolean({ required: false, defaultValue: false }),
+  }),
+});
 
-  @Field(() => Boolean, { defaultValue: false })
-  renewLock: boolean;
-}
+// ---------------------------------------------------------------------------
+// updateDrawing
+// ---------------------------------------------------------------------------
 
-@Resolver(Drawing)
-export class UpdateDrawingResolver {
-  @Mutation(() => Drawing)
-  @UseMiddleware(hasRole())
-  async updateDrawing(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("drawingId", () => Int) drawingId: number,
-    @Arg("input", () => UpdateDrawingInput) input: UpdateDrawingInput
-  ): Promise<Drawing> {
-    const drawing = await ctx.prisma.drawing.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: drawingId,
-      },
-      include: {
-        role: true,
-      },
-    });
+builder.mutationField("updateDrawing", (t) =>
+  t.prismaField({
+    type: "Drawing",
+    authScopes: { hasRole: true },
+    args: {
+      drawingId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdateDrawingInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      // hasRole scope guarantees AuthRoleContext at runtime.
+      const me = ctx.me as AuthRoleContext;
 
-    if (input.updatedAt.toISOString() !== drawing.updatedAt.toISOString()) {
-      throw new UserInputError(
-        `This drawing was changed since you opened it, close and re-open it`
-      );
-    }
+      const drawing = await ctx.prisma.drawing.findFirstOrThrow({
+        where: {
+          organizationId: me.organizationId,
+          id: args.drawingId,
+        },
+        include: { role: true },
+      });
 
-    // if we can lock the drawing, we also can write on it
-    if (canLockDrawing(drawing, ctx.me.roleId)) {
-      const data: Prisma.DrawingUpdateInput = {
-        data: input.data,
-      };
-
-      if (input.renewLock) {
-        // we also want to add a lock on this drawing after creation
-        data.lockExpiration = addMinutes(new Date(), 5);
-        data.role = { connect: { id: ctx.me.roleId } };
+      if (
+        args.input.updatedAt.toISOString() !== drawing.updatedAt.toISOString()
+      ) {
+        throw new GraphQLError(
+          "This drawing was changed since you opened it, close and re-open it",
+          { extensions: { code: "BAD_USER_INPUT" } },
+        );
       }
 
-      return ctx.prisma.drawing.update({
-        where: { id: drawing.id },
-        data,
-      });
-    }
+      // The lock owner (or anyone when the lock is expired/absent) can write.
+      if (canLockDrawing(drawing, me.roleId)) {
+        const data: Prisma.DrawingUpdateInput = {
+          data: args.input.data,
+        };
 
-    const lockOwnerName = drawing.role?.name || "someone else";
-    throw new UserInputError(
-      `This drawing has been locked by ${lockOwnerName}`
-    );
-  }
+        if (args.input.renewLock) {
+          data.lockExpiration = addMinutes(new Date(), 5);
+          data.role = { connect: { id: me.roleId } };
+        }
 
-  @Mutation(() => Drawing)
-  @UseMiddleware(hasRole())
-  async getDrawingLock(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("drawingId", () => Int) drawingId: number,
-    @Arg("force", () => Boolean, { defaultValue: false })
-    force: Boolean
-  ): Promise<Drawing> {
-    const drawing = await ctx.prisma.drawing.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: drawingId,
-      },
-      include: {
-        role: true,
-      },
-    });
+        return ctx.prisma.drawing.update({
+          ...query,
+          where: { id: drawing.id },
+          data,
+        });
+      }
 
-    // if the drawing has a lock and we haven't tried to force access
-    if (canLockDrawing(drawing, ctx.me.roleId) || force) {
-      return ctx.prisma.drawing.update({
-        where: { id: drawing.id },
-        data: {
-          lockExpiration: addMinutes(new Date(), 5),
-          role: { connect: { id: ctx.me.roleId } },
+      const lockOwnerName = drawing.role?.name || "someone else";
+      throw new GraphQLError(
+        `This drawing has been locked by ${lockOwnerName}`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// getDrawingLock — acquire a 5-minute edit lock
+// ---------------------------------------------------------------------------
+
+builder.mutationField("getDrawingLock", (t) =>
+  t.prismaField({
+    type: "Drawing",
+    authScopes: { hasRole: true },
+    args: {
+      drawingId: t.arg.int({ required: true }),
+      force: t.arg.boolean({ required: false, defaultValue: false }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      const drawing = await ctx.prisma.drawing.findFirstOrThrow({
+        where: {
+          organizationId: me.organizationId,
+          id: args.drawingId,
         },
+        include: { role: true },
       });
-    }
 
-    const lockOwnerName = drawing.role?.name || "someone else";
-    throw new UserInputError(
-      `This drawing has been locked by ${lockOwnerName}`
-    );
-  }
+      if (canLockDrawing(drawing, me.roleId) || args.force) {
+        return ctx.prisma.drawing.update({
+          ...query,
+          where: { id: drawing.id },
+          data: {
+            lockExpiration: addMinutes(new Date(), 5),
+            role: { connect: { id: me.roleId } },
+          },
+        });
+      }
 
-  @Mutation(() => Drawing)
-  @UseMiddleware(hasRole())
-  async releaseDrawingLock(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("drawingId", () => Int) drawingId: number
-  ): Promise<Drawing> {
-    const drawing = await ctx.prisma.drawing.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: drawingId,
-      },
-      include: {
-        role: true,
-      },
-    });
+      const lockOwnerName = drawing.role?.name || "someone else";
+      throw new GraphQLError(
+        `This drawing has been locked by ${lockOwnerName}`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    },
+  }),
+);
 
-    // if the drawing has a lock and we haven't tried to force access
-    if (canLockDrawing(drawing, ctx.me.roleId)) {
-      return ctx.prisma.drawing.update({
-        where: { id: drawing.id },
-        data: {
-          lockExpiration: null,
-          roleId: null,
+// ---------------------------------------------------------------------------
+// releaseDrawingLock — clear the lock if the caller owns it
+// ---------------------------------------------------------------------------
+
+builder.mutationField("releaseDrawingLock", (t) =>
+  t.prismaField({
+    type: "Drawing",
+    authScopes: { hasRole: true },
+    args: {
+      drawingId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      const drawing = await ctx.prisma.drawing.findFirstOrThrow({
+        where: {
+          organizationId: me.organizationId,
+          id: args.drawingId,
         },
+        include: { role: true },
       });
-    }
 
-    return drawing;
-  }
-}
+      if (canLockDrawing(drawing, me.roleId)) {
+        return ctx.prisma.drawing.update({
+          ...query,
+          where: { id: drawing.id },
+          data: {
+            lockExpiration: null,
+            roleId: null,
+          },
+        });
+      }
+
+      return drawing;
+    },
+  }),
+);

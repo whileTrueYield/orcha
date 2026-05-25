@@ -1,32 +1,34 @@
-import { Arg, Query, Resolver, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Query: workflows — paginated workflows list.
+ */
 
-import { Workflow, ModelStage } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
+import builder from "../../../schema/builder";
 import { PaginatedWorkflows } from "../entity";
+import { ModelStageEnum } from "../../../schema/enums";
 import { getPaginatedWorkflows } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Workflow)
-export class WorkflowsResolver {
-  @Query((_returns) => PaginatedWorkflows)
-  @UseMiddleware(hasRole())
-  async workflows(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Workflow,
-    @Arg("search", () => String, { nullable: true }) search: string,
-    @Arg("stages", () => [ModelStage], { nullable: true }) stages: ModelStage[]
-  ): Promise<PaginatedWorkflows> {
-    return getPaginatedWorkflows({
-      organizationId: ctx.me.organizationId,
-      first,
-      last,
-      offset,
-      sort,
-      search,
-      stages,
-    });
-  }
-}
+builder.queryField("workflows", (t) =>
+  t.field({
+    type: PaginatedWorkflows,
+    authScopes: { hasRole: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+      stages: t.arg({ type: [ModelStageEnum], required: false }),
+    },
+    resolve: (_root, args, ctx) =>
+      getPaginatedWorkflows({
+        organizationId: (ctx.me as AuthRoleContext).organizationId,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: (args.sort as any) ?? undefined,
+        search: args.search ?? undefined,
+        stages: args.stages ?? undefined,
+      }),
+  }),
+);

@@ -1,38 +1,34 @@
-import { ClassType, Field, ObjectType, Int } from "type-graphql";
+/**
+ * Pagination type definitions (legacy).
+ *
+ * These were TypeGraphQL @ObjectType classes used by the old schema.
+ * The Pothos schema defines its own PageInfo and paginated wrapper in
+ * `schema/pagination.ts`. These plain interfaces are kept only for
+ * type compatibility with helper code that still references them.
+ *
+ * Exports: PageInfo, withPagination.
+ */
 
-@ObjectType({ isAbstract: true })
-export class PageInfo {
-  @Field()
+export interface PageInfo {
   hasNextPage: boolean;
-
-  @Field()
   hasPreviousPage: boolean;
-
-  @Field(() => Int)
   pageNumber: number;
-
-  @Field(() => Int)
   pageCount: number;
-
-  @Field(() => Int)
   pageSize: number;
-
-  @Field(() => Int)
   endCursor: number;
 }
 
-// adds password property with validation to the base, extended class
-export default function withPagination<TClassType extends ClassType>(
-  BaseClass: TClassType
+// TODO: withPagination was a TypeGraphQL mixin that dynamically extended
+// a class with totalCount and pageInfo fields. In Pothos, pagination is
+// handled via the schema/pagination.ts module. This is kept for backward
+// compatibility with existing entity types that extend it.
+type Constructor<T = {}> = new (...args: any[]) => T;
+
+export default function withPagination<TBase extends Constructor>(
+  BaseClass: TBase,
 ) {
-  @ObjectType({ isAbstract: true })
-  class PaginationTrait extends BaseClass {
-    @Field(() => Int)
-    totalCount: number;
-
-    @Field(() => PageInfo)
-    pageInfo: PageInfo;
-  }
-
-  return PaginationTrait;
+  return class PaginationTrait extends BaseClass {
+    totalCount!: number;
+    pageInfo!: PageInfo;
+  };
 }

@@ -1,3 +1,7 @@
-import { DemoResolver } from "./demo.resolver";
+/**
+ * Side-effect barrel — importing this file registers all demo types and resolvers.
+ */
 
-export default [DemoResolver];
+// Entity must be imported first to register the DemoRequest prismaObject.
+import "../entity";
+import "./demo.resolver";

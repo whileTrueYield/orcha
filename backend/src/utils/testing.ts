@@ -32,7 +32,8 @@ import {
 } from "@prisma/client";
 
 import { UserSession } from "../types";
-import { Maybe } from "type-graphql";
+// Maybe<T> is T | null — simple utility type previously from type-graphql
+type Maybe<T> = T | null | undefined;
 import prisma from "../prisma";
 import { DEFAULT_WORK_WEEK } from "../models/entities";
 

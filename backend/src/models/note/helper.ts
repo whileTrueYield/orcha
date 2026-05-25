@@ -1,9 +1,16 @@
+/**
+ * Pagination helper for Notes.
+ *
+ * Builds a Prisma query with optional filters (color, search, owner)
+ * and returns a paginated result compatible with the PaginatedNotes type.
+ *
+ * Exports: getPaginatedNotes.
+ */
+
 import prisma from "../../prisma";
 import { clamp, trim } from "lodash";
-import { Note, NoteColor } from "@generated/type-graphql";
+import { NoteColor, Prisma, Note } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedNotes } from "./entity";
-import { Prisma } from ".prisma/client";
 
 interface GetPageArgs extends GetPageArgsFor<Note> {
   ownerId?: number;
@@ -11,13 +18,10 @@ interface GetPageArgs extends GetPageArgsFor<Note> {
   colors?: NoteColor[];
 }
 
-export async function getPaginatedNotes(
-  args: GetPageArgs
-): Promise<PaginatedNotes> {
+export async function getPaginatedNotes(args: GetPageArgs) {
   const { first, last, organizationId, ownerId, search, colors } = args;
 
-  // default offset to be at the start (or the end
-  // depending on direction)
+  // default offset to be at the start (or the end depending on direction)
   const offset = args.offset ? args.offset : 0;
 
   // by default sort on createdAt

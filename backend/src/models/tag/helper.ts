@@ -1,9 +1,7 @@
 import prisma from "../../prisma";
 import { clamp, find, trim } from "lodash";
-import { Tag, PersonalTag } from "@generated/type-graphql";
+import { Tag, PersonalTag, Prisma } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedPersonalTags, PaginatedTags } from "./entity";
-import { Prisma } from ".prisma/client";
 
 export async function findTagByName(
   name: string,
@@ -80,7 +78,7 @@ interface GetPaginatedTagsArgs extends GetPageArgsFor<Tag> {
 // when working with pages
 export async function getPaginatedTags(
   args: GetPaginatedTagsArgs
-): Promise<PaginatedTags> {
+) {
   const { first, last, organizationId, search } = args;
 
   // default offset to be at the start (or the end
@@ -131,7 +129,7 @@ interface GetPaginatedPersonalTagsArgs extends GetPageArgsFor<PersonalTag> {
 // when working with pages
 export async function getPaginatedPersonalTags(
   args: GetPaginatedPersonalTagsArgs
-): Promise<PaginatedPersonalTags> {
+) {
   const { first, last, organizationId, ownerId, search } = args;
 
   // default offset to be at the start (or the end

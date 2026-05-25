@@ -1,99 +1,76 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-  Int,
-} from "type-graphql";
+/**
+ * Mutation: updateBlackoutTime.
+ */
 
-import { IsISO8601, Length } from "class-validator";
-import { BlackoutTime } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { RoleType } from "@prisma/client";
+import builder from "../../../schema/builder";
 import { utcToZonedTime, zonedTimeToUtc } from "date-fns-tz";
 import { endOfDay, startOfDay } from "date-fns";
 import { requestEstimate } from "../../ticket/jobs/estimateTickets";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class UpdateBlackoutTimeInput {
-  @Field()
-  @Length(1, 128)
-  name: string;
+const UpdateBlackoutTimeInput = builder.inputType("UpdateBlackoutTimeInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+    startAt: t.string({ required: true }),
+    stopAt: t.string({ required: true }),
+    roleIds: t.intList({ required: true }),
+    disabled: t.boolean({ required: false }),
+  }),
+});
 
-  @Field()
-  @IsISO8601({ strict: true })
-  startAt: string;
+builder.mutationField("updateBlackoutTime", (t) =>
+  t.prismaField({
+    type: "BlackoutTime",
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      blackoutTimeId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdateBlackoutTimeInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      let { startAt, stopAt } = args.input;
 
-  @Field()
-  @IsISO8601({ strict: true })
-  stopAt: string;
+      if (startAt > stopAt) {
+        [startAt, stopAt] = [stopAt, startAt];
+      }
 
-  @Field(() => [Int])
-  roleIds: number[];
+      const blackoutTime = await ctx.prisma.blackoutTime.findFirstOrThrow({
+        where: {
+          id: args.blackoutTimeId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
 
-  @Field(() => Boolean, { nullable: true })
-  disabled?: boolean;
-}
+      const roles = await ctx.prisma.role.findMany({
+        where: {
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          id: { in: args.input.roleIds },
+        },
+      });
 
-@Resolver(BlackoutTime)
-export class UpdateBlackoutTimeResolver {
-  @Mutation(() => BlackoutTime)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updateBlackoutTime(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("blackoutTimeId", () => Int) blackoutTimeId: number,
-    @Arg("input")
-    input: UpdateBlackoutTimeInput
-  ): Promise<BlackoutTime> {
-    let { startAt, stopAt } = input;
+      let timeZone = (await (ctx.me as AuthRoleContext).getRole()).timeZone;
+      if (roles.length === 1) {
+        timeZone = roles[0].timeZone;
+      }
 
-    // flip values if start date is after stop date
-    if (startAt > stopAt) {
-      [startAt, stopAt] = [stopAt, startAt];
-    }
+      await requestEstimate((ctx.me as AuthRoleContext).organizationId);
 
-    const blackoutTime = await ctx.prisma.blackoutTime.findFirstOrThrow({
-      where: {
-        id: blackoutTimeId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
-
-    const roles = await ctx.prisma.role.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: { in: input.roleIds },
-      },
-    });
-
-    let timeZone = (await ctx.me.getRole()).timeZone;
-    if (roles.length === 1) {
-      timeZone = roles[0].timeZone;
-    }
-
-    await requestEstimate(ctx.me.organizationId);
-
-    return ctx.prisma.blackoutTime.update({
-      where: {
-        id: blackoutTime.id,
-      },
-      data: {
-        name: input.name,
-        startAt: zonedTimeToUtc(
-          startOfDay(utcToZonedTime(new Date(startAt), timeZone)),
-          timeZone
-        ),
-        stopAt: zonedTimeToUtc(
-          endOfDay(utcToZonedTime(new Date(stopAt), timeZone)),
-          timeZone
-        ),
-        roles: { set: roles.map((role) => ({ id: role.id })) },
-        disabled: input.disabled,
-      },
-    });
-  }
-}
+      return ctx.prisma.blackoutTime.update({
+        ...query,
+        where: { id: blackoutTime.id },
+        data: {
+          name: args.input.name,
+          startAt: zonedTimeToUtc(
+            startOfDay(utcToZonedTime(new Date(startAt), timeZone)),
+            timeZone,
+          ),
+          stopAt: zonedTimeToUtc(
+            endOfDay(utcToZonedTime(new Date(stopAt), timeZone)),
+            timeZone,
+          ),
+          roles: { set: roles.map((role) => ({ id: role.id })) },
+          disabled: args.input.disabled ?? undefined,
+        },
+      });
+    },
+  }),
+);

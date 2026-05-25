@@ -1,22 +1,9 @@
-import { Query, Resolver, UseMiddleware, Ctx } from "type-graphql";
-import { MiniTag } from "../entity";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-
-@Resolver(MiniTag)
-export class MiniTagResolver {
-  @Query((_returns) => [MiniTag])
-  @UseMiddleware(hasRole())
-  async miniTags(@Ctx() ctx: AppContext<AuthRoleContext>): Promise<MiniTag[]> {
-    return ctx.prisma.tag.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-      },
-      select: {
-        id: true,
-        name: true,
-        color: true,
-      },
-    });
-  }
-}
+/**
+ * This resolver is intentionally empty.
+ *
+ * The miniTags query was consolidated into tags.resolver.ts to avoid
+ * duplicate query registration. This file is kept so imports from the
+ * resolver index continue to work as side-effect-only imports.
+ *
+ * TODO: Remove this file once all imports are updated.
+ */

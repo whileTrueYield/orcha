@@ -1,419 +1,394 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  Int,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
-import { MaxLength, Length } from "class-validator";
+/**
+ * Mutation resolvers for creating and importing tickets.
+ *
+ * Registers:
+ *  - Mutation.createTicket(input): Ticket!
+ *  - Mutation.importTickets(input): [Ticket!]!
+ *
+ * createTicket validates project/product/workflow constraints,
+ * assigns local IDs, creates the Yjs document for the ticket body,
+ * creates workflow state copies, and triggers mention notifications.
+ *
+ * importTickets bulk-creates tickets with optional tag, author, and
+ * owner association via CSV-style inputs.
+ */
 
+import { GraphQLError } from "graphql";
 import {
   ModelStage,
-  Ticket,
   NotificationCategory,
   NotificationTarget,
-} from "@generated/type-graphql";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
-import { Prisma } from "@prisma/client";
+  Prisma,
+} from "@prisma/client";
 import { filter, map, reduce, trim, uniq } from "lodash";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 import { findOrCreateTags } from "../../tag/helper";
 import { commaSeparatedValues } from "../../../utils/string";
 import { getWorkflowQueryForProduct } from "../../workflow/helper";
 import { createTicketText, getIndexableContentFromTipTapJson } from "../helper";
 import { createNotificationsForTarget } from "../../notification/createNotification";
 import { getMentions } from "../../../utils/tiptap";
+import { ModelStageEnum } from "../../../schema/enums";
 
-@InputType()
-class CreateTicketInput {
-  @Field()
-  @Length(1, 128)
-  title: string;
+// ---------------------------------------------------------------------------
+// Input types
+// ---------------------------------------------------------------------------
 
-  @Field(() => Int, { nullable: true })
-  productId?: number | null;
+const CreateTicketInput = builder.inputType("CreateTicketInput", {
+  fields: (t) => ({
+    title: t.string({ required: true }),
+    productId: t.int({ required: false }),
+    workflowId: t.int({ required: false }),
+    projectId: t.int({ required: true }),
+    description: t.string({ required: false }),
+    stage: t.field({ type: ModelStageEnum, required: false }),
+  }),
+});
 
-  @Field(() => Int, { nullable: true })
-  workflowId?: number | null;
+const ImportTicketsInputDetail = builder.inputType("ImportTicketsInputDetail", {
+  fields: (t) => ({
+    description: t.string({ required: false }),
+    title: t.string({ required: true }),
+    id: t.string({ required: false }),
+    tags: t.string({ required: false }),
+    ancestorIds: t.string({ required: false }),
+    successorIds: t.string({ required: false }),
+    authorEmail: t.string({ required: false }),
+    ownerEmail: t.string({ required: false }),
+  }),
+});
 
-  @Field(() => Int)
-  projectId: number;
+const ImportTicketsInput = builder.inputType("ImportTicketsInput", {
+  fields: (t) => ({
+    productId: t.int({ required: false }),
+    workflowId: t.int({ required: false }),
+    projectId: t.int({ required: true }),
+    tickets: t.field({
+      type: [ImportTicketsInputDetail],
+      required: true,
+    }),
+  }),
+});
 
-  @Field(() => String, { nullable: true })
-  @MaxLength(10 * 1024)
-  description: string | null;
+// ---------------------------------------------------------------------------
+// Mutation: createTicket
+// ---------------------------------------------------------------------------
 
-  @Field(() => ModelStage, { nullable: true })
-  stage?: ModelStage | null;
-}
+builder.mutationField("createTicket", (t) =>
+  t.prismaField({
+    type: "Ticket",
+    authScopes: { hasRole: true },
+    args: {
+      input: t.arg({ type: CreateTicketInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+      const input = args.input;
 
-@InputType()
-class ImportTicketsInputDetail {
-  @Field(() => String, { nullable: true })
-  @MaxLength(10 * 1024)
-  description?: string | null;
+      const ticketInput: Prisma.TicketCreateInput = {
+        title: input.title,
+        stage: ModelStage.DRAFT,
+        organization: { connect: { id: me.organizationId } },
+        author: { connect: { id: me.roleId } },
+        project: { connect: { id: input.projectId } },
+        owner: { connect: { id: me.roleId } },
+      };
 
-  @Field()
-  @Length(1, 128)
-  title: string;
-
-  @Field(() => String, { nullable: true })
-  @Length(1, 128)
-  id?: string | null;
-
-  @Field(() => String, { nullable: true })
-  tags?: string | null;
-
-  @Field(() => String, { nullable: true })
-  ancestorIds?: string | null;
-
-  @Field(() => String, { nullable: true })
-  successorIds?: string | null;
-
-  @Field(() => String, { nullable: true })
-  authorEmail?: string | null;
-
-  @Field(() => String, { nullable: true })
-  ownerEmail?: string | null;
-}
-
-@InputType()
-class ImportTicketsInput {
-  @Field(() => Int, { nullable: true })
-  productId?: number;
-
-  @Field(() => Int, { nullable: true })
-  workflowId?: number;
-
-  @Field(() => Int)
-  projectId: number;
-
-  @Field(() => [ImportTicketsInputDetail])
-  tickets: ImportTicketsInputDetail[];
-}
-
-@Resolver(Ticket)
-export class CreateTicketResolver {
-  @Mutation(() => Ticket)
-  @UseMiddleware(hasRole())
-  async createTicket(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input") input: CreateTicketInput,
-  ): Promise<Ticket> {
-    const ticketInput: Prisma.TicketCreateInput = {
-      title: input.title,
-      stage: ModelStage.DRAFT,
-      organization: {
-        connect: {
-          id: ctx.me.organizationId,
-        },
-      },
-      author: {
-        connect: {
-          id: ctx.me.roleId,
-        },
-      },
-      project: {
-        connect: {
-          id: input.projectId,
-        },
-      },
-      owner: {
-        connect: {
-          id: ctx.me.roleId,
-        },
-      },
-    };
-
-    const project = await ctx.prisma.project.findFirstOrThrow({
-      where: {
-        id: input.projectId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
-
-    if (project.ancestorIsArchived || project.stage === ModelStage.ARCHIVED) {
-      throw new UserInputError("Cannot create a ticket in an archived project");
-    }
-
-    if (project.stage !== ModelStage.PUBLISHED) {
-      throw new UserInputError(
-        "Cannot create a ticket in an unpublished project",
-      );
-    }
-
-    ticketInput.project = { connect: { id: project.id } };
-
-    if (input.productId && input.workflowId) {
-      const product = await ctx.prisma.product.findFirstOrThrow({
-        where: {
-          id: input.productId,
-          organizationId: ctx.me.organizationId,
-          stage: { not: ModelStage.DELETED },
-        },
-      });
-
-      const workflow = await ctx.prisma.workflow.findFirstOrThrow({
-        where: { ...getWorkflowQueryForProduct(product), id: input.workflowId },
-        include: {
-          workflowStates: true,
-        },
-      });
-
-      ticketInput.product = { connect: { id: product.id } };
-      ticketInput.workflow = { connect: { id: workflow.id } };
-
-      // if we attempt to publish the ticket instantly, we should make sure
-      // the product and workflow are both published (and not Archived)
-      // and the workflow contains at least one active state
-      if (input.stage === ModelStage.PUBLISHED) {
-        if (workflow.stage !== ModelStage.PUBLISHED) {
-          throw new UserInputError(
-            `The workflow ${workflow.name} has not been Published`,
-          );
-        }
-
-        if (product.stage !== ModelStage.PUBLISHED) {
-          throw new UserInputError(
-            `The product ${product.name} has not been Published`,
-          );
-        }
-
-        if (workflow.workflowStates.length === 0) {
-          throw new UserInputError(
-            `The workflow ${workflow.name} does not contain any states`,
-          );
-        }
-
-        ticketInput.stage = ModelStage.PUBLISHED;
-      }
-    } else if (input.productId) {
-      const product = await ctx.prisma.product.findFirstOrThrow({
-        where: {
-          id: input.productId,
-          organizationId: ctx.me.organizationId,
-          stage: { not: ModelStage.DELETED },
-        },
-      });
-      ticketInput.product = { connect: { id: product.id } };
-    }
-
-    // assigne a localId if the ticket is to be published
-    if (ticketInput.stage === ModelStage.PUBLISHED && input.productId) {
-      const last_ticket = await ctx.prisma.ticket.findFirst({
-        where: {
-          productId: input.productId,
-          organizationId: ctx.me.organizationId,
-          localId: { not: null },
-        },
-        select: { localId: true },
-        orderBy: { localId: "desc" },
-      });
-
-      // set the local ID to 1 or 1 after the last local Id created
-      ticketInput.localId = last_ticket?.localId ? last_ticket?.localId + 1 : 1;
-    }
-
-    // extract the indexable text for search from the tip tap value
-    ticketInput.indexableContent = getIndexableContentFromTipTapJson(
-      input.description,
-    );
-
-    const ticket = await ctx.prisma.ticket.create({
-      data: ticketInput,
-    });
-
-    // create the Yjs document for the ticket body (provided under
-    // the description field as a TipTap JSON string)
-    await createTicketText(ticket.id, input.description);
-
-    // create the ticket workflow state only if we've published the ticket
-    if (ticket.stage === ModelStage.PUBLISHED && input.workflowId) {
-      // We'll attempt to set the initial state of the ticket
-      const states = await ctx.prisma.workflowState.findMany({
-        where: {
-          workflowId: input.workflowId,
-        },
-        orderBy: { position: "asc" },
-      });
-
-      // create a copy the workflow states for ticket. Changing
-      // the workflow from now on will not change the ticket's workflow
-      await ctx.prisma.ticketWorkflowState.createMany({
-        data: states.map((tws) => ({
-          workflowStateId: tws.id,
-          name: tws.name,
-          position: tws.position,
-          ticketId: ticket.id,
-        })),
-      });
-    }
-
-    // during the create flow of a ticket, we do receive a TipTap doc
-    // as a string (under description), here we extract and trigger
-    // notifications if necessary
-    if (input.description) {
-      const mentions = getMentions(input.description);
-
-      if (mentions.length > 0) {
-        await createNotificationsForTarget(
-          ctx.me.organizationId,
-          NotificationCategory.MENTION,
-          NotificationTarget.TICKET,
-          ticket.id,
-          mentions,
-          ctx.me.roleId,
-          `{} mentioned you in a ticket`,
-        );
-      }
-    }
-
-    return ticket;
-  }
-
-  @Mutation(() => [Ticket])
-  @UseMiddleware(hasRole())
-  async importTickets(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input") input: ImportTicketsInput,
-  ): Promise<Ticket[]> {
-    const ticketInput: Prisma.TicketCreateManyInput = {
-      title: "",
-      stage: ModelStage.DRAFT,
-      organizationId: ctx.me.organizationId,
-      projectId: input.projectId,
-      authorId: ctx.me.roleId,
-    };
-
-    if (input.productId && input.workflowId) {
-      const product = await ctx.prisma.product.findFirstOrThrow({
-        where: {
-          id: input.productId,
-          organizationId: ctx.me.organizationId,
-          stage: { not: ModelStage.DELETED },
-        },
-      });
-      ticketInput.productId = product.id;
-
-      const workflow = await ctx.prisma.workflow.findFirstOrThrow({
-        where: {
-          ...getWorkflowQueryForProduct(product),
-          id: input.workflowId,
-        },
-      });
-      ticketInput.productId = input.productId;
-      ticketInput.workflowId = workflow.id;
-    } else if (input.productId) {
-      const product = await ctx.prisma.product.findFirstOrThrow({
-        where: {
-          id: input.productId,
-          organizationId: ctx.me.organizationId,
-          stage: { not: ModelStage.DELETED },
-        },
-      });
-      ticketInput.productId = product.id;
-    }
-
-    // todo make that a project name
-    // if provided a project, create or associate the ticket with its project
-    if (input.projectId) {
       const project = await ctx.prisma.project.findFirstOrThrow({
         where: {
           id: input.projectId,
-          organizationId: ctx.me.organizationId,
+          organizationId: me.organizationId,
         },
       });
-      ticketInput.projectId = project.id;
-    }
 
-    // create or get all the tags and associate them with every tickets
-    const tagNames = uniq(
-      reduce(
-        input.tickets,
-        (tags: string[], ticket) => {
-          const ticketTags = ticket.tags ? ticket.tags.split(",") : [];
-          if (ticketTags.length) {
-            return [...tags, ...filter(ticketTags.map(trim))];
+      if (project.ancestorIsArchived || project.stage === ModelStage.ARCHIVED) {
+        throw new GraphQLError(
+          "Cannot create a ticket in an archived project",
+        );
+      }
+
+      if (project.stage !== ModelStage.PUBLISHED) {
+        throw new GraphQLError(
+          "Cannot create a ticket in an unpublished project",
+        );
+      }
+
+      ticketInput.project = { connect: { id: project.id } };
+
+      if (input.productId && input.workflowId) {
+        const product = await ctx.prisma.product.findFirstOrThrow({
+          where: {
+            id: input.productId,
+            organizationId: me.organizationId,
+            stage: { not: ModelStage.DELETED },
+          },
+        });
+
+        const workflow = await ctx.prisma.workflow.findFirstOrThrow({
+          where: {
+            ...getWorkflowQueryForProduct(product),
+            id: input.workflowId,
+          },
+          include: { workflowStates: true },
+        });
+
+        ticketInput.product = { connect: { id: product.id } };
+        ticketInput.workflow = { connect: { id: workflow.id } };
+
+        // Validate all constraints when publishing instantly
+        if (input.stage === ModelStage.PUBLISHED) {
+          if (workflow.stage !== ModelStage.PUBLISHED) {
+            throw new GraphQLError(
+              `The workflow ${workflow.name} has not been Published`,
+            );
           }
-          return tags;
-        },
-        [],
-      ),
-    );
-    const tags = await findOrCreateTags(
-      ctx.me.organizationId,
-      ctx.me.roleId,
-      tagNames,
-    );
 
-    // create all the tickets and associate them with the
-    // proper project, tag and acestors
-    const createdTickets: Ticket[] = [];
-    for (const ticket of input.tickets) {
-      const data: Prisma.TicketUncheckedCreateInput = {
-        authorId: ctx.me.roleId,
-        ...ticketInput,
-        organizationId: ctx.me.organizationId,
-        title: ticket.title,
-        description: ticket.description,
+          if (product.stage !== ModelStage.PUBLISHED) {
+            throw new GraphQLError(
+              `The product ${product.name} has not been Published`,
+            );
+          }
+
+          if (workflow.workflowStates.length === 0) {
+            throw new GraphQLError(
+              `The workflow ${workflow.name} does not contain any states`,
+            );
+          }
+
+          ticketInput.stage = ModelStage.PUBLISHED;
+        }
+      } else if (input.productId) {
+        const product = await ctx.prisma.product.findFirstOrThrow({
+          where: {
+            id: input.productId,
+            organizationId: me.organizationId,
+            stage: { not: ModelStage.DELETED },
+          },
+        });
+        ticketInput.product = { connect: { id: product.id } };
+      }
+
+      // Assign a localId when publishing with a product
+      if (ticketInput.stage === ModelStage.PUBLISHED && input.productId) {
+        const lastTicket = await ctx.prisma.ticket.findFirst({
+          where: {
+            productId: input.productId,
+            organizationId: me.organizationId,
+            localId: { not: null },
+          },
+          select: { localId: true },
+          orderBy: { localId: "desc" },
+        });
+
+        ticketInput.localId = lastTicket?.localId
+          ? lastTicket.localId + 1
+          : 1;
+      }
+
+      // Extract indexable text for search from the TipTap JSON
+      ticketInput.indexableContent = getIndexableContentFromTipTapJson(
+        input.description ?? null,
+      );
+
+      const ticket = await ctx.prisma.ticket.create({
+        ...query,
+        data: ticketInput,
+      });
+
+      // Create the Yjs document for the ticket body
+      await createTicketText(ticket.id, input.description ?? null);
+
+      // Create ticket workflow states when publishing
+      if (ticket.stage === ModelStage.PUBLISHED && input.workflowId) {
+        const states = await ctx.prisma.workflowState.findMany({
+          where: { workflowId: input.workflowId },
+          orderBy: { position: "asc" },
+        });
+
+        await ctx.prisma.ticketWorkflowState.createMany({
+          data: states.map((tws) => ({
+            workflowStateId: tws.id,
+            name: tws.name,
+            position: tws.position,
+            ticketId: ticket.id,
+          })),
+        });
+      }
+
+      // Extract mentions from the TipTap description and notify
+      if (input.description) {
+        const mentions = getMentions(input.description);
+
+        if (mentions.length > 0) {
+          await createNotificationsForTarget(
+            me.organizationId,
+            NotificationCategory.MENTION,
+            NotificationTarget.TICKET,
+            ticket.id,
+            mentions,
+            me.roleId,
+            `{} mentioned you in a ticket`,
+          );
+        }
+      }
+
+      return ticket;
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Mutation: importTickets
+// ---------------------------------------------------------------------------
+
+builder.mutationField("importTickets", (t) =>
+  t.prismaField({
+    type: ["Ticket"],
+    authScopes: { hasRole: true },
+    args: {
+      input: t.arg({ type: ImportTicketsInput, required: true }),
+    },
+    resolve: async (_query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+      const input = args.input;
+
+      const ticketInput: Prisma.TicketCreateManyInput = {
+        title: "",
+        stage: ModelStage.DRAFT,
+        organizationId: me.organizationId,
+        projectId: input.projectId,
+        authorId: me.roleId,
       };
 
-      // imported Identifier
-      if (ticket.id) {
-        data.foreignId = ticket.id;
+      if (input.productId && input.workflowId) {
+        const product = await ctx.prisma.product.findFirstOrThrow({
+          where: {
+            id: input.productId,
+            organizationId: me.organizationId,
+            stage: { not: ModelStage.DELETED },
+          },
+        });
+        ticketInput.productId = product.id;
+
+        const workflow = await ctx.prisma.workflow.findFirstOrThrow({
+          where: {
+            ...getWorkflowQueryForProduct(product),
+            id: input.workflowId,
+          },
+        });
+        ticketInput.productId = input.productId;
+        ticketInput.workflowId = workflow.id;
+      } else if (input.productId) {
+        const product = await ctx.prisma.product.findFirstOrThrow({
+          where: {
+            id: input.productId,
+            organizationId: me.organizationId,
+            stage: { not: ModelStage.DELETED },
+          },
+        });
+        ticketInput.productId = product.id;
       }
 
-      // tag association
-      const ticketTags = commaSeparatedValues(ticket.tags).map((tag) =>
-        tag.toLowerCase(),
+      if (input.projectId) {
+        const project = await ctx.prisma.project.findFirstOrThrow({
+          where: {
+            id: input.projectId,
+            organizationId: me.organizationId,
+          },
+        });
+        ticketInput.projectId = project.id;
+      }
+
+      // Collect and create all unique tags across the import batch
+      const tagNames = uniq(
+        reduce(
+          input.tickets as Array<{ tags?: string | null }>,
+          (tags: string[], ticket) => {
+            const ticketTags = ticket.tags ? ticket.tags.split(",") : [];
+            if (ticketTags.length) {
+              return [...tags, ...filter(ticketTags.map(trim))];
+            }
+            return tags;
+          },
+          [],
+        ),
       );
-      if (ticketTags.length) {
-        const matchingTags = filter(
-          tags,
-          (tag) => ticketTags.indexOf(tag.name.toLowerCase()) > -1,
+      const tags = await findOrCreateTags(
+        me.organizationId,
+        me.roleId,
+        tagNames,
+      );
+
+      // Create each ticket with its associations
+      const createdTickets: any[] = [];
+      for (const ticket of input.tickets) {
+        const data: Prisma.TicketUncheckedCreateInput = {
+          authorId: me.roleId,
+          ...ticketInput,
+          organizationId: me.organizationId,
+          title: ticket.title,
+          description: ticket.description ?? undefined,
+        };
+
+        if (ticket.id) {
+          data.foreignId = ticket.id;
+        }
+
+        // Tag association
+        const ticketTags = commaSeparatedValues(ticket.tags).map((tag) =>
+          tag.toLowerCase(),
         );
-        data.tags = { connect: map(matchingTags, ({ id }) => ({ id })) };
-      }
-
-      // potential overwrite of the author
-      if (ticket.authorEmail) {
-        const author = await ctx.prisma.role.findFirst({
-          where: {
-            organizationId: ctx.me.organizationId,
-            user: {
-              email: { equals: trim(ticket.authorEmail), mode: "insensitive" },
-            },
-          },
-        });
-
-        if (author) {
-          data.authorId = author.id;
+        if (ticketTags.length) {
+          const matchingTags = filter(
+            tags,
+            (tag) => ticketTags.indexOf(tag.name.toLowerCase()) > -1,
+          );
+          data.tags = { connect: map(matchingTags, ({ id }) => ({ id })) };
         }
-      }
 
-      // potential overwrite of the owner
-      if (ticket.ownerEmail) {
-        const owner = await ctx.prisma.role.findFirst({
-          where: {
-            organizationId: ctx.me.organizationId,
-            user: {
-              email: { equals: trim(ticket.ownerEmail), mode: "insensitive" },
+        // Potential author override by email
+        if (ticket.authorEmail) {
+          const author = await ctx.prisma.role.findFirst({
+            where: {
+              organizationId: me.organizationId,
+              user: {
+                email: {
+                  equals: trim(ticket.authorEmail),
+                  mode: "insensitive",
+                },
+              },
             },
-          },
-        });
+          });
 
-        if (owner) {
-          data.ownerId = owner.id;
+          if (author) {
+            data.authorId = author.id;
+          }
         }
+
+        // Potential owner override by email
+        if (ticket.ownerEmail) {
+          const owner = await ctx.prisma.role.findFirst({
+            where: {
+              organizationId: me.organizationId,
+              user: {
+                email: {
+                  equals: trim(ticket.ownerEmail),
+                  mode: "insensitive",
+                },
+              },
+            },
+          });
+
+          if (owner) {
+            data.ownerId = owner.id;
+          }
+        }
+
+        createdTickets.push(await ctx.prisma.ticket.create({ data }));
       }
 
-      createdTickets.push(await ctx.prisma.ticket.create({ data }));
-    }
-
-    return createdTickets;
-  }
-}
+      return createdTickets;
+    },
+  }),
+);

@@ -1,47 +1,49 @@
-import { Query, Resolver, UseMiddleware, Ctx, Int, Arg } from "type-graphql";
-import { MiniFeature } from "../entity";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+/**
+ * Query: miniFeatures — lightweight feature list for fuzzy search.
+ */
+
+import builder from "../../../schema/builder";
+import { MiniFeatureRef } from "../entity";
 import { Prisma } from "@prisma/client";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(MiniFeature)
-export class MiniFeatureResolver {
-  @Query((_returns) => [MiniFeature])
-  @UseMiddleware(hasRole())
-  async miniFeatures(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("productId", () => Int, { nullable: true }) productId?: number
-  ): Promise<MiniFeature[]> {
-    const featureWhereInput: Prisma.FeatureWhereInput = {
-      featureGroup: {
-        organizationId: ctx.me.organizationId,
-      },
-    };
-
-    // for typing sakes, have to check the presence of featureGroup attr
-    if (productId && featureWhereInput.featureGroup) {
-      featureWhereInput.featureGroup.productId = productId;
-    }
-
-    const features = await ctx.prisma.feature.findMany({
-      where: featureWhereInput,
-      include: {
+builder.queryField("miniFeatures", (t) =>
+  t.field({
+    type: [MiniFeatureRef],
+    authScopes: { hasRole: true },
+    args: {
+      productId: t.arg.int({ required: false }),
+    },
+    resolve: async (_root, args, ctx) => {
+      const featureWhereInput: Prisma.FeatureWhereInput = {
         featureGroup: {
-          include: {
-            product: true,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      };
+
+      if (args.productId && featureWhereInput.featureGroup) {
+        (featureWhereInput.featureGroup as Prisma.FeatureGroupWhereInput).productId =
+          args.productId;
+      }
+
+      const features = await ctx.prisma.feature.findMany({
+        where: featureWhereInput,
+        include: {
+          featureGroup: {
+            include: {
+              product: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    return features.map(
-      (feature): MiniFeature => ({
+      return features.map((feature) => ({
         id: feature.id,
         name: feature.name,
         featureGroupName: feature.featureGroup.name,
         productCode: feature.featureGroup.product.code,
         productName: feature.featureGroup.product.name,
-      })
-    );
-  }
-}
+      }));
+    },
+  }),
+);

@@ -1,47 +1,39 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  Int,
-  UseMiddleware,
-  Ctx,
-  InputType,
-  Field,
-} from "type-graphql";
-import { Role, RoleStatus } from "@generated/type-graphql";
-import { isAuthenticated } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthUserContext } from "../../../types";
-import { IsTimeZone } from "class-validator";
+/**
+ * Mutation: acceptRole — accept an invitation.
+ */
 
-@InputType()
-class AcceptRoleInput {
-  @Field(() => Int)
-  roleId: number;
+import builder from "../../../schema/builder";
+import { RoleStatus } from "@prisma/client";
+import { AuthUserContext } from "../../../types";
 
-  @Field()
-  @IsTimeZone()
-  timeZone: string;
-}
+const AcceptRoleInput = builder.inputType("AcceptRoleInput", {
+  fields: (t) => ({
+    roleId: t.int({ required: true }),
+    timeZone: t.string({ required: true }),
+  }),
+});
 
-@Resolver(Role)
-export class AcceptRoleResolver {
-  @Mutation((_returns) => Role)
-  @UseMiddleware(isAuthenticated)
-  async acceptRole(
-    @Ctx() ctx: AppContext<AuthUserContext>,
-    @Arg("input") input: AcceptRoleInput
-  ): Promise<Role> {
-    const role = await ctx.prisma.role.findFirstOrThrow({
-      where: {
-        id: input.roleId,
-        userId: ctx.me.userId,
-        status: RoleStatus.INVITED,
-      },
-    });
+builder.mutationField("acceptRole", (t) =>
+  t.prismaField({
+    type: "Role",
+    authScopes: { isAuthenticated: true },
+    args: {
+      input: t.arg({ type: AcceptRoleInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const role = await ctx.prisma.role.findFirstOrThrow({
+        where: {
+          id: args.input.roleId,
+          userId: (ctx.me as AuthUserContext).userId,
+          status: RoleStatus.INVITED,
+        },
+      });
 
-    return ctx.prisma.role.update({
-      where: { id: role.id },
-      data: { status: RoleStatus.ACCEPTED, timeZone: input.timeZone },
-    });
-  }
-}
+      return ctx.prisma.role.update({
+        ...query,
+        where: { id: role.id },
+        data: { status: RoleStatus.ACCEPTED, timeZone: args.input.timeZone },
+      });
+    },
+  }),
+);

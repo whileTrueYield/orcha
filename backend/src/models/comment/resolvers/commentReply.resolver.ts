@@ -1,45 +1,36 @@
-import {
-  Resolver,
-  FieldResolver,
-  Root,
-  Ctx,
-  Query,
-  UseMiddleware,
-  Arg,
-  Int,
-} from "type-graphql";
-import { Role, CommentReply } from "@generated/type-graphql";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
+/**
+ * Query resolver for fetching a single CommentReply.
+ *
+ * Provides:
+ *  - commentReply(id): fetch a single reply by ID (scoped to org)
+ *
+ * Requires hasRole auth scope.
+ *
+ * NOTE: The original TypeGraphQL resolver registered this query as "comment"
+ * which collided with the Comment query. This was renamed to "commentReply"
+ * to avoid the conflict.
+ */
 
-@Resolver(CommentReply)
-export class CommentReplyResolver {
-  @Query(() => CommentReply)
-  @UseMiddleware(hasRole())
-  async comment(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<CommentReply> {
-    return await ctx.prisma.commentReply.findFirstOrThrow({
-      where: {
-        id,
-        organizationId: ctx.me.organizationId,
-      },
-      include: { author: true },
-    });
-  }
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-  @FieldResolver((_returns) => Role)
-  async author(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() comment: CommentReply
-  ): Promise<Role> {
-    if (comment.author) {
-      return comment.author;
-    }
+builder.queryField("commentReply", (t) =>
+  t.prismaField({
+    type: "CommentReply",
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    return ctx.prisma.role.findUniqueOrThrow({
-      where: { id: comment.authorId },
-    });
-  }
-}
+      return ctx.prisma.commentReply.findFirstOrThrow({
+        ...query,
+        where: {
+          id: args.id,
+          organizationId: me.organizationId,
+        },
+      });
+    },
+  }),
+);

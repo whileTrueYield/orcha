@@ -1,130 +1,167 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-} from "type-graphql";
+/**
+ * Mutation resolvers for updating User account details.
+ *
+ * Provides:
+ *  - changeEmail(input):    change the user's email (requires current password)
+ *  - changePassword(input): change the user's password (requires current password)
+ *
+ * Both require isAuthenticated auth scope and validate the current password
+ * before making changes.
+ *
+ * Assumes ctx.me has userId set (guaranteed by isAuthenticated scope).
+ */
 
-import { Length, IsEmail, MinLength } from "class-validator";
-import { User, UserStatus } from "@generated/type-graphql";
-import { AuthenticationError, UserInputError } from "apollo-server-express";
-import { isAuthenticated } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthUserContext } from "../../../types";
+import { GraphQLError } from "graphql";
+import { UserStatus } from "@prisma/client";
 import { compare, hash } from "bcrypt";
 import { trim } from "lodash";
+import builder from "../../../schema/builder";
+import { AuthUserContext } from "../../../types";
 
-@InputType()
-class ChangeEmailInput {
-  @Field()
-  @Length(5, 256)
-  @IsEmail()
-  email: string;
+// ---------------------------------------------------------------------------
+// Input types
+// ---------------------------------------------------------------------------
 
-  @Field()
-  password: string;
-}
+const ChangeEmailInput = builder.inputType("ChangeEmailInput", {
+  fields: (t) => ({
+    email: t.string({ required: true }),
+    password: t.string({ required: true }),
+  }),
+});
 
-@InputType()
-class ChangePasswordInput {
-  @Field()
-  password: string;
+const ChangePasswordInput = builder.inputType("ChangePasswordInput", {
+  fields: (t) => ({
+    password: t.string({ required: true }),
+    newPassword: t.string({ required: true }),
+  }),
+});
 
-  @Field()
-  @MinLength(12)
-  newPassword: string;
-}
+// ---------------------------------------------------------------------------
+// changeEmail mutation
+// ---------------------------------------------------------------------------
 
-@Resolver(User)
-export class UpdateUserResolver {
-  @Mutation(() => User)
-  @UseMiddleware(isAuthenticated)
-  async changeEmail(
-    @Ctx() ctx: AppContext<AuthUserContext>,
-    @Arg("input", () => ChangeEmailInput) input: ChangeEmailInput,
-  ): Promise<User> {
-    const user = await ctx.prisma.user.findFirst({
-      where: { id: ctx.me.userId },
-    });
+builder.mutationField("changeEmail", (t) =>
+  t.prismaField({
+    type: "User",
+    authScopes: { isAuthenticated: true },
+    args: {
+      input: t.arg({ type: ChangeEmailInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      // isAuthenticated scope guarantees ctx.me has userId
+      const me = ctx.me as AuthUserContext;
 
-    if (!user) {
-      throw new UserInputError("This user does not exist or has been deleted");
-    }
+      const user = await ctx.prisma.user.findFirst({
+        where: { id: me.userId },
+      });
 
-    if (user.status !== UserStatus.ACTIVE) {
-      throw new UserInputError("You cannot update your email at this point");
-    }
+      if (!user) {
+        throw new GraphQLError(
+          "This user does not exist or has been deleted",
+          { extensions: { code: "BAD_USER_INPUT" } },
+        );
+      }
 
-    const email = trim(input.email.toLowerCase());
+      if (user.status !== UserStatus.ACTIVE) {
+        throw new GraphQLError(
+          "You cannot update your email at this point",
+          { extensions: { code: "BAD_USER_INPUT" } },
+        );
+      }
 
-    if (user.email === email) {
-      throw new UserInputError(
-        "Please provide a different email than the current one.",
-      );
-    }
+      const email = trim(args.input.email.toLowerCase());
 
-    const userWithSameEmail = await ctx.prisma.user.findFirst({
-      where: { email },
-    });
+      if (user.email === email) {
+        throw new GraphQLError(
+          "Please provide a different email than the current one.",
+          { extensions: { code: "BAD_USER_INPUT" } },
+        );
+      }
 
-    if (userWithSameEmail) {
-      throw new AuthenticationError("This email is used on another account");
-    }
+      const userWithSameEmail = await ctx.prisma.user.findFirst({
+        where: { email },
+      });
 
-    // require a password change to change email address
-    const validPassword = await compare(input.password, user.password);
+      if (userWithSameEmail) {
+        throw new GraphQLError("This email is used on another account", {
+          extensions: { code: "UNAUTHENTICATED" },
+        });
+      }
 
-    if (!validPassword) {
-      throw new AuthenticationError("Bad password or email does not exist");
-    }
+      // require a password to change email address
+      const validPassword = await compare(args.input.password, user.password);
 
-    // for safety measure, we keep an historic of all changed email addresses
-    // to allow us to revert a change that was not authorized
-    await ctx.prisma.userEmailChange.create({
-      data: {
-        newEmail: email,
-        previousEmail: user.email,
-        ipAddress: ctx.req.ip || "unknown",
-      },
-    });
+      if (!validPassword) {
+        throw new GraphQLError("Bad password or email does not exist", {
+          extensions: { code: "UNAUTHENTICATED" },
+        });
+      }
 
-    return ctx.prisma.user.update({
-      where: { id: user.id },
-      data: { email },
-    });
-  }
+      // keep an audit trail of email changes for security review
+      await ctx.prisma.userEmailChange.create({
+        data: {
+          newEmail: email,
+          previousEmail: user.email,
+          ipAddress: ctx.req.ip || "unknown",
+        },
+      });
 
-  @Mutation(() => User)
-  @UseMiddleware(isAuthenticated)
-  async changePassword(
-    @Ctx() ctx: AppContext<AuthUserContext>,
-    @Arg("input", () => ChangePasswordInput) input: ChangePasswordInput,
-  ): Promise<User> {
-    const user = await ctx.prisma.user.findFirst({
-      where: { id: ctx.me.userId },
-    });
+      return ctx.prisma.user.update({
+        ...query,
+        where: { id: user.id },
+        data: { email },
+      });
+    },
+  }),
+);
 
-    if (!user) {
-      throw new UserInputError("This user does not exist or has been deleted");
-    }
+// ---------------------------------------------------------------------------
+// changePassword mutation
+// ---------------------------------------------------------------------------
 
-    if (user.status !== UserStatus.ACTIVE) {
-      throw new UserInputError("You cannot update your email at this point");
-    }
+builder.mutationField("changePassword", (t) =>
+  t.prismaField({
+    type: "User",
+    authScopes: { isAuthenticated: true },
+    args: {
+      input: t.arg({ type: ChangePasswordInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthUserContext;
 
-    const validPassword = await compare(input.password, user.password);
+      const user = await ctx.prisma.user.findFirst({
+        where: { id: me.userId },
+      });
 
-    if (!validPassword) {
-      throw new AuthenticationError("Bad password or email does not exist");
-    }
+      if (!user) {
+        throw new GraphQLError(
+          "This user does not exist or has been deleted",
+          { extensions: { code: "BAD_USER_INPUT" } },
+        );
+      }
 
-    return ctx.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        password: await hash(input.password, 12),
-      },
-    });
-  }
-}
+      if (user.status !== UserStatus.ACTIVE) {
+        throw new GraphQLError(
+          "You cannot update your password at this point",
+          { extensions: { code: "BAD_USER_INPUT" } },
+        );
+      }
+
+      const validPassword = await compare(args.input.password, user.password);
+
+      if (!validPassword) {
+        throw new GraphQLError("Bad password or email does not exist", {
+          extensions: { code: "UNAUTHENTICATED" },
+        });
+      }
+
+      return ctx.prisma.user.update({
+        ...query,
+        where: { id: user.id },
+        data: {
+          password: await hash(args.input.newPassword, 12),
+        },
+      });
+    },
+  }),
+);

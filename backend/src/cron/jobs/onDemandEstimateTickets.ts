@@ -1,8 +1,6 @@
-require("reflect-metadata");
-
 import prisma from "../../prisma";
 import { estimateAllScheduledTickets } from "../../models/ticket/jobs/estimateTickets";
-import { OrganizationStatus } from "@generated/type-graphql";
+import { OrganizationStatus } from "@prisma/client";
 import { logger } from "../../logger";
 
 export async function onDemandEstimateTickets(

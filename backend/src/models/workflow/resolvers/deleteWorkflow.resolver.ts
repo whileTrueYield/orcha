@@ -1,29 +1,32 @@
-import { Arg, Resolver, Mutation, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Mutation: deleteWorkflow — soft-delete by setting stage to DELETED.
+ */
 
-import { Workflow, RoleType, ModelStage } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
+import { ModelStage } from "@prisma/client";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Workflow)
-export class DeleteWorkflowResolver {
-  @Mutation((_returns) => Workflow, {
+builder.mutationField("deleteWorkflow", (t) =>
+  t.prismaField({
+    type: "Workflow",
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
     deprecationReason: "Archive workflow instead of deleting it",
-  })
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async deleteWorkflow(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("workflowId", () => Int!) workflowId: number
-  ): Promise<Workflow> {
-    const workflow = await ctx.prisma.workflow.findFirstOrThrow({
-      where: {
-        id: workflowId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
+    args: {
+      workflowId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const workflow = await ctx.prisma.workflow.findFirstOrThrow({
+        where: {
+          id: args.workflowId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
 
-    return ctx.prisma.workflow.update({
-      where: { id: workflow.id },
-      data: { stage: ModelStage.DELETED },
-    });
-  }
-}
+      return ctx.prisma.workflow.update({
+        ...query,
+        where: { id: workflow.id },
+        data: { stage: ModelStage.DELETED },
+      });
+    },
+  }),
+);

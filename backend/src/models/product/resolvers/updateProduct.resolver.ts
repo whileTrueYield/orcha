@@ -1,142 +1,159 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  Int,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
+/**
+ * Mutation resolvers for updating a Product.
+ *
+ * Registers:
+ *  - Mutation.updateProductStage(productId, stage): Product!
+ *  - Mutation.updateProductUseGlobalWorkflow(productId, useDefaultWorkflows): Product!
+ *  - Mutation.updateProduct(productId, input): Product!
+ *
+ * All require ADMIN or OWNER role.
+ */
 
-import { Length, MaxLength, IsUrl } from "class-validator";
-import { Product, RoleType, ModelStage } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
+import { GraphQLError } from "graphql";
+import { ModelStage } from "@prisma/client";
+import builder from "../../../schema/builder";
+import { ModelStageEnum } from "../../../schema/enums";
+import { ProductRef } from "../entity";
 import { findProductByCode } from "../helper";
-import { ModelStage as DbModelStage } from "@prisma/client";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class UpdateProductInput {
-  @Field({ nullable: true })
-  @Length(1, 128)
-  name: string;
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-  @Field({ nullable: true })
-  @Length(1, 128)
-  code: string;
+const UpdateProductInput = builder.inputType("UpdateProductInput", {
+  fields: (t) => ({
+    name: t.string({ required: false }),
+    code: t.string({ required: false }),
+    description: t.string({ required: false }),
+    coverUrl: t.string({ required: false }),
+    isSupportActive: t.boolean({ required: false }),
+  }),
+});
 
-  @Field(() => String, { nullable: true })
-  @MaxLength(2048)
-  description?: string | null;
+// ---------------------------------------------------------------------------
+// Mutations
+// ---------------------------------------------------------------------------
 
-  @Field(() => String, { nullable: true })
-  @MaxLength(2048)
-  @IsUrl()
-  coverUrl?: string | null;
-
-  @Field(() => Boolean, { nullable: true })
-  isSupportActive?: boolean;
-}
-
-@Resolver(Product)
-export class UpdateProductResolver {
-  @Mutation(() => Product)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updateProductStage(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("productId", () => Int) productId: number,
-    @Arg("stage", () => ModelStage) stage: ModelStage
-  ): Promise<Product> {
-    const product = await ctx.prisma.product.findFirstOrThrow({
-      where: {
-        id: productId,
-        organizationId: ctx.me.organizationId,
-        stage: { not: ModelStage.DELETED },
-      },
-    });
-
-    const allowedTransitions: { [key: string]: DbModelStage[] } = {
-      [ModelStage.DRAFT]: [DbModelStage.DELETED, DbModelStage.PUBLISHED],
-      [ModelStage.ARCHIVED]: [DbModelStage.DELETED, DbModelStage.PUBLISHED],
-      [ModelStage.PUBLISHED]: [DbModelStage.DELETED, DbModelStage.ARCHIVED],
-    };
-
-    if (
-      stage in allowedTransitions &&
-      allowedTransitions[stage].indexOf(product.stage)
-    ) {
-      return ctx.prisma.product.update({
-        where: { id: product.id },
-        data: { stage },
+builder.mutationField("updateProductStage", (t) =>
+  t.prismaField({
+    type: ProductRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      productId: t.arg.int({ required: true }),
+      stage: t.arg({ type: ModelStageEnum, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const product = await ctx.prisma.product.findFirstOrThrow({
+        where: {
+          id: args.productId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          stage: { not: ModelStage.DELETED },
+        },
       });
-    }
 
-    throw new UserInputError(`Cannot go from ${product.stage} to ${stage}`);
-  }
+      const allowedTransitions: Record<string, ModelStage[]> = {
+        [ModelStage.DRAFT]: [ModelStage.DELETED, ModelStage.PUBLISHED],
+        [ModelStage.ARCHIVED]: [ModelStage.DELETED, ModelStage.PUBLISHED],
+        [ModelStage.PUBLISHED]: [ModelStage.DELETED, ModelStage.ARCHIVED],
+      };
 
-  @Mutation(() => Product)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updateProductUseGlobalWorkflow(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("productId", () => Int) productId: number,
-    @Arg("useDefaultWorkflows", () => Boolean)
-    useDefaultWorkflows: boolean
-  ): Promise<Product> {
-    const product = await ctx.prisma.product.findFirstOrThrow({
-      where: {
-        id: productId,
-        organizationId: ctx.me.organizationId,
-        stage: { not: ModelStage.DELETED },
-      },
-    });
+      const stage = args.stage as ModelStage;
 
-    if (product.stage === ModelStage.ARCHIVED) {
-      new UserInputError("Cannot edit an archived product");
-    }
-
-    return ctx.prisma.product.update({
-      where: { id: product.id },
-      data: { isUsingDefaultWorkflows: useDefaultWorkflows },
-    });
-  }
-
-  @Mutation(() => Product)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updateProduct(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("productId", () => Int) productId: number,
-    @Arg("input", () => UpdateProductInput) input: UpdateProductInput
-  ): Promise<Product> {
-    const product = await ctx.prisma.product.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: productId,
-        stage: { not: ModelStage.DELETED },
-      },
-    });
-
-    if (product.stage === ModelStage.ARCHIVED) {
-      new UserInputError("Cannot edit an archived product");
-    }
-
-    // When the code is changed we don't want to take an
-    // existing one
-    if (input.code && input.code !== product.code) {
-      const existingProduct = await findProductByCode(
-        input.code,
-        ctx.me.organizationId
-      );
-
-      if (existingProduct && existingProduct.id !== product.id) {
-        throw new UserInputError("A product with the same code already exists");
+      if (
+        stage in allowedTransitions &&
+        allowedTransitions[stage].indexOf(product.stage) !== -1
+      ) {
+        return ctx.prisma.product.update({
+          ...query,
+          where: { id: product.id },
+          data: { stage },
+        });
       }
-    }
 
-    return ctx.prisma.product.update({
-      where: { id: product.id },
-      data: input,
-    });
-  }
-}
+      throw new GraphQLError(
+        `Cannot go from ${product.stage} to ${stage}`,
+      );
+    },
+  }),
+);
+
+builder.mutationField("updateProductUseGlobalWorkflow", (t) =>
+  t.prismaField({
+    type: ProductRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      productId: t.arg.int({ required: true }),
+      useDefaultWorkflows: t.arg.boolean({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const product = await ctx.prisma.product.findFirstOrThrow({
+        where: {
+          id: args.productId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          stage: { not: ModelStage.DELETED },
+        },
+      });
+
+      if (product.stage === ModelStage.ARCHIVED) {
+        throw new GraphQLError("Cannot edit an archived product");
+      }
+
+      return ctx.prisma.product.update({
+        ...query,
+        where: { id: product.id },
+        data: { isUsingDefaultWorkflows: args.useDefaultWorkflows },
+      });
+    },
+  }),
+);
+
+builder.mutationField("updateProduct", (t) =>
+  t.prismaField({
+    type: ProductRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      productId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdateProductInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const product = await ctx.prisma.product.findFirstOrThrow({
+        where: {
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          id: args.productId,
+          stage: { not: ModelStage.DELETED },
+        },
+      });
+
+      if (product.stage === ModelStage.ARCHIVED) {
+        throw new GraphQLError("Cannot edit an archived product");
+      }
+
+      // Prevent code collisions when the product code is being changed
+      if (args.input.code && args.input.code !== product.code) {
+        const existing = await findProductByCode(
+          args.input.code,
+          (ctx.me as AuthRoleContext).organizationId,
+        );
+
+        if (existing && existing.id !== product.id) {
+          throw new GraphQLError(
+            "A product with the same code already exists",
+          );
+        }
+      }
+
+      return ctx.prisma.product.update({
+        ...query,
+        where: { id: product.id },
+        data: {
+          name: args.input.name ?? undefined,
+          code: args.input.code ?? undefined,
+          description: args.input.description ?? undefined,
+          coverUrl: args.input.coverUrl ?? undefined,
+          isSupportActive: args.input.isSupportActive ?? undefined,
+        },
+      });
+    },
+  }),
+);

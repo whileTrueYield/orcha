@@ -1,7 +1,18 @@
-require("reflect-metadata");
+/**
+ * Application entry point — boots Express + Apollo Server v4.
+ *
+ * Wires together:
+ *  - Express app with CORS, session, and REST routes
+ *  - Apollo Server v4 via `expressMiddleware`
+ *  - Context factory that hydrates `me` from the session (replacing
+ *    the old MeContextMiddleware class)
+ *  - BullMQ cron jobs
+ *
+ * The GraphQL schema is built by Pothos (see schema/index.ts).
+ */
 
-import { ApolloServer } from "apollo-server-express";
-import { getSchema } from "./models";
+import { ApolloServer } from "@apollo/server";
+import { expressMiddleware } from "@apollo/server/express4";
 import session from "express-session";
 import { redis } from "./redis";
 import { AppContext, AuthContext } from "./types";
@@ -11,62 +22,35 @@ import prisma from "./prisma";
 import { createExpressApp } from "./app";
 import { logger } from "./logger";
 import { find } from "lodash";
-import { RoleType } from "@generated/type-graphql";
+import { RoleType } from "@prisma/client";
 import { initCron } from "./cron/queues";
 import { json as jsonBodyParser } from "express";
 import { corsCheckOrigin } from "./utils";
 import RedisStore from "connect-redis";
+import { getSchema } from "./models";
 
 async function start() {
-  // The ApolloServer constructor requires two parameters: your schema
-  // definition and your set of resolvers.
-  //
-  // Apollo <--> TypeGrapqhl <--> Prisma
-  //
-  // TypeGrapqhl is handling permission and "endpoints" for apollo, while
-  // Prisma is our ORM, handling relations, retrieval and other CRUD operations.
-  //
-  // You'll also notice that the context is modified to include the prisma
-  // instance to every typegraphql handler
-  const server = new ApolloServer({
-    // bounded cache to protect against DOS attacks
-    // see https://www.apollographql.com/docs/apollo-server/v3/performance/cache-backends#ensuring-a-bounded-cache
-    cache: "bounded",
-    schema: await getSchema(),
-    context: ({ req, res }: AppContext<AuthContext>) => {
-      const orgIdStr = req.headers.organization as string;
+  const schema = await getSchema();
 
-      // you may have more than one role (working for more than one organization)
-      // so we read the orgIdStr from your request header and find which role
-      // should we use for the request at hand
-      if (orgIdStr) {
-        const role = find(req.session.roles, {
-          organizationId: parseInt(orgIdStr),
-        });
-
-        if (role) {
-          req.session.roleType = role.type as RoleType;
-          req.session.roleId = role.id;
-          req.session.organizationId = role.organizationId;
-        }
-      }
-
-      return { req, res, prisma };
-    },
+  // Apollo Server v4 — standalone server that produces middleware
+  const server = new ApolloServer<AppContext<AuthContext>>({
+    schema,
+    // TODO: Apollo v4 dropped the built-in "bounded" cache option.
+    // Consider adding @apollo/server-plugin-response-cache if needed.
   });
 
-  // Initialize store.
-  let redisStore = new RedisStore({
-    client: redis,
-  });
+  await server.start();
 
-  // The session parser relies on redis for storage. This only
+  // Initialize Redis-backed session store
+  const redisStore = new RedisStore({ client: redis });
+
+  // The session parser relies on Redis for storage. This only
   // takes care of the storage and encryption.
-  // The session definition can be find as a combined type AuthContext
-  // it can be: (you should check their definition in the types.ts file)
-  // - GuestUserContext (not authenticated)
-  // - AuthRoleContext (authenticated and using an organization)
-  // - AuthUserContext (authenticated but not within an organization)
+  // The session definition can be found as a combined type AuthContext —
+  // it can be:
+  //   - GuestUserContext  (not authenticated)
+  //   - AuthRoleContext   (authenticated and using an organization)
+  //   - AuthUserContext   (authenticated but not within an organization)
   const sessionParser = session({
     store: redisStore,
     name: "sessionId",
@@ -76,46 +60,69 @@ async function start() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: config.isProd, // we only have SSL on prod and staging
+      secure: config.isProd,
       maxAge: 1000 * 60 * 60 * 24 * 5 * 365, // 5 years
       sameSite: config.isProd ? "none" : "lax",
     },
   });
 
-  // create the Express app and associate the middleware to it
-  // including CORS handling since our backend is stored on a different
-  // sub-domain than our frontend (served from a CDN)
+  // Build the Express app with global middleware (CORS, session, body parser)
+  const corsOptions = {
+    credentials: true,
+    origin: corsCheckOrigin(config.allowOrigin),
+  };
+
   const app = createExpressApp([
-    cors({
-      credentials: true,
-      origin: corsCheckOrigin(config.allowOrigin),
-    }),
+    cors(corsOptions),
     sessionParser,
     jsonBodyParser(),
   ]);
 
-  // Starting the apollo service and couple it with the express app (it also
-  // requires a CORS handler).
-  // graphql is configured to serve at /graphql in the apollo.config.js file
-  await server.start();
-  server.applyMiddleware({
-    app,
-    cors: {
-      credentials: true,
-      origin: corsCheckOrigin(config.allowOrigin),
-    },
-  });
+  // Mount Apollo v4 as Express middleware at /graphql.
+  // The context factory replaces the old MeContextMiddleware — it reads
+  // the session and builds the `me` object before any resolver runs.
+  app.use(
+    "/graphql",
+    cors<cors.CorsRequest>(corsOptions),
+    expressMiddleware(server, {
+      context: async ({ req, res }) => {
+        const orgIdStr = req.headers.organization as string;
 
-  // Launches the backend express application
+        // A user may hold multiple roles (one per organization).
+        // We read the organization header and select the matching role
+        // for the current request.
+        if (orgIdStr) {
+          const role = find(req.session.roles, {
+            organizationId: parseInt(orgIdStr),
+          });
+
+          if (role) {
+            req.session.roleType = role.type as RoleType;
+            req.session.roleId = role.id;
+            req.session.organizationId = role.organizationId;
+          }
+        }
+
+        // Build the `me` context from the session — this is the logic
+        // that used to live in MeContextMiddleware.
+        const { buildMeContext } = await import(
+          "./middlewares/isAuthenticated"
+        );
+        const me = buildMeContext(req);
+
+        return { req, res, prisma, me } as AppContext<AuthContext>;
+      },
+    }),
+  );
+
+  // Launch the Express server
   app.listen({ port: config.port }, () => {
     logger.info(
-      `🚀 Server ready at http://${config.hostname}:${config.port}${server.graphqlPath}`
+      `Server ready at http://${config.hostname}:${config.port}/graphql`,
     );
   });
 
-  // create the CRON jobs, they run check like reminder to start a task,
-  // auto stop a task, send scheduled emails...
-  // the CRON service uses `bullmq` and runs on REDIS
+  // Start BullMQ cron jobs (reminders, auto-stop, scheduled emails, etc.)
   await initCron();
 
   return app;

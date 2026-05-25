@@ -1,23 +1,14 @@
-import { AcceptRoleResolver } from "./acceptRole.resolver";
-import { DeleteRoleResolver } from "./deleteRole.resolver";
-import { InviteResolver } from "./invite.resolver";
-import { RejectRoleResolver } from "./rejectRole.resolver";
-import { RoleResolver } from "./role.resolver";
-import { MiniRoleResolver } from "./miniRole.resolver";
-import { RolesResolver } from "./roles.resolver";
-import { UpdateRoleResolver } from "./updateRole.resolver";
-import { UpdateRolePreferencesResolver } from "./updateRolePreferences.resolver";
-import { ReactivateRoleResolver } from "./reactivateRole.resolver";
+/**
+ * Role resolver registrations — side-effect imports.
+ */
 
-export default [
-  AcceptRoleResolver,
-  DeleteRoleResolver,
-  InviteResolver,
-  RejectRoleResolver,
-  RoleResolver,
-  RolesResolver,
-  UpdateRoleResolver,
-  MiniRoleResolver,
-  UpdateRolePreferencesResolver,
-  ReactivateRoleResolver,
-];
+import "./acceptRole.resolver";
+import "./deleteRole.resolver";
+import "./invite.resolver";
+import "./rejectRole.resolver";
+import "./role.resolver";
+import "./roles.resolver";
+import "./updateRole.resolver";
+import "./miniRole.resolver";
+import "./updateRolePreferences.resolver";
+import "./reactivateRole.resolver";

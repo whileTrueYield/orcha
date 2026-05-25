@@ -9,7 +9,7 @@ import { notifyMentionedUsersInTicket } from "../../models/notification/createNo
 
 export async function storeTicketText(
   token: DocumentToken,
-  state: Buffer,
+  state: Uint8Array<ArrayBuffer>,
 ): Promise<null> {
   logger.info("storing ticket text");
   const ticket = await prisma.ticket.findFirst({

@@ -1,50 +1,20 @@
-import { InputType, Field, ObjectType, Int } from "type-graphql";
+/**
+ * Pagination runtime helpers.
+ *
+ * The GraphQL type definitions (PageInfo, PaginatedType) now live in
+ * `../schema/pagination.ts`. This file keeps only the plain TS interfaces
+ * and the `paginateNodes` function that resolvers call at runtime.
+ *
+ * Exports: PageInfoShape, FilterOption, PaginateNodeArgs, paginateNodes, GetPageArgsFor.
+ */
 
-@ObjectType({ isAbstract: true })
-export class PageInfo {
-  @Field((_type) => Boolean)
-  hasNextPage: boolean;
-
-  @Field((_type) => Boolean)
-  hasPreviousPage: boolean;
-
-  @Field(() => Int)
-  pageNumber: number;
-
-  @Field(() => Int)
-  pageCount: number;
-
-  @Field(() => Int)
-  pageSize: number;
-
-  @Field(() => Int, { nullable: true })
-  endCursor: number | null;
-}
-
-@ObjectType({ isAbstract: true })
-export class PaginatedNodes {
-  @Field(() => Int)
-  totalCount: number;
-
-  @Field(() => PageInfo)
-  pageInfo: PageInfo;
-}
-
-@InputType()
-export class FilterOption {
-  @Field({ nullable: true })
+// TODO: FilterOption was a TypeGraphQL @InputType. Pothos input types will be
+// defined inline in resolver files during later migration slices.
+export interface FilterOption {
   first?: number;
-
-  @Field({ nullable: true })
   last?: number;
-
-  @Field({ nullable: true })
   offset?: number;
 }
-
-// const MinItemPerPage = 1;
-// const DefaultItemPerPage = 10;
-// const MaxItemPerPage = 50;
 
 interface PaginateNodeArgs<T> {
   pageSize: number;

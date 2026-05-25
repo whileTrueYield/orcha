@@ -1,5 +1,3 @@
-require("reflect-metadata");
-
 import prisma from "../../prisma";
 import { logger } from "../../logger";
 import { IssueActionCategory, IssueStatus } from "@prisma/client";

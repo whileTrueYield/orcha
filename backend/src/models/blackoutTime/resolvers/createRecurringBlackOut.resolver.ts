@@ -1,112 +1,76 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-  Int,
-} from "type-graphql";
+/**
+ * Mutation: createRecurringBlackoutTime.
+ */
 
-import { Length } from "class-validator";
-import { RecurringBlackoutTime } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { UserInputError } from "apollo-server-express";
+import builder from "../../../schema/builder";
+import { GraphQLError } from "graphql";
 import { requestEstimate } from "../../ticket/jobs/estimateTickets";
-import { RoleType } from "@prisma/client";
-import { IsMilitaryTime } from "../../../validator/TimeValidator";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class CreateRecurringBlackoutTimeInput {
-  @Field()
-  name: string;
+const CreateRecurringBlackoutTimeInput = builder.inputType("CreateRecurringBlackoutTimeInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+    startTime: t.string({ required: true }),
+    stopTime: t.string({ required: true }),
+    roleIds: t.intList({ required: true }),
+    monday: t.boolean({ required: false }),
+    tuesday: t.boolean({ required: false }),
+    wednesday: t.boolean({ required: false }),
+    thursday: t.boolean({ required: false }),
+    friday: t.boolean({ required: false }),
+    saturday: t.boolean({ required: false }),
+    sunday: t.boolean({ required: false }),
+  }),
+});
 
-  @Field()
-  @IsMilitaryTime()
-  @Length(1, 128)
-  startTime: string;
+builder.mutationField("createRecurringBlackoutTime", (t) =>
+  t.prismaField({
+    type: "RecurringBlackoutTime",
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      input: t.arg({ type: CreateRecurringBlackoutTimeInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      let { startTime, stopTime } = args.input;
 
-  @Field()
-  @IsMilitaryTime()
-  @Length(1, 128)
-  stopTime: string;
+      if (startTime === stopTime) {
+        throw new GraphQLError("start and stop time cannot be identical", { extensions: { code: "BAD_USER_INPUT" } });
+      }
 
-  @Field(() => [Int])
-  roleIds: number[];
+      if (startTime > stopTime) {
+        [startTime, stopTime] = [stopTime, startTime];
+      }
 
-  @Field(() => Boolean, { nullable: true })
-  monday?: boolean;
+      const roles = await ctx.prisma.role.findMany({
+        where: {
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          id: { in: args.input.roleIds },
+        },
+      });
 
-  @Field(() => Boolean, { nullable: true })
-  tuesday?: boolean;
-
-  @Field(() => Boolean, { nullable: true })
-  wednesday?: boolean;
-
-  @Field(() => Boolean, { nullable: true })
-  thursday?: boolean;
-
-  @Field(() => Boolean, { nullable: true })
-  friday?: boolean;
-
-  @Field(() => Boolean, { nullable: true })
-  saturday?: boolean;
-
-  @Field(() => Boolean, { nullable: true })
-  sunday?: boolean;
-}
-
-@Resolver()
-export class CreateRecurringBlackoutTimeResolver {
-  @Mutation(() => RecurringBlackoutTime)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async createRecurringBlackoutTime(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input")
-    input: CreateRecurringBlackoutTimeInput
-  ): Promise<RecurringBlackoutTime> {
-    let { startTime, stopTime } = input;
-
-    if (startTime === stopTime) {
-      throw new UserInputError("start and stop time cannot be identical");
-    }
-
-    if (startTime > stopTime) {
-      [startTime, stopTime] = [stopTime, startTime];
-    }
-
-    const roles = await ctx.prisma.role.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: { in: input.roleIds },
-      },
-    });
-
-    const recurringBlackoutTime = await ctx.prisma.recurringBlackoutTime.create(
-      {
+      const recurringBlackoutTime = await ctx.prisma.recurringBlackoutTime.create({
+        ...query,
         data: {
-          name: input.name,
-          organizationId: ctx.me.organizationId,
+          name: args.input.name,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
           roles: { connect: roles.map((role) => ({ id: role.id })) },
           startTime,
           stopTime,
-          timeZone: (await ctx.me.getRole()).timeZone,
-          monday: input.monday,
-          tuesday: input.tuesday,
-          wednesday: input.wednesday,
-          thursday: input.thursday,
-          friday: input.friday,
-          saturday: input.saturday,
-          sunday: input.sunday,
+          timeZone: (await (ctx.me as AuthRoleContext).getRole()).timeZone,
+          monday: args.input.monday ?? undefined,
+          tuesday: args.input.tuesday ?? undefined,
+          wednesday: args.input.wednesday ?? undefined,
+          thursday: args.input.thursday ?? undefined,
+          friday: args.input.friday ?? undefined,
+          saturday: args.input.saturday ?? undefined,
+          sunday: args.input.sunday ?? undefined,
           disabled: false,
         },
-      }
-    );
+      });
 
-    await requestEstimate(ctx.me.organizationId);
+      await requestEstimate((ctx.me as AuthRoleContext).organizationId);
 
-    return recurringBlackoutTime;
-  }
-}
+      return recurringBlackoutTime;
+    },
+  }),
+);

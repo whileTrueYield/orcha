@@ -1,4 +1,4 @@
-import { Drawing, Role } from "../entities";
+import { Drawing, Role } from "@prisma/client";
 
 /**
  * Check if a drawing can be locked by a given roleId

@@ -1,5 +1,3 @@
-require("reflect-metadata");
-
 import prisma from "../../../prisma";
 import { Role } from "@prisma/client";
 import { EMPTY_WORK_WEEK, WorkWeekTime } from "../../entities";

@@ -1,150 +1,106 @@
-import {
-  Arg,
-  Query,
-  Resolver,
-  Int,
-  FieldResolver,
-  Root,
-  Ctx,
-  UseMiddleware,
-  Mutation,
-} from "type-graphql";
-import {
-  Team,
-  Organization,
-  Role,
-  RoleType,
-  RoleStatus,
-} from "@generated/type-graphql";
-import { PaginatedRoles } from "../../role/entity";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { map } from "lodash";
-import { getPaginatedRoles } from "../../role/helper";
+/**
+ * Query and mutation resolvers for a single Team.
+ *
+ * Registers:
+ *  - Query.team(id: Int!): Team!
+ *  - Mutation.addMembers(teamId, roleIds): Team!
+ *  - Mutation.removeMembers(teamId, roleIds): Team!
+ *
+ * addMembers/removeMembers require ADMIN or OWNER role.
+ * The team query requires any linked role.
+ */
 
-@Resolver(Team)
-export class TeamResolver {
-  @Query(() => Team)
-  @UseMiddleware(hasRole())
-  async team(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<Team> {
-    return await ctx.prisma.team.findFirstOrThrow({
-      where: {
-        id,
-        organizationId: ctx.me.organizationId,
-      },
-    });
-  }
+import { RoleStatus } from "@prisma/client";
+import builder from "../../../schema/builder";
+import { TeamRef } from "../entity";
+import { AuthRoleContext } from "../../../types";
 
-  @Mutation(() => Team)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async addMembers(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("teamId", () => Int) teamId: number,
-    @Arg("roleIds", () => [Int]) roleIds: number[]
-  ): Promise<Team> {
-    const team = await ctx.prisma.team.findFirstOrThrow({
-      where: {
-        id: teamId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
+// ---------------------------------------------------------------------------
+// Query
+// ---------------------------------------------------------------------------
 
-    const validRoleIds = await ctx.prisma.role.findMany({
-      select: { id: true },
-      where: {
-        organizationId: ctx.me.organizationId,
-        status: { in: [RoleStatus.ACCEPTED, RoleStatus.INVITED] },
-        id: { in: roleIds },
-      },
-    });
-
-    return ctx.prisma.team.update({
-      where: { id: team.id },
-      data: {
-        members: {
-          connect: validRoleIds,
+builder.queryField("team", (t) =>
+  t.prismaField({
+    type: TeamRef,
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) =>
+      ctx.prisma.team.findFirstOrThrow({
+        ...query,
+        where: {
+          id: args.id,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
         },
-      },
-    });
-  }
+      }),
+  }),
+);
 
-  @Mutation(() => Team)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async removeMembers(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("teamId", () => Int) teamId: number,
-    @Arg("roleIds", () => [Int]) roleIds: number[]
-  ): Promise<Team> {
-    const team = await ctx.prisma.team.findFirstOrThrow({
-      where: {
-        id: teamId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
+// ---------------------------------------------------------------------------
+// Mutations
+// ---------------------------------------------------------------------------
 
-    return ctx.prisma.team.update({
-      where: { id: team.id },
-      data: {
-        members: {
-          disconnect: roleIds.map((id) => ({ id })),
+builder.mutationField("addMembers", (t) =>
+  t.prismaField({
+    type: TeamRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      teamId: t.arg.int({ required: true }),
+      roleIds: t.arg.intList({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const team = await ctx.prisma.team.findFirstOrThrow({
+        where: {
+          id: args.teamId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
         },
-      },
-    });
-  }
+      });
 
-  @FieldResolver((_returns) => Organization)
-  async organization(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() team: Team
-  ): Promise<Organization> {
-    return ctx.prisma.organization.findUniqueOrThrow({
-      where: { id: team.organizationId },
-    });
-  }
-
-  /**
-   * Return the complete role IDs set for a given team and only
-   * their IDs.
-   * @param team
-   */
-  @FieldResolver((_returns) => [Int])
-  async memberIds(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() team: Team
-  ): Promise<number[]> {
-    const roleIds = await ctx.prisma.role.findMany({
-      select: { id: true },
-      where: {
-        teams: {
-          some: { id: team.id },
+      // Only connect roles that actually belong to the org and are active
+      const validRoleIds = await ctx.prisma.role.findMany({
+        select: { id: true },
+        where: {
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          status: { in: [RoleStatus.ACCEPTED, RoleStatus.INVITED] },
+          id: { in: args.roleIds },
         },
-      },
-    });
+      });
 
-    return map(roleIds, (row) => row.id);
-  }
+      return ctx.prisma.team.update({
+        ...query,
+        where: { id: team.id },
+        data: { members: { connect: validRoleIds } },
+      });
+    },
+  }),
+);
 
-  @FieldResolver((_returns) => PaginatedRoles)
-  async members(
-    @Root() team: Team,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Role,
-    @Arg("search", () => String, { nullable: true }) search: string,
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<PaginatedRoles> {
-    return getPaginatedRoles({
-      teamId: team.id,
-      organizationId: ctx.me.organizationId,
-      first,
-      last,
-      offset,
-      sort,
-      search,
-    });
-  }
-}
+builder.mutationField("removeMembers", (t) =>
+  t.prismaField({
+    type: TeamRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      teamId: t.arg.int({ required: true }),
+      roleIds: t.arg.intList({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const team = await ctx.prisma.team.findFirstOrThrow({
+        where: {
+          id: args.teamId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
+
+      return ctx.prisma.team.update({
+        ...query,
+        where: { id: team.id },
+        data: {
+          members: {
+            disconnect: args.roleIds.map((id) => ({ id })),
+          },
+        },
+      });
+    },
+  }),
+);

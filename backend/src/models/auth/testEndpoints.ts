@@ -1,4 +1,4 @@
-import { RoleStatus } from "@generated/type-graphql";
+import { RoleStatus } from "@prisma/client";
 import {
   Prisma,
   UserStatus,

@@ -1,23 +1,38 @@
-import { Arg, Query, Resolver, UseMiddleware, Ctx } from "type-graphql";
-import { Team } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { UserInputError } from "apollo-server-express";
+/**
+ * Query resolver for fetching a Team by its short code.
+ *
+ * Registers: Query.teamByCode(code: String!): Team!
+ *
+ * Requires any linked role. Scoped to the caller's organisation.
+ */
+
+import { GraphQLError } from "graphql";
+import builder from "../../../schema/builder";
+import { TeamRef } from "../entity";
 import { findTeamByCode } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Team)
-export class TeamByCodeResolver {
-  @Query(() => Team)
-  @UseMiddleware(hasRole())
-  async teamByCode(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("code") code: string
-  ): Promise<Team> {
-    const team = await findTeamByCode(code, ctx.me.organizationId);
+builder.queryField("teamByCode", (t) =>
+  t.prismaField({
+    type: TeamRef,
+    authScopes: { hasRole: true },
+    args: {
+      code: t.arg.string({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const team = await findTeamByCode(args.code, (ctx.me as AuthRoleContext).organizationId);
 
-    if (!team) {
-      throw new UserInputError("This team does not exist or has been deleted");
-    }
-    return team;
-  }
-}
+      if (!team) {
+        throw new GraphQLError(
+          "This team does not exist or has been deleted",
+        );
+      }
+
+      // Re-fetch with the query object so Pothos can optimize includes
+      return ctx.prisma.team.findUniqueOrThrow({
+        ...query,
+        where: { id: team.id },
+      });
+    },
+  }),
+);
