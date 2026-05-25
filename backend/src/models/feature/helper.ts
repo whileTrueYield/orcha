@@ -1,9 +1,8 @@
 import prisma from "../../prisma";
 import { clamp, trim } from "lodash";
-import { FeatureGroup, Feature } from "@generated/type-graphql";
+import { FeatureGroup, Feature } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
 import { Prisma } from ".prisma/client";
-import { PaginatedFeatureGroups, PaginatedFeatures } from "./entity";
 
 interface GetFeatureGroupPageArgs extends GetPageArgsFor<FeatureGroup> {
   productId?: number;
@@ -12,7 +11,7 @@ interface GetFeatureGroupPageArgs extends GetPageArgsFor<FeatureGroup> {
 
 export async function getPaginatedFeatureGroups(
   args: GetFeatureGroupPageArgs
-): Promise<PaginatedFeatureGroups> {
+) {
   const { first, last, productId, organizationId, search } = args;
 
   // default offset to be at the start (or the end
@@ -69,7 +68,7 @@ interface GetFeaturePageArgs extends GetPageArgsFor<Feature> {
 
 export async function getPaginatedFeatures(
   args: GetFeaturePageArgs
-): Promise<PaginatedFeatures> {
+) {
   const { first, last, featureGroupId, organizationId, productId, search } =
     args;
 

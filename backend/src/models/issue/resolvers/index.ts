@@ -1,13 +1,12 @@
-import { UpdateIssueResolver } from "./updateIssue.resolver";
-import { IssueResolver } from "./issue.resolver";
-import { IssuesResolver } from "./issues.resolver";
-import { DeleteIssueResolver } from "./deleteIssue.resolver";
-import { IssueActionResolver } from "./issueAction.resolver";
+/**
+ * Side-effect barrel for Issue resolvers.
+ *
+ * Importing this module registers all Issue and IssueAction query and
+ * mutation fields on the Pothos builder. No exports — purely side-effect imports.
+ */
 
-export default [
-  UpdateIssueResolver,
-  IssueResolver,
-  IssuesResolver,
-  DeleteIssueResolver,
-  IssueActionResolver,
-];
+import "./issue.resolver";
+import "./issues.resolver";
+import "./updateIssue.resolver";
+import "./deleteIssue.resolver";
+import "./issueAction.resolver";

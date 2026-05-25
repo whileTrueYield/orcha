@@ -1,3 +1,7 @@
-import { FeatureFlagResolver } from "./featureFlag.resolver";
+/**
+ * Side-effect barrel — importing this file registers all featureFlag types and resolvers.
+ */
 
-export default [FeatureFlagResolver];
+// Entity must be imported first to register the FeatureFlag prismaObject.
+import "../entity";
+import "./featureFlag.resolver";

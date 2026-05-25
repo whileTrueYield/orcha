@@ -1,5 +1,3 @@
-require("reflect-metadata");
-
 import { Worker, Job } from "bullmq";
 import { logger } from "../logger";
 import { redisConfig } from "../redis";

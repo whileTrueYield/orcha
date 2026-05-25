@@ -1,26 +1,33 @@
-import { Arg, Query, Resolver, Int, UseMiddleware } from "type-graphql";
-import { Organization } from "@generated/type-graphql";
-import { StaffOnly } from "../../../middlewares/isAuthenticated";
-import { getPaginatedOrganizations } from "../helper";
-import { PaginatedOrganizations } from "../entity";
+/**
+ * Query resolver for listing all Organisations (staff-only).
+ *
+ * Registers: Query.organizations(...): PaginatedOrganization
+ *
+ * Requires the isStaff scope — only platform staff can list all orgs.
+ */
 
-@Resolver(Organization)
-export class OrganizationsResolver {
-  @Query((_returns) => PaginatedOrganizations)
-  @UseMiddleware(StaffOnly)
-  async organizations(
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Organization,
-    @Arg("search", () => String, { nullable: true }) search: string
-  ): Promise<PaginatedOrganizations> {
-    return getPaginatedOrganizations({
-      first,
-      last,
-      offset,
-      sort,
-      search,
-    });
-  }
-}
+import builder from "../../../schema/builder";
+import { PaginatedOrganizations } from "../entity";
+import { getPaginatedOrganizations } from "../helper";
+
+builder.queryField("organizations", (t) =>
+  t.field({
+    type: PaginatedOrganizations,
+    authScopes: { isStaff: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+    },
+    resolve: (_root, args) =>
+      getPaginatedOrganizations({
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: args.sort as any,
+        search: args.search ?? undefined,
+      }),
+  }),
+);

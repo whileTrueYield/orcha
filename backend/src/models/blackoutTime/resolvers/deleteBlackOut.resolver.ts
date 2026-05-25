@@ -1,31 +1,32 @@
-import { Arg, Resolver, Mutation, UseMiddleware, Ctx, Int } from "type-graphql";
+/**
+ * Mutation: deleteBlackoutTime — returns the deleted ID.
+ */
 
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
 import { requestEstimate } from "../../ticket/jobs/estimateTickets";
-import { RoleType } from "@prisma/client";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver()
-export class DeleteBlackoutTimeResolver {
-  @Mutation(() => Int)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async deleteBlackoutTime(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("blackoutTimeId", () => Int) blackoutTimeId: number
-  ): Promise<number> {
-    const blackoutTime = await ctx.prisma.blackoutTime.findFirstOrThrow({
-      where: {
-        id: blackoutTimeId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
+builder.mutationField("deleteBlackoutTime", (t) =>
+  t.int({
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      blackoutTimeId: t.arg.int({ required: true }),
+    },
+    resolve: async (_root, args, ctx) => {
+      const blackoutTime = await ctx.prisma.blackoutTime.findFirstOrThrow({
+        where: {
+          id: args.blackoutTimeId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
 
-    await requestEstimate(ctx.me.organizationId);
+      await requestEstimate((ctx.me as AuthRoleContext).organizationId);
 
-    await ctx.prisma.blackoutTime.delete({
-      where: { id: blackoutTime.id },
-    });
+      await ctx.prisma.blackoutTime.delete({
+        where: { id: blackoutTime.id },
+      });
 
-    return blackoutTimeId;
-  }
-}
+      return args.blackoutTimeId;
+    },
+  }),
+);

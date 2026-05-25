@@ -1,13 +1,12 @@
-import { CreateTodoResolver } from "./createTodo.resolver";
-import { UpdateTodoResolver } from "./updateTodo.resolver";
-import { TodoResolver } from "./todo.resolver";
-import { TodosResolver } from "./todos.resolver";
-import { DeleteTodoResolver } from "./deleteTodo.resolver";
+/**
+ * Side-effect barrel for Todo resolvers.
+ *
+ * Importing this module registers all Todo query and mutation fields
+ * on the Pothos builder. No exports — purely side-effect imports.
+ */
 
-export default [
-  CreateTodoResolver,
-  UpdateTodoResolver,
-  TodoResolver,
-  TodosResolver,
-  DeleteTodoResolver,
-];
+import "./todo.resolver";
+import "./todos.resolver";
+import "./createTodo.resolver";
+import "./updateTodo.resolver";
+import "./deleteTodo.resolver";

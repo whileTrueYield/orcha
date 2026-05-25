@@ -3,15 +3,15 @@ generator client {
   binaryTargets = ["native", "linux-musl"]
 }
 
-generator typegraphql {
-  provider = "typegraphql-prisma"
-  emitOnly = ["models", "enums"]
+generator pothos {
+  provider     = "prisma-pothos-types"
+  clientOutput = "@prisma/client"
+  output       = "../src/generated/pothos-types.ts"
 }
 
 datasource db {
-  provider     = "postgresql"
-  url          = env("DATABASE_URL")
-  relationMode = "foreignKeys"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model PushSubscription {
@@ -63,12 +63,9 @@ model DocumentationPage {
   customId String? @db.VarChar // the uniq hashtag to reference this section
 
   // We do not want to expose indexableContent, this is solely for search
-  /// @TypeGraphQL.omit(output: true, input: true)
   indexableContent String @default("") @db.VarChar
 
-  /// @TypeGraphQL.omit(output: true, input: true)
   urls     String @default("[]") @db.VarChar // which URLs are assocatiated with this page
-  /// @TypeGraphQL.omit(output: true, input: true)
   keywords String @default("[]") @db.VarChar // which keywords are associated with this page
 
   // timestamps
@@ -313,7 +310,6 @@ model ReportQuery {
   byWorkflowStates         WorkflowState[] @relation("primaryWorkflowStateFilter")
 
   // A JSON string to be parsed that represents list of folders
-  /// @TypeGraphQL.omit(output: true, input: true)
   byPaths String @default("[]") @db.VarChar
 
   // Schedule Item filters, these are actually ternaries, for example:
@@ -358,7 +354,6 @@ model ReportQuery {
   secondaryIsTicketNotStarted Boolean?
 
   // A JSON string to be parsed that represents list of folders
-  /// @TypeGraphQL.omit(output: true, input: true)
   secondaryByPaths String @default("[]") @db.VarChar
 
   // indices, table map and constraints
@@ -715,7 +710,6 @@ model Organization {
   // if there is a problem in the schedule, this flag should be set to true
   scheduleStatus ScheduleStatus @default(OK)
 
-  /// @TypeGraphQL.omit(output: true, input: true)
   preferences String @default("{}") @db.VarChar
 
   // Optional fields
@@ -941,7 +935,6 @@ model Page {
   duration Int
 
   // JSON fields
-  /// @TypeGraphQL.omit(output: true, input: true)
   checklist String @default("[]") @db.VarChar
 
   // timestamps
@@ -957,7 +950,6 @@ model Page {
 
   // A JSON string to be parsed that represents list of folders
   // to prioritize
-  /// @TypeGraphQL.omit(output: true, input: true)
   paths String @default("[]") @db.VarChar
 
   // relations
@@ -976,7 +968,6 @@ model Folder {
   duration Int    @default(14)
 
   // JSON fields
-  /// @TypeGraphQL.omit(output: true, input: true)
   checklist String @default("[]") @db.VarChar
 
   // relations
@@ -1055,7 +1046,6 @@ model Project {
   stage    ModelStage @default(DRAFT)
 
   // We do not want to expose indexableContent, this is solely for search
-  /// @TypeGraphQL.omit(output: true, input: true)
   indexableContent String @default("") @db.VarChar
 
   // This stage value is being set by a postgres event function
@@ -1063,7 +1053,6 @@ model Project {
   ancestorIsArchived Boolean @default(false)
 
   // JSON fields
-  /// @TypeGraphQL.omit(output: true, input: true)
   checklist String @default("[]") @db.VarChar
 
   // relations
@@ -1254,7 +1243,6 @@ model Role {
   timeZone String @default("Etc/UTC") @db.VarChar
   name     String @db.VarChar
 
-  /// @TypeGraphQL.omit(output: true, input: true)
   preferences String @default("{}") @db.VarChar
 
   // Optional fields
@@ -1265,7 +1253,6 @@ model Role {
 
   /// A JSON string to be parsed that represents the work week
   /// hour blocks from Monday to Sunday
-  /// @TypeGraphQL.omit(output: true, input: true)
   workWeek String @default("{}") @db.VarChar
 
   // enums
@@ -1596,7 +1583,6 @@ model Ticket {
   foreignId   String? @db.VarChar
 
   // We do not want to expose indexableContent, this is solely for search
-  /// @TypeGraphQL.omit(output: true, input: true)
   indexableContent String @default("") @db.VarChar
 
   // relations
@@ -1734,7 +1720,6 @@ model TicketWorkflowState {
   position     Int     @default(0)
 
   // JSON fields
-  /// @TypeGraphQL.omit(output: true, input: true)
   checklist String @default("[]") @db.VarChar
 
   // Optional fields
@@ -1779,10 +1764,8 @@ model User {
   id       Int     @id @default(autoincrement())
   email    String  @unique @db.VarChar
   isStaff  Boolean @default(false)
-  /// @TypeGraphQL.omit(output: true)
   password String  @db.VarChar
 
-  /// @TypeGraphQL.omit(output: true, input: true)
   preferences String @default("{}") @db.VarChar
 
   // enums

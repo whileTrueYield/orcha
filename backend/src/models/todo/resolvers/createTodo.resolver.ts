@@ -1,40 +1,47 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-} from "type-graphql";
+/**
+ * Mutation resolver for creating a Todo.
+ *
+ * Provides:
+ *  - createTodo(input): creates a new todo for the current user/org
+ *
+ * Requires hasRole auth scope.
+ */
 
-import { Length } from "class-validator";
-import { Todo } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class CreateTodoInput {
-  @Field({ nullable: true })
-  @Length(1, 2048)
-  body: string;
-}
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-@Resolver(Todo)
-export class CreateTodoResolver {
-  @Mutation(() => Todo)
-  @UseMiddleware(hasRole())
-  async createTodo(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input")
-    input: CreateTodoInput
-  ): Promise<Todo> {
-    return ctx.prisma.todo.create({
-      data: {
-        ...input,
-        ownerId: ctx.me.roleId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
-  }
-}
+const CreateTodoInput = builder.inputType("CreateTodoInput", {
+  fields: (t) => ({
+    body: t.string({ required: false }),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// createTodo mutation
+// ---------------------------------------------------------------------------
+
+builder.mutationField("createTodo", (t) =>
+  t.prismaField({
+    type: "Todo",
+    authScopes: { hasRole: true },
+    args: {
+      input: t.arg({ type: CreateTodoInput, required: true }),
+    },
+    resolve: (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      return ctx.prisma.todo.create({
+        ...query,
+        data: {
+          body: args.input.body ?? "",
+          ownerId: me.roleId,
+          organizationId: me.organizationId,
+        },
+      });
+    },
+  }),
+);

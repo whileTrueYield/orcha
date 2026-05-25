@@ -1,43 +1,57 @@
-import { Arg, Query, Resolver, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Query resolver for fetching paginated Issues.
+ *
+ * Provides:
+ *  - issues(first, last, offset, sort, search, productId, unread, unassigned,
+ *           assigneeId, statuses): paginated issue list
+ *
+ * Delegates to getPaginatedIssues helper. Requires hasRole auth scope
+ * and SUPPORT feature flag.
+ */
 
-import { Issue, IssueStatus } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { getPaginatedIssues } from "../helper";
+import builder from "../../../schema/builder";
+import { IssueStatusEnum } from "../../../schema/enums";
+import { AuthRoleContext } from "../../../types";
 import { PaginatedIssues } from "../entity";
-import { FeatureFlags, hasFeature } from "../../../middlewares/featureFlag";
+import { getPaginatedIssues } from "../helper";
+import {
+  FeatureFlags,
+  assertFeatureFlag,
+} from "../../../middlewares/featureFlag";
 
-@Resolver(Issue)
-export class IssuesResolver {
-  @Query((_returns) => PaginatedIssues)
-  @UseMiddleware(hasRole())
-  @UseMiddleware(hasFeature(FeatureFlags.SUPPORT))
-  async issues(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("first", () => Int, { nullable: true }) first?: number,
-    @Arg("last", () => Int, { nullable: true }) last?: number,
-    @Arg("offset", () => Int, { nullable: true }) offset?: number,
-    @Arg("sort", () => String, { nullable: true }) sort?: keyof Issue,
-    @Arg("search", () => String, { nullable: true }) search?: string,
-    @Arg("productId", () => Int, { nullable: true }) productId?: number,
-    @Arg("unread", () => Boolean, { nullable: true }) unread?: boolean,
-    @Arg("unassigned", () => Boolean, { nullable: true }) unassigned?: boolean,
-    @Arg("assigneeId", () => Int, { nullable: true }) assigneeId?: number,
-    @Arg("statuses", () => [IssueStatus], { nullable: true })
-    statuses?: IssueStatus[]
-  ) {
-    return getPaginatedIssues({
-      organizationId: ctx.me.organizationId,
-      productId,
-      unread,
-      assigneeId,
-      unassigned,
-      statuses,
-      first,
-      last,
-      offset,
-      sort,
-      search,
-    });
-  }
-}
+builder.queryField("issues", (t) =>
+  t.field({
+    type: PaginatedIssues,
+    authScopes: { hasRole: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+      productId: t.arg.int({ required: false }),
+      unread: t.arg.boolean({ required: false }),
+      unassigned: t.arg.boolean({ required: false }),
+      assigneeId: t.arg.int({ required: false }),
+      statuses: t.arg({ type: [IssueStatusEnum], required: false }),
+    },
+    resolve: async (_root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+      await assertFeatureFlag(me.organizationId, FeatureFlags.SUPPORT);
+
+      return getPaginatedIssues({
+        organizationId: me.organizationId,
+        productId: args.productId ?? undefined,
+        unread: args.unread ?? undefined,
+        assigneeId: args.assigneeId ?? undefined,
+        unassigned: args.unassigned ?? undefined,
+        statuses: args.statuses ?? undefined,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: args.sort as any,
+        search: args.search ?? undefined,
+      });
+    },
+  }),
+);

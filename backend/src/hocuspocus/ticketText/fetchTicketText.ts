@@ -6,7 +6,7 @@ import { getInitialYjsDocument } from "../helper";
 
 export async function fetchTicketText(
   token: DocumentToken
-): Promise<Buffer | null> {
+): Promise<Uint8Array | null> {
   const ticket = await prisma.ticket.findFirst({
     where: {
       id: token.documentId,

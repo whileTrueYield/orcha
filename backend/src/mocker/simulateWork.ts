@@ -3,12 +3,13 @@ import {
   EstimateType,
   ModelStage,
   RoleStatus,
-} from "@generated/type-graphql";
+} from "@prisma/client";
 import { groupBy, keyBy, last, map, orderBy, sample, uniq } from "lodash";
 import fetch from "node-fetch";
 import prisma from "../prisma";
-import { RoleWorkDay, WorkWeekTime } from "../models/entities";
+import { RoleWorkDayShape as RoleWorkDay, WorkWeekTime } from "../models/entities";
 import { config } from "../config";
+import { logger } from "../logger";
 import { subDays } from "date-fns";
 import { markdownToTipTapDoc } from "./demo/markdownToDoc";
 
@@ -272,11 +273,21 @@ export async function simulateWork(
     started: startedWorkflowStates,
   };
 
+  const requestBody = JSON.stringify(estimateContext);
+  logger.info(`[simulateWork] POST /scheduler/events — ${contextTasks.length} tasks, ${contextSchedules.length} schedules`);
+  logger.debug(`[simulateWork] request body: ${requestBody.slice(0, 500)}`);
+
   const eventsResp = await fetch(`${config.aiUri}/scheduler/events`, {
     method: "post",
-    body: JSON.stringify(estimateContext),
+    body: requestBody,
     headers: { "Content-Type": "application/json" },
   });
+
+  if (!eventsResp.ok) {
+    const errorBody = await eventsResp.text();
+    logger.error(`[simulateWork] scheduler returned ${eventsResp.status}: ${errorBody}`);
+    return [];
+  }
 
   const snapshots = (await eventsResp.json()) as ScheduleEventResponse[];
 

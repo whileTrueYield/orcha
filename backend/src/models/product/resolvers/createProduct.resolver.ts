@@ -1,60 +1,64 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-} from "type-graphql";
+/**
+ * Mutation resolver for creating a new Product.
+ *
+ * Registers: Mutation.createProduct(input: CreateProductInput!): Product!
+ *
+ * Requires ADMIN or OWNER role. Validates that no product with the
+ * same code already exists in the organisation.
+ */
 
-import { Length, MaxLength } from "class-validator";
-import { Product, RoleType } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { UserInputError } from "apollo-server-express";
-import { findProductByCode } from "../helper";
+import { GraphQLError } from "graphql";
 import { ModelStage } from "@prisma/client";
+import builder from "../../../schema/builder";
+import { ProductRef } from "../entity";
+import { findProductByCode } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class CreateProductInput {
-  @Field()
-  @Length(1, 128)
-  name: string;
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-  @Field()
-  @Length(1, 128)
-  code: string;
+const CreateProductInput = builder.inputType("CreateProductInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+    code: t.string({ required: true }),
+    description: t.string({ required: false }),
+  }),
+});
 
-  @Field({ nullable: true })
-  @MaxLength(2048)
-  description: string;
-}
+// ---------------------------------------------------------------------------
+// Mutation
+// ---------------------------------------------------------------------------
 
-@Resolver(Product)
-export class CreateProductResolver {
-  @Mutation(() => Product)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async createProduct(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input")
-    input: CreateProductInput
-  ): Promise<Product> {
-    const productUsingSameCode = await findProductByCode(
-      input.code,
-      ctx.me.organizationId
-    );
+builder.mutationField("createProduct", (t) =>
+  t.prismaField({
+    type: ProductRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      input: t.arg({ type: CreateProductInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const existing = await findProductByCode(
+        args.input.code,
+        (ctx.me as AuthRoleContext).organizationId,
+      );
 
-    if (productUsingSameCode) {
-      throw new UserInputError("A product with the same code already exists");
-    }
+      if (existing) {
+        throw new GraphQLError(
+          "A product with the same code already exists",
+        );
+      }
 
-    return ctx.prisma.product.create({
-      data: {
-        ...input,
-        organizationId: ctx.me.organizationId,
-        stage: ModelStage.PUBLISHED,
-      },
-    });
-  }
-}
+      return ctx.prisma.product.create({
+        ...query,
+        data: {
+          name: args.input.name,
+          code: args.input.code,
+          description: args.input.description ?? undefined,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          stage: ModelStage.PUBLISHED,
+        },
+      });
+    },
+  }),
+);

@@ -1,9 +1,17 @@
+/**
+ * Pagination helper for Issues.
+ *
+ * Builds a Prisma query with optional filters (product, search, status,
+ * assignee, unread, unassigned) and returns a paginated result compatible
+ * with the PaginatedIssues type.
+ *
+ * Exports: getPaginatedIssues, getIssueSorting.
+ */
+
 import prisma from "../../prisma";
 import { clamp, trim } from "lodash";
-import { Issue, IssueStatus } from "@generated/type-graphql";
+import { Issue, IssueStatus, Prisma } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedIssues } from "./entity";
-import { Prisma } from ".prisma/client";
 
 interface GetPageArgs extends GetPageArgsFor<Issue> {
   productId?: number;
@@ -14,9 +22,7 @@ interface GetPageArgs extends GetPageArgsFor<Issue> {
   statuses?: IssueStatus[];
 }
 
-export async function getPaginatedIssues(
-  args: GetPageArgs
-): Promise<PaginatedIssues> {
+export async function getPaginatedIssues(args: GetPageArgs) {
   const {
     first,
     last,
@@ -29,8 +35,7 @@ export async function getPaginatedIssues(
     assigneeId,
   } = args;
 
-  // default offset to be at the start (or the end
-  // depending on direction)
+  // default offset to be at the start (or the end depending on direction)
   const offset = args.offset ? args.offset : 0;
 
   // by default sort on createdAt
@@ -50,7 +55,7 @@ export async function getPaginatedIssues(
     organizationId,
   };
 
-  // We allow search on issues by body
+  // We allow search on issues by description, email, metaData, url
   const query = trim(search);
   if (query) {
     issueQuery.OR = [
@@ -94,7 +99,7 @@ export async function getPaginatedIssues(
 
 export const getIssueSorting = (
   sort: string,
-  direction: Prisma.SortOrder
+  direction: Prisma.SortOrder,
 ): Prisma.Enumerable<Prisma.IssueOrderByWithRelationInput> => {
   if (sort === "product") {
     return {

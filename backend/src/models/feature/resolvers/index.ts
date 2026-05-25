@@ -1,19 +1,15 @@
-import { CreateFeatureGroupResolver } from "./createFeatureGroup.resolver";
-import { DeleteFeatureGroupResolver } from "./deleteFeatureGroup.resolver";
-import { FeatureGroupResolver } from "./featureGroup.resolver";
-import { FeatureGroupsResolver } from "./featureGroups.resolver";
-import { FeatureResolver } from "./feature.resolver";
-import { FeaturesResolver } from "./features.resolver";
-import { MiniFeatureResolver } from "./miniFeature.resolver";
-import { UpdateFeatureResolver } from "./updateFeatureGroup.resolver";
+/**
+ * Feature resolver registrations — side-effect imports.
+ *
+ * Each resolver file registers its queries/mutations on the builder
+ * at import time. This barrel just ensures they all get loaded.
+ */
 
-export default [
-  CreateFeatureGroupResolver,
-  DeleteFeatureGroupResolver,
-  FeatureGroupResolver,
-  FeatureGroupsResolver,
-  FeatureResolver,
-  FeaturesResolver,
-  MiniFeatureResolver,
-  UpdateFeatureResolver,
-];
+import "./feature.resolver";
+import "./features.resolver";
+import "./featureGroup.resolver";
+import "./featureGroups.resolver";
+import "./createFeatureGroup.resolver";
+import "./deleteFeatureGroup.resolver";
+import "./miniFeature.resolver";
+import "./updateFeatureGroup.resolver";

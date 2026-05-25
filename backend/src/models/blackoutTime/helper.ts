@@ -1,12 +1,8 @@
 import { clamp, trim } from "lodash";
-import { BlackoutTime, RecurringBlackoutTime } from "@generated/type-graphql";
+import { BlackoutTime, RecurringBlackoutTime } from "@prisma/client";
 import prisma from "../../prisma";
 import { Prisma } from ".prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import {
-  PaginatedBlackoutTimes,
-  PaginatedRecurringBlackoutTimes,
-} from "./entity";
 
 interface GetBlackoutTimesArgs extends GetPageArgsFor<BlackoutTime> {
   organizationId: number;
@@ -15,7 +11,7 @@ interface GetBlackoutTimesArgs extends GetPageArgsFor<BlackoutTime> {
 
 export async function getPaginatedBlackoutTimes(
   args: GetBlackoutTimesArgs
-): Promise<PaginatedBlackoutTimes> {
+) {
   const { first, last, search, organizationId, disabled } = args;
 
   // default offset to be at the start (or the end
@@ -78,7 +74,7 @@ interface GetRecurringBlackoutTimesArgs
 
 export async function getPaginatedRecurringBlackoutTimes(
   args: GetRecurringBlackoutTimesArgs
-): Promise<PaginatedRecurringBlackoutTimes> {
+) {
   const { first, last, search, organizationId, disabled } = args;
 
   // default offset to be at the start (or the end

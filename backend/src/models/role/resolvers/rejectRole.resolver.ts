@@ -1,28 +1,32 @@
-import { Arg, Resolver, Mutation, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Mutation: rejectRole — reject an invitation.
+ */
 
-import { Role, RoleStatus } from "@generated/type-graphql";
-import { isAuthenticated } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthUserContext } from "../../../types";
+import builder from "../../../schema/builder";
+import { RoleStatus } from "@prisma/client";
+import { AuthUserContext } from "../../../types";
 
-@Resolver(Role)
-export class RejectRoleResolver {
-  @Mutation((_type) => Role)
-  @UseMiddleware(isAuthenticated)
-  async rejectRole(
-    @Ctx() ctx: AppContext<AuthUserContext>,
-    @Arg("roleId", () => Int!) roleId: number
-  ): Promise<Role> {
-    const role = await ctx.prisma.role.findFirstOrThrow({
-      where: {
-        id: roleId,
-        userId: ctx.me.userId,
-        status: RoleStatus.INVITED,
-      },
-    });
+builder.mutationField("rejectRole", (t) =>
+  t.prismaField({
+    type: "Role",
+    authScopes: { isAuthenticated: true },
+    args: {
+      roleId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const role = await ctx.prisma.role.findFirstOrThrow({
+        where: {
+          id: args.roleId,
+          userId: (ctx.me as AuthUserContext).userId,
+          status: RoleStatus.INVITED,
+        },
+      });
 
-    return ctx.prisma.role.update({
-      where: { id: role.id },
-      data: { status: RoleStatus.REJECTED },
-    });
-  }
-}
+      return ctx.prisma.role.update({
+        ...query,
+        where: { id: role.id },
+        data: { status: RoleStatus.REJECTED },
+      });
+    },
+  }),
+);

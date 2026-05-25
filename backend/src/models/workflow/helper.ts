@@ -1,14 +1,14 @@
 import prisma from "../../prisma";
 import { clamp, trim } from "lodash";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { MiniWorkflow, PaginatedWorkflows } from "./entity";
+import { MiniWorkflowShape } from "./entity";
 import { Prisma } from ".prisma/client";
 import {
   Workflow,
   ModelStage,
   WorkflowState,
   Product,
-} from "@generated/type-graphql";
+} from "@prisma/client";
 
 export async function findWorkflowByName(
   name: string,
@@ -54,7 +54,7 @@ interface GetPageArgs extends GetPageArgsFor<Workflow> {
 
 export async function getPaginatedWorkflows(
   args: GetPageArgs
-): Promise<PaginatedWorkflows> {
+) {
   const { first, last, productId, organizationId, activeOnly, search, stages } =
     args;
 
@@ -113,7 +113,7 @@ export async function getPaginatedWorkflows(
 /**
  * Convert a workflow into a mini Workflow
  */
-export const toMiniWorkflow = (workflow: Workflow): MiniWorkflow => ({
+export const toMiniWorkflow = (workflow: Workflow): MiniWorkflowShape => ({
   id: workflow.id,
   name: workflow.name,
   stage: workflow.stage,

@@ -89,15 +89,16 @@ export const hocusPocus = Server.configure({
         state: Buffer;
       }): Promise<void> => {
         logger.info(`storing ${context.auth.documentType}`);
+        const stateBytes = new Uint8Array(state.buffer as ArrayBuffer, state.byteOffset, state.byteLength);
         switch (context.auth.documentType) {
           case "projectText":
-            storeProjectText(context.auth, state);
+            storeProjectText(context.auth, stateBytes);
             break;
           case "ticketText":
-            storeTicketText(context.auth, state);
+            storeTicketText(context.auth, stateBytes);
             break;
           case "documentationText":
-            storeDocumentationText(context.auth, state);
+            storeDocumentationText(context.auth, stateBytes);
             break;
           default:
             logger.error(

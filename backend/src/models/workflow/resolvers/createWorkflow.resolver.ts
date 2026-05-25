@@ -1,56 +1,46 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-} from "type-graphql";
+/**
+ * Mutation: createWorkflow — create a new workflow.
+ */
 
-import { Length, MaxLength } from "class-validator";
-import { Workflow, RoleType } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { UserInputError } from "apollo-server-express";
+import builder from "../../../schema/builder";
 import { findWorkflowByName } from "../helper";
+import { GraphQLError } from "graphql";
 import { ModelStage } from "@prisma/client";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class CreateWorkflowInput {
-  @Field()
-  @Length(1, 128)
-  name: string;
+const CreateWorkflowInput = builder.inputType("CreateWorkflowInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+    description: t.string({ required: false }),
+  }),
+});
 
-  @Field({ nullable: true })
-  @MaxLength(2048)
-  description: string;
-}
+builder.mutationField("createWorkflow", (t) =>
+  t.prismaField({
+    type: "Workflow",
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      input: t.arg({ type: CreateWorkflowInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const workflowUsingSameName = await findWorkflowByName(
+        args.input.name,
+        (ctx.me as AuthRoleContext).organizationId,
+      );
 
-@Resolver(Workflow)
-export class CreateWorkflowResolver {
-  @Mutation(() => Workflow)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async createWorkflow(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input")
-    input: CreateWorkflowInput
-  ): Promise<Workflow> {
-    const workflowUsingSameName = await findWorkflowByName(
-      input.name,
-      ctx.me.organizationId
-    );
+      if (workflowUsingSameName) {
+        throw new GraphQLError("A workflow with the same name already exists", { extensions: { code: "BAD_USER_INPUT" } });
+      }
 
-    if (workflowUsingSameName) {
-      throw new UserInputError("A workflow with the same name already exists");
-    }
-
-    return ctx.prisma.workflow.create({
-      data: {
-        ...input,
-        stage: ModelStage.PUBLISHED,
-        organizationId: await ctx.me.organizationId,
-      },
-    });
-  }
-}
+      return ctx.prisma.workflow.create({
+        ...query,
+        data: {
+          name: args.input.name,
+          description: args.input.description,
+          stage: ModelStage.PUBLISHED,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
+    },
+  }),
+);

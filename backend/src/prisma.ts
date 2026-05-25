@@ -1,24 +1,23 @@
-import { PrismaClient } from "@prisma/client";
-import { logger } from "./logger";
+/**
+ * Prisma client singleton.
+ *
+ * Provides a configured PrismaClient instance used throughout the application.
+ * Query logging is enabled in non-test environments via the `log` option
+ * (Prisma 6 replaced the `$use` middleware API with `$extends`).
+ *
+ * Exports: default PrismaClient instance.
+ */
 
+import { PrismaClient } from "@prisma/client";
+
+// TODO: For more granular query timing, consider using Prisma's $extends
+// client extension API to add custom logging middleware.
 const prisma = new PrismaClient({
   errorFormat: "pretty",
+  log:
+    process.env.NODE_ENV !== "test"
+      ? [{ emit: "stdout", level: "query" }]
+      : [],
 });
-
-if (process.env.NODE_ENV !== "test") {
-  prisma.$use(async (params, next) => {
-    const before = Date.now();
-
-    const result = await next(params);
-
-    const after = Date.now();
-
-    logger.info(
-      `Query ${params.model}.${params.action} took ${after - before}ms`
-    );
-
-    return result;
-  });
-}
 
 export default prisma;

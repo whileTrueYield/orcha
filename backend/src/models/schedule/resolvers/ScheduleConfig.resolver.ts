@@ -1,372 +1,300 @@
-import {
-  Arg,
-  Ctx,
-  Field,
-  FieldResolver,
-  InputType,
-  Int,
-  Mutation,
-  Query,
-  Resolver,
-  Root,
-  UseMiddleware,
-} from "type-graphql";
-import {
-  Feature,
-  Product,
-  ScheduleConfig,
-  Tag,
-  Workflow,
-  RoleType,
-  Ticket,
-  ModelStage,
-  TicketStatus,
-  Project,
-} from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { Min } from "class-validator";
-import { requestEstimate } from "../../ticket/jobs/estimateTickets";
+/**
+ * ScheduleConfig resolvers — priority-based scheduling configuration.
+ *
+ * Registers:
+ *  - ScheduleConfig prismaObject with relation fields
+ *  - Query.scheduleConfig(id): ScheduleConfig
+ *  - Query.scheduleConfigs: [ScheduleConfig]
+ *  - Query.ticketsCount(filter, removedTicketIds, addedTicketIds): Int
+ *  - Mutation.updateScheduleConfig(input): [ScheduleConfig]
+ *
+ * Also registers the UpdateScheduleConfigInput and UpdateScheduleConfigsInput
+ * input types used by both the mutation and the ticketsCount query.
+ *
+ * Auth: hasRole with ADMIN or OWNER.
+ */
+
+import builder from "../../../schema/builder";
+import { ModelStage, Prisma, TicketStatus } from "@prisma/client";
 import { isEmpty, uniq } from "lodash";
-import { Prisma } from "@prisma/client";
+import { requestEstimate } from "../../ticket/jobs/estimateTickets";
 import { getProjectDescendantIds } from "../../project/helper";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-export class UpdateScheduleConfig {
-  @Field()
-  @Min(0)
-  priority: number;
+// ---------------------------------------------------------------------------
+// ScheduleConfig prismaObject — registered here because no dedicated entity
+// file exists for this model.
+// ---------------------------------------------------------------------------
 
-  @Field(() => [Int])
-  productIds: number[];
+export const ScheduleConfigRef = builder.prismaObject("ScheduleConfig", {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    priority: t.exposeInt("priority"),
+    organizationId: t.exposeInt("organizationId"),
+    createdAt: t.expose("createdAt", { type: "DateTime" }),
+    updatedAt: t.expose("updatedAt", { type: "DateTime" }),
+    organization: t.relation("organization"),
+    features: t.relation("features"),
+    tickets: t.relation("tickets"),
+    workflows: t.relation("workflows"),
+    products: t.relation("products"),
+    projects: t.relation("projects"),
+    tags: t.relation("tags"),
+  }),
+});
 
-  @Field(() => [Int])
-  tagIds: number[];
+// ---------------------------------------------------------------------------
+// Input types
+// ---------------------------------------------------------------------------
 
-  @Field(() => [Int])
-  workflowIds: number[];
+export const UpdateScheduleConfigInput = builder.inputType("UpdateScheduleConfig", {
+  fields: (t) => ({
+    priority: t.int({ required: true }),
+    productIds: t.intList({ required: true }),
+    tagIds: t.intList({ required: true }),
+    workflowIds: t.intList({ required: true }),
+    ticketIds: t.intList({ required: true }),
+    projectIds: t.intList({ required: true }),
+  }),
+});
 
-  @Field(() => [Int])
-  ticketIds: number[];
+const UpdateScheduleConfigsInput = builder.inputType("UpdateScheduleConfigs", {
+  fields: (t) => ({
+    configs: t.field({
+      type: [UpdateScheduleConfigInput],
+      required: true,
+    }),
+  }),
+});
 
-  @Field(() => [Int])
-  projectIds: number[];
+// ---------------------------------------------------------------------------
+// Query: scheduleConfig
+// ---------------------------------------------------------------------------
 
-  // @Field(() => [Int])
-  // featureIds: number[];
-}
+builder.queryField("scheduleConfig", (t) =>
+  t.prismaField({
+    type: "ScheduleConfig",
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-@InputType()
-class UpdateScheduleConfigs {
-  @Field(() => [UpdateScheduleConfig])
-  configs: UpdateScheduleConfig[];
-}
-
-@Resolver(ScheduleConfig)
-export class ScheduleConfigResolver {
-  @Query(() => ScheduleConfig)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async scheduleConfig(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<ScheduleConfig> {
-    return ctx.prisma.scheduleConfig.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id,
-      },
-      include: {
-        projects: true,
-        products: true,
-        workflows: true,
-        tags: true,
-        tickets: true,
-      },
-    });
-  }
-
-  @Query(() => Int)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async ticketsCount(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("filter", () => UpdateScheduleConfig)
-    filter: UpdateScheduleConfig,
-    // ticketIds defines a pool of ticket ID that restricts the count
-    // of tickets matching the priorities only to the tickets currently
-    // set to be scheduled
-    @Arg("removedTicketIds", () => [Int], { nullable: "items" })
-    removedTicketIds: number[],
-    @Arg("addedTicketIds", () => [Int], { nullable: "items" })
-    addedTicketIds: number[]
-  ): Promise<number> {
-    const where: Prisma.TicketWhereInput = {
-      organizationId: ctx.me.organizationId,
-      stage: ModelStage.PUBLISHED,
-      OR: [
-        {
-          status: TicketStatus.SCHEDULED,
-          id: { notIn: removedTicketIds },
-        },
-        {
-          id: { in: addedTicketIds },
-        },
-      ],
-    };
-
-    if (
-      isEmpty(filter.projectIds) &&
-      isEmpty(filter.workflowIds) &&
-      isEmpty(filter.productIds) &&
-      isEmpty(filter.tagIds) &&
-      isEmpty(filter.ticketIds)
-    ) {
-      return 0;
-    }
-
-    if (filter.projectIds.length) {
-      let projectIds: number[] = [];
-
-      // capture all the sub-project IDs from the selected projects
-      for (const projectId of filter.projectIds) {
-        projectIds = [
-          ...projectIds,
-          projectId,
-          ...(await getProjectDescendantIds(projectId)),
-        ];
-      }
-
-      where.projectId = { in: uniq(projectIds) };
-    }
-
-    if (filter.workflowIds.length) {
-      where.workflowId = { in: filter.workflowIds };
-    }
-
-    if (filter.productIds.length) {
-      where.productId = { in: filter.productIds };
-    }
-
-    if (filter.tagIds.length) {
-      where.tags = { some: { id: { in: filter.tagIds } } };
-    }
-
-    if (filter.ticketIds.length) {
-      where.id = { in: filter.ticketIds };
-    }
-
-    // if priority uses a set of ticket IDs, we'll intersect their
-    // IDs with the one currently in the schedule
-    // if (filter.ticketIds.length) {
-    //   where.id = { in: intersection(filter.ticketIds, ticketIds) };
-    // }
-
-    return ctx.prisma.ticket.count({ where });
-  }
-
-  @Query(() => [ScheduleConfig])
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async scheduleConfigs(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<ScheduleConfig[]> {
-    return ctx.prisma.scheduleConfig.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-      },
-      include: {
-        projects: true,
-        products: true,
-        workflows: true,
-        tags: true,
-        tickets: true,
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => [Feature])
-  async features(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() scheduleConfig: ScheduleConfig
-  ): Promise<Feature[]> {
-    if (scheduleConfig.features) {
-      return scheduleConfig.features;
-    }
-
-    return ctx.prisma.feature.findMany({
-      where: {
-        scheduleConfigs: { some: { id: scheduleConfig.id } },
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => [Ticket])
-  async tickets(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() scheduleConfig: ScheduleConfig
-  ): Promise<Ticket[]> {
-    if (scheduleConfig.tickets) {
-      return scheduleConfig.tickets;
-    }
-
-    return ctx.prisma.ticket.findMany({
-      where: {
-        scheduleConfigs: { some: { id: scheduleConfig.id } },
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => [Workflow])
-  async workflows(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() scheduleConfig: ScheduleConfig
-  ): Promise<Workflow[]> {
-    if (scheduleConfig.workflows) {
-      return scheduleConfig.workflows;
-    }
-
-    return ctx.prisma.workflow.findMany({
-      where: {
-        scheduleConfigs: { some: { id: scheduleConfig.id } },
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => [Product])
-  async products(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() scheduleConfig: ScheduleConfig
-  ): Promise<Product[]> {
-    if (scheduleConfig.products) {
-      return scheduleConfig.products;
-    }
-
-    return ctx.prisma.product.findMany({
-      where: {
-        scheduleConfigs: { some: { id: scheduleConfig.id } },
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => [Project])
-  async projects(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() scheduleConfig: ScheduleConfig
-  ): Promise<Project[]> {
-    if (scheduleConfig.projects) {
-      return scheduleConfig.projects;
-    }
-
-    return ctx.prisma.project.findMany({
-      where: {
-        scheduleConfigs: { some: { id: scheduleConfig.id } },
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => [Tag])
-  async tags(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() scheduleConfig: ScheduleConfig
-  ): Promise<Tag[]> {
-    if (scheduleConfig.tags) {
-      return scheduleConfig.tags;
-    }
-
-    return ctx.prisma.tag.findMany({
-      where: {
-        scheduleConfigs: { some: { id: scheduleConfig.id } },
-      },
-    });
-  }
-
-  @Mutation(() => [ScheduleConfig])
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updateScheduleConfig(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input", () => UpdateScheduleConfigs)
-    input: UpdateScheduleConfigs
-  ): Promise<ScheduleConfig[]> {
-    await ctx.prisma.scheduleConfig.deleteMany({
-      where: { organizationId: ctx.me.organizationId },
-    });
-
-    await requestEstimate(ctx.me.organizationId);
-
-    const configs: ScheduleConfig[] = [];
-
-    for (const filter of input.configs) {
-      // Verify that all the objects referred to are part of
-      // the user's organization
-      const products = await ctx.prisma.product.findMany({
+      return ctx.prisma.scheduleConfig.findFirstOrThrow({
+        ...query,
         where: {
-          organizationId: ctx.me.organizationId,
-          id: { in: filter.productIds },
+          organizationId: me.organizationId,
+          id: args.id,
+        },
+        include: {
+          projects: true,
+          products: true,
+          workflows: true,
+          tags: true,
+          tickets: true,
         },
       });
+    },
+  }),
+);
 
-      const tags = await ctx.prisma.tag.findMany({
-        where: {
-          organizationId: ctx.me.organizationId,
-          id: { in: filter.tagIds },
-        },
-      });
+// ---------------------------------------------------------------------------
+// Query: ticketsCount — count of tickets matching a filter configuration
+// ---------------------------------------------------------------------------
 
-      const workflows = await ctx.prisma.workflow.findMany({
-        where: {
-          organizationId: ctx.me.organizationId,
-          id: { in: filter.workflowIds },
-        },
-      });
+builder.queryField("ticketsCount", (t) =>
+  t.int({
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      filter: t.arg({ type: UpdateScheduleConfigInput, required: true }),
+      removedTicketIds: t.arg({ type: ['Int'], required: { list: true, items: false } }),
+      addedTicketIds: t.arg({ type: ['Int'], required: { list: true, items: false } }),
+    },
+    resolve: async (_root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+      const filter = args.filter;
+      // Nullable-item lists — strip nulls before passing to Prisma
+      const removedTicketIds = args.removedTicketIds.filter((id): id is number => id != null);
+      const addedTicketIds = args.addedTicketIds.filter((id): id is number => id != null);
 
-      const tickets = await ctx.prisma.ticket.findMany({
-        where: {
-          organizationId: ctx.me.organizationId,
-          id: { in: filter.ticketIds },
-        },
-      });
-
-      const projects = await ctx.prisma.project.findMany({
-        where: {
-          organizationId: ctx.me.organizationId,
-          id: { in: filter.projectIds },
-        },
-      });
-
-      // const features = await ctx.prisma.feature.findMany({
-      //   where: {
-      //     id: { in: filter.featureIds },
-      //     featureGroup: {
-      //       organizationId: ctx.me.organizationId,
-      //     },
-      //   },
-      // });
+      const where: Prisma.TicketWhereInput = {
+        organizationId: me.organizationId,
+        stage: ModelStage.PUBLISHED,
+        OR: [
+          {
+            status: TicketStatus.SCHEDULED,
+            id: { notIn: removedTicketIds },
+          },
+          {
+            id: { in: addedTicketIds },
+          },
+        ],
+      };
 
       if (
-        isEmpty(products) &&
-        isEmpty(tags) &&
-        isEmpty(tickets) &&
-        isEmpty(workflows) &&
-        isEmpty(projects)
+        isEmpty(filter.projectIds) &&
+        isEmpty(filter.workflowIds) &&
+        isEmpty(filter.productIds) &&
+        isEmpty(filter.tagIds) &&
+        isEmpty(filter.ticketIds)
       ) {
-        continue;
+        return 0;
       }
 
-      configs.push(
-        await ctx.prisma.scheduleConfig.create({
-          data: {
-            organizationId: ctx.me.organizationId,
-            priority: filter.priority,
-            products: {
-              connect: products.map(({ id }) => ({ id })),
-            },
-            tags: { connect: tags.map(({ id }) => ({ id })) },
-            tickets: { connect: tickets.map(({ id }) => ({ id })) },
-            projects: { connect: projects.map(({ id }) => ({ id })) },
-            workflows: { connect: workflows.map(({ id }) => ({ id })) },
-          },
-        })
-      );
-    }
+      if (filter.projectIds.length) {
+        let projectIds: number[] = [];
 
-    return configs;
-  }
-}
+        // capture all the sub-project IDs from the selected projects
+        for (const projectId of filter.projectIds) {
+          projectIds = [
+            ...projectIds,
+            projectId,
+            ...(await getProjectDescendantIds(projectId)),
+          ];
+        }
+
+        where.projectId = { in: uniq(projectIds) };
+      }
+
+      if (filter.workflowIds.length) {
+        where.workflowId = { in: filter.workflowIds };
+      }
+
+      if (filter.productIds.length) {
+        where.productId = { in: filter.productIds };
+      }
+
+      if (filter.tagIds.length) {
+        where.tags = { some: { id: { in: filter.tagIds } } };
+      }
+
+      if (filter.ticketIds.length) {
+        where.id = { in: filter.ticketIds };
+      }
+
+      return ctx.prisma.ticket.count({ where });
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Query: scheduleConfigs
+// ---------------------------------------------------------------------------
+
+builder.queryField("scheduleConfigs", (t) =>
+  t.prismaField({
+    type: ["ScheduleConfig"],
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    resolve: (query, _root, _args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      return ctx.prisma.scheduleConfig.findMany({
+        ...query,
+        where: {
+          organizationId: me.organizationId,
+        },
+        include: {
+          projects: true,
+          products: true,
+          workflows: true,
+          tags: true,
+          tickets: true,
+        },
+      });
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Mutation: updateScheduleConfig — replace all configs for the organization
+// ---------------------------------------------------------------------------
+
+builder.mutationField("updateScheduleConfig", (t) =>
+  t.prismaField({
+    type: ["ScheduleConfig"],
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      input: t.arg({ type: UpdateScheduleConfigsInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      await ctx.prisma.scheduleConfig.deleteMany({
+        where: { organizationId: me.organizationId },
+      });
+
+      await requestEstimate(me.organizationId);
+
+      const configs: any[] = [];
+
+      for (const filter of args.input.configs) {
+        // Verify that all the objects referred to are part of
+        // the user's organization
+        const products = await ctx.prisma.product.findMany({
+          where: {
+            organizationId: me.organizationId,
+            id: { in: filter.productIds },
+          },
+        });
+
+        const tags = await ctx.prisma.tag.findMany({
+          where: {
+            organizationId: me.organizationId,
+            id: { in: filter.tagIds },
+          },
+        });
+
+        const workflows = await ctx.prisma.workflow.findMany({
+          where: {
+            organizationId: me.organizationId,
+            id: { in: filter.workflowIds },
+          },
+        });
+
+        const tickets = await ctx.prisma.ticket.findMany({
+          where: {
+            organizationId: me.organizationId,
+            id: { in: filter.ticketIds },
+          },
+        });
+
+        const projects = await ctx.prisma.project.findMany({
+          where: {
+            organizationId: me.organizationId,
+            id: { in: filter.projectIds },
+          },
+        });
+
+        if (
+          isEmpty(products) &&
+          isEmpty(tags) &&
+          isEmpty(tickets) &&
+          isEmpty(workflows) &&
+          isEmpty(projects)
+        ) {
+          continue;
+        }
+
+        configs.push(
+          await ctx.prisma.scheduleConfig.create({
+            ...query,
+            data: {
+              organizationId: me.organizationId,
+              priority: filter.priority,
+              products: {
+                connect: products.map(({ id }) => ({ id })),
+              },
+              tags: { connect: tags.map(({ id }) => ({ id })) },
+              tickets: { connect: tickets.map(({ id }) => ({ id })) },
+              projects: { connect: projects.map(({ id }) => ({ id })) },
+              workflows: { connect: workflows.map(({ id }) => ({ id })) },
+            },
+          }),
+        );
+      }
+
+      return configs;
+    },
+  }),
+);

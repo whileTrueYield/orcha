@@ -115,7 +115,7 @@ export async function subscribe(req: Request, res: Response) {
         },
       });
 
-      await sendNotification(subscription, payload);
+      await sendNotification(subscription as webpush.PushSubscription, payload);
 
       res.status(201).json({ status: "subscribed" });
       res.send();

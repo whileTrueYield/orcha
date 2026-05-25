@@ -6,7 +6,7 @@ import * as decoding from "lib0/decoding";
  * @param bytes the data, like DocumentationPageContent.bytes
  * @returns
  */
-export const getDocFromBytes = (bytes: Buffer): Y.Doc => {
+export const getDocFromBytes = (bytes: Uint8Array): Y.Doc => {
   const doc = new Y.Doc();
   const decoder = decoding.createDecoder(bytes);
   Y.applyUpdate(doc, decoder.arr);

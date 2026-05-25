@@ -1,24 +1,34 @@
-import { Arg, Ctx, Query, Resolver, UseMiddleware } from "type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { TimeOff } from "../../entities";
+/**
+ * Query: timeOffs — list time-off entries within a date range.
+ *
+ * Registers: Query.timeOffs(fromDate, toDate): [TimeOff]
+ *
+ * Auth: hasRole (any linked user).
+ */
 
-@Resolver(TimeOff)
-export class TimeOffsResolver {
-  @Query((_returns) => [TimeOff])
-  @UseMiddleware(hasRole())
-  async timeOffs(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("fromDate", () => Date) fromDate: Date,
-    @Arg("toDate", () => Date) toDate: Date
-  ): Promise<TimeOff[]> {
-    return ctx.prisma.timeOff.findMany({
-      where: {
-        roleId: ctx.me.roleId,
-        organizationId: ctx.me.organizationId,
-        startAt: { lte: toDate },
-        stopAt: { gte: fromDate },
-      },
-    });
-  }
-}
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
+
+builder.queryField("timeOffs", (t) =>
+  t.prismaField({
+    type: ["TimeOff"],
+    authScopes: { hasRole: true },
+    args: {
+      fromDate: t.arg({ type: "DateTime", required: true }),
+      toDate: t.arg({ type: "DateTime", required: true }),
+    },
+    resolve: (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      return ctx.prisma.timeOff.findMany({
+        ...query,
+        where: {
+          roleId: me.roleId,
+          organizationId: me.organizationId,
+          startAt: { lte: args.toDate },
+          stopAt: { gte: args.fromDate },
+        },
+      });
+    },
+  }),
+);

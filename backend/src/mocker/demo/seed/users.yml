@@ -6,7 +6,7 @@ users:
     email: john.doe@example.com
     timeZone: America/Los_Angeles
     hours: FULL_TIME_WORK_WEEK
-    avatarUrl: https://upload.beta-orcha.com/demo/john-doe.jpg
+    avatarUrl: demo/john-doe.jpg
 
   - name: Corine Albert
     title: CEO
@@ -14,7 +14,7 @@ users:
     email: jane.smith@example.com
     timeZone: America/Los_Angeles
     hours: FULL_TIME_WORK_WEEK
-    avatarUrl: https://upload.beta-orcha.com/demo/jane-smith.jpg
+    avatarUrl: demo/jane-smith.jpg
 
   - name: Matthieu Dina
     title: CTO
@@ -22,7 +22,7 @@ users:
     email: bob.johnson@example.com
     timeZone: America/Los_Angeles
     hours: FULL_TIME_WORK_WEEK
-    avatarUrl: https://upload.beta-orcha.com/demo/bob-johnson.jpg
+    avatarUrl: demo/bob-johnson.jpg
 
   - name: Emma Ross
     title: Quality Assurance
@@ -30,7 +30,7 @@ users:
     email: alice.lee@example.com
     timeZone: Europe/London
     hours: FULL_TIME_WORK_WEEK
-    avatarUrl: https://upload.beta-orcha.com/demo/alice-lee.jpg
+    avatarUrl: demo/alice-lee.jpg
 
   - name: Luca Roberts
     title: Lead Software Engineer
@@ -38,7 +38,7 @@ users:
     email: david.kim@example.com
     timeZone: America/Los_Angeles
     hours: FULL_TIME_WORK_WEEK
-    avatarUrl: https://upload.beta-orcha.com/demo/david-kim.jpg
+    avatarUrl: demo/david-kim.jpg
 
   - name: Noelle Oda
     title: Designer
@@ -46,7 +46,7 @@ users:
     email: sarah.lee@example.com
     timeZone: America/Los_Angeles
     hours: FIRST_HALF_WORK_WEEK
-    avatarUrl: https://upload.beta-orcha.com/demo/sarah-lee.jpg
+    avatarUrl: demo/sarah-lee.jpg
 
   - name: Fernando Julieta
     title: Software Engineer
@@ -54,7 +54,7 @@ users:
     email: michael.davis@example.com
     timeZone: America/Los_Angeles
     hours: FULL_TIME_WORK_WEEK
-    avatarUrl: https://upload.beta-orcha.com/demo/michael-davis.jpg
+    avatarUrl: demo/michael-davis.jpg
 
   - name: Regina Keys
     title: Project Manager
@@ -62,7 +62,7 @@ users:
     email: rachel.lee@example.com
     timeZone: America/Los_Angeles
     hours: FULL_TIME_WORK_WEEK
-    avatarUrl: https://upload.beta-orcha.com/demo/rachel-lee.jpg
+    avatarUrl: demo/rachel-lee.jpg
     # status: "INVITED"
 
   - name: Joseph Lin
@@ -71,7 +71,7 @@ users:
     email: tom.johnson@example.com
     timeZone: America/New_York
     hours: FULL_TIME_WORK_WEEK
-    avatarUrl: https://upload.beta-orcha.com/demo/tom-johnson.jpg
+    avatarUrl: demo/tom-johnson.jpg
 
   - name: Lina Marvin
     title: Software Engineer
@@ -79,4 +79,4 @@ users:
     email: emily.wilson@example.com
     timeZone: America/Los_Angeles
     hours: FULL_TIME_WORK_WEEK
-    avatarUrl: https://upload.beta-orcha.com/demo/emily-wilson.jpg
+    avatarUrl: demo/emily-wilson.jpg

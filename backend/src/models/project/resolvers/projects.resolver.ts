@@ -1,54 +1,51 @@
-import { Arg, Query, Resolver, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Queries: projects (paginated), myProjects.
+ */
 
-import { Project } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
+import builder from "../../../schema/builder";
 import { PaginatedProjects } from "../entity";
 import { getPaginatedProjects } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Project)
-export class ProjectsResolver {
-  @Query((_returns) => PaginatedProjects)
-  @UseMiddleware(hasRole())
-  async projects(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Project,
-    @Arg("search", () => String, { nullable: true }) search: string,
-    @Arg("parentId", () => Int, { nullable: true }) parentId: number
-  ): Promise<PaginatedProjects> {
-    return getPaginatedProjects({
-      organizationId: ctx.me.organizationId,
-      first,
-      last,
-      offset,
-      sort,
-      search,
-      parentId,
-    });
-  }
+builder.queryField("projects", (t) =>
+  t.field({
+    type: PaginatedProjects,
+    authScopes: { hasRole: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+      parentId: t.arg.int({ required: false }),
+    },
+    resolve: (_root, args, ctx) =>
+      getPaginatedProjects({
+        organizationId: (ctx.me as AuthRoleContext).organizationId,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: (args.sort as any) ?? undefined,
+        search: args.search ?? undefined,
+        parentId: args.parentId ?? undefined,
+      }),
+  }),
+);
 
-  @Query((_returns) => [Project], {
+builder.queryField("myProjects", (t) =>
+  t.prismaField({
+    type: ["Project"],
     description: "The user's own projects and drafts",
-  })
-  @UseMiddleware(hasRole())
-  async myProjects(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<Project[]> {
-    return ctx.prisma.project.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        ownerId: ctx.me.roleId,
-      },
-      include: {
-        author: true,
-        owner: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-  }
-}
+    authScopes: { hasRole: true },
+    resolve: (query, _root, _args, ctx) =>
+      ctx.prisma.project.findMany({
+        ...query,
+        where: {
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          ownerId: (ctx.me as AuthRoleContext).roleId,
+        },
+        include: { ...query.include, author: true, owner: true },
+        orderBy: { createdAt: "desc" },
+      }),
+  }),
+);

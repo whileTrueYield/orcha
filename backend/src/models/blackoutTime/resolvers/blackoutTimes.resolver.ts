@@ -1,48 +1,49 @@
-import { Arg, Ctx, Int, Query, Resolver, UseMiddleware } from "type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { BlackoutTime } from "../../entities";
-import { RoleType } from "@prisma/client";
+/**
+ * Queries: blackoutTimes, paginatedBlackoutTimes.
+ */
+
+import builder from "../../../schema/builder";
 import { PaginatedBlackoutTimes } from "../entity";
 import { getPaginatedBlackoutTimes } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver()
-export class BlackoutTimesResolver {
-  @Query((_returns) => [BlackoutTime])
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async blackoutTimes(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<BlackoutTime[]> {
-    return ctx.prisma.blackoutTime.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        stopAt: { gte: new Date() },
-      },
-      include: {
-        roles: true,
-      },
-    });
-  }
+builder.queryField("blackoutTimes", (t) =>
+  t.prismaField({
+    type: ["BlackoutTime"],
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    resolve: (query, _root, _args, ctx) =>
+      ctx.prisma.blackoutTime.findMany({
+        ...query,
+        where: {
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          stopAt: { gte: new Date() },
+        },
+        include: { ...query.include, roles: true },
+      }),
+  }),
+);
 
-  @Query((_returns) => PaginatedBlackoutTimes)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async paginatedBlackoutTimes(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("first", () => Int, { nullable: true }) first?: number,
-    @Arg("last", () => Int, { nullable: true }) last?: number,
-    @Arg("offset", () => Int, { nullable: true }) offset?: number,
-    @Arg("sort", () => String, { nullable: true }) sort?: keyof BlackoutTime,
-    @Arg("search", () => String, { nullable: true }) search?: string,
-    @Arg("disabled", () => Boolean, { nullable: true }) disabled?: boolean
-  ): Promise<PaginatedBlackoutTimes> {
-    return getPaginatedBlackoutTimes({
-      organizationId: ctx.me.organizationId,
-      search,
-      first,
-      last,
-      offset,
-      sort,
-      disabled,
-    });
-  }
-}
+builder.queryField("paginatedBlackoutTimes", (t) =>
+  t.field({
+    type: PaginatedBlackoutTimes,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+      disabled: t.arg.boolean({ required: false }),
+    },
+    resolve: (_root, args, ctx) =>
+      getPaginatedBlackoutTimes({
+        organizationId: (ctx.me as AuthRoleContext).organizationId,
+        search: args.search ?? undefined,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: (args.sort as any) ?? undefined,
+        disabled: args.disabled ?? undefined,
+      }),
+  }),
+);

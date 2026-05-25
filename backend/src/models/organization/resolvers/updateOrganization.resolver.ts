@@ -1,133 +1,127 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-} from "type-graphql";
+/**
+ * Mutation resolvers for updating an Organisation.
+ *
+ * Registers:
+ *  - Mutation.toggleOnboarding(showOnboarding: Boolean!): Organization!
+ *  - Mutation.updateOrganization(input: UpdateOrganizationInput!): Organization!
+ *
+ * toggleOnboarding requires ADMIN or OWNER.
+ * updateOrganization requires OWNER.
+ */
 
-import { Length, MaxLength, IsUrl } from "class-validator";
-import { Organization, RoleType } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
-import { AppContext, AuthRoleContext } from "../../../types";
+import { GraphQLError } from "graphql";
+import builder from "../../../schema/builder";
+import { OrganizationRef } from "../entity";
 import { findOrganizationByName } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class UpdateOrganizationAddressInput {
-  @Field()
-  @Length(1, 128)
-  address1: string;
+// ---------------------------------------------------------------------------
+// Input types
+// ---------------------------------------------------------------------------
 
-  @Field({ nullable: true })
-  @Length(1, 128)
-  address2?: string;
+const UpdateOrganizationAddressInput = builder.inputType(
+  "UpdateOrganizationAddressInput",
+  {
+    fields: (t) => ({
+      address1: t.string({ required: true }),
+      address2: t.string({ required: false }),
+      zipcode: t.string({ required: true }),
+      city: t.string({ required: true }),
+      state: t.string({ required: true }),
+      country: t.string({ required: true }),
+    }),
+  },
+);
 
-  @Field()
-  @Length(1, 10)
-  zipcode: string;
+const UpdateOrganizationInput = builder.inputType("UpdateOrganizationInput", {
+  fields: (t) => ({
+    name: t.string({ required: false }),
+    billingAddress: t.field({
+      type: UpdateOrganizationAddressInput,
+      required: false,
+    }),
+    coverUrl: t.string({ required: false }),
+  }),
+});
 
-  @Field()
-  @Length(1, 128)
-  city: string;
+// ---------------------------------------------------------------------------
+// Mutations
+// ---------------------------------------------------------------------------
 
-  @Field()
-  @Length(1, 128)
-  state: string;
+builder.mutationField("toggleOnboarding", (t) =>
+  t.prismaField({
+    type: OrganizationRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      showOnboarding: t.arg.boolean({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      await ctx.prisma.organization.findUniqueOrThrow({
+        where: { id: (ctx.me as AuthRoleContext).organizationId },
+      });
 
-  @Field()
-  @Length(1, 128)
-  country: string;
-}
+      return ctx.prisma.organization.update({
+        ...query,
+        where: { id: (ctx.me as AuthRoleContext).organizationId },
+        data: { showOnboarding: args.showOnboarding },
+      });
+    },
+  }),
+);
 
-@InputType()
-class UpdateOrganizationInput {
-  @Field({ nullable: true })
-  @Length(1, 128)
-  name: string;
+builder.mutationField("updateOrganization", (t) =>
+  t.prismaField({
+    type: OrganizationRef,
+    authScopes: { hasRole: "OWNER" },
+    args: {
+      input: t.arg({ type: UpdateOrganizationInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const organization = await ctx.prisma.organization.findUniqueOrThrow({
+        where: { id: (ctx.me as AuthRoleContext).organizationId },
+        include: { billingAddress: true },
+      });
 
-  @Field(() => UpdateOrganizationAddressInput, { nullable: true })
-  billingAddress?: UpdateOrganizationAddressInput;
+      // Prevent name collisions when renaming the org
+      if (args.input.name && args.input.name !== organization.name) {
+        const existing = await findOrganizationByName(args.input.name);
 
-  @Field({ nullable: true })
-  @MaxLength(2048)
-  @IsUrl()
-  coverUrl?: string;
-}
-
-@Resolver(() => Organization)
-export class UpdateOrganizationResolver {
-  @Mutation(() => Organization)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async toggleOnboarding(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("showOnboarding", () => Boolean) showOnboarding: boolean
-  ): Promise<Organization> {
-    const organization = await ctx.prisma.organization.findUniqueOrThrow({
-      where: { id: ctx.me.organizationId },
-      include: { billingAddress: true },
-    });
-
-    return ctx.prisma.organization.update({
-      where: { id: organization.id },
-      data: { showOnboarding },
-    });
-  }
-
-  @Mutation(() => Organization)
-  @UseMiddleware(hasRole([RoleType.OWNER]))
-  async updateOrganization(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input", () => UpdateOrganizationInput) input: UpdateOrganizationInput
-  ): Promise<Organization> {
-    const organization = await ctx.prisma.organization.findUniqueOrThrow({
-      where: { id: ctx.me.organizationId },
-      include: { billingAddress: true },
-    });
-
-    // When the name is changed we don't want to take an
-    // existing one
-    if (input.name && input.name !== organization.name) {
-      const existingOrganization = await findOrganizationByName(input.name);
-
-      if (existingOrganization && existingOrganization.id !== organization.id) {
-        throw new UserInputError(
-          "An organization with the same name already exists"
-        );
+        if (existing && existing.id !== organization.id) {
+          throw new GraphQLError(
+            "An organization with the same name already exists",
+          );
+        }
       }
-    }
 
-    if (input.billingAddress) {
-      if (organization.billingAddress) {
-        await ctx.prisma.organizationAddress.update({
-          where: { id: organization.billingAddress.id },
-          data: input.billingAddress,
-        });
-      } else {
-        const address = await ctx.prisma.organizationAddress.create({
-          data: {
-            ...input.billingAddress,
-            organization: {
-              connect: { id: organization.id },
+      if (args.input.billingAddress) {
+        if (organization.billingAddress) {
+          await ctx.prisma.organizationAddress.update({
+            where: { id: organization.billingAddress.id },
+            data: args.input.billingAddress,
+          });
+        } else {
+          const address = await ctx.prisma.organizationAddress.create({
+            data: {
+              ...args.input.billingAddress,
+              organization: { connect: { id: organization.id } },
             },
-          },
-        });
+          });
 
-        await ctx.prisma.organization.update({
-          where: { id: organization.id },
-          data: { billingAddressId: address.id },
-        });
+          await ctx.prisma.organization.update({
+            where: { id: organization.id },
+            data: { billingAddressId: address.id },
+          });
+        }
       }
-    }
 
-    return ctx.prisma.organization.update({
-      where: { id: organization.id },
-      data: {
-        name: input.name,
-        coverUrl: input.coverUrl,
-      },
-    });
-  }
-}
+      return ctx.prisma.organization.update({
+        ...query,
+        where: { id: organization.id },
+        data: {
+          name: args.input.name ?? undefined,
+          coverUrl: args.input.coverUrl ?? undefined,
+        },
+      });
+    },
+  }),
+);

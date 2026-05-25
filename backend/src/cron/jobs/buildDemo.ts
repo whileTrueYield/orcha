@@ -1,6 +1,6 @@
 import prisma from "../../prisma";
 import { logger } from "../../logger";
-import { DemoStatus } from "@generated/type-graphql";
+import { DemoStatus } from "@prisma/client";
 import { generateDemo } from "../../mocker/demo/generateDemo";
 import { DemoRequest } from "@prisma/client";
 import { uniqBy } from "lodash";

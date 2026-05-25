@@ -19,12 +19,11 @@ import {
   ModelStage,
   RoleStatus,
   TicketText,
-} from "@generated/type-graphql";
+} from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
 import {
-  MyUpcomingAssignedTicket,
-  NextTicket,
-  PaginatedTickets,
+  MyUpcomingAssignedTicketShape,
+  NextTicketShape,
 } from "./entity";
 import { Prisma, ScheduleItem, TicketWorkflowState } from ".prisma/client";
 import { getProjectDescendantIds } from "../project/helper";
@@ -73,7 +72,7 @@ interface GetPageArgs extends GetPageArgsFor<Ticket> {
 
 export async function getPaginatedTickets(
   args: GetPageArgs,
-): Promise<PaginatedTickets> {
+) {
   const {
     allUntagged,
     assigneeIds,
@@ -573,7 +572,7 @@ export const getMyUpcomingTickets = async ({
   // we check if the previous state is actively worked on
   const upcomingTickets = reduce(
     tickets,
-    (acc: MyUpcomingAssignedTicket[], ticket): MyUpcomingAssignedTicket[] => {
+    (acc: MyUpcomingAssignedTicketShape[], ticket): MyUpcomingAssignedTicketShape[] => {
       const lastItem = last(ticket.scheduleItems);
 
       // we are only interrested if the current user is part of any
@@ -743,7 +742,7 @@ interface GetMyNextTicketsArgs {
 export const getMyNextTickets = async ({
   roleId,
   organizationId,
-}: GetMyNextTicketsArgs): Promise<NextTicket[]> => {
+}: GetMyNextTicketsArgs): Promise<NextTicketShape[]> => {
   // find when we ran the last predictions (aka. estimate epoch)
   const lastestEstimate = await prisma.estimate.findFirst({
     where: {
@@ -803,7 +802,7 @@ export const getMyNextTickets = async ({
     // we check if the previous state is done
     const states = reduce(
       tickets,
-      (acc: NextTicket[], ticket): NextTicket[] => {
+      (acc: NextTicketShape[], ticket): NextTicketShape[] => {
         const lastItem = last(ticket.scheduleItems);
         const twsById = keyBy(ticket.ticketWorkflowStates, "id");
 
@@ -900,7 +899,7 @@ interface GetPageForProjectArgs extends GetPageArgsFor<Ticket> {
 
 export async function getPaginatedTicketsForProject(
   args: GetPageForProjectArgs,
-): Promise<PaginatedTickets> {
+) {
   const {
     cursor,
     first,

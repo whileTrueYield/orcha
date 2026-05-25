@@ -1,82 +1,73 @@
-import {
-  Arg,
-  Query,
-  Resolver,
-  Int,
-  FieldResolver,
-  Root,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
-import { Note, Organization, Role } from "@generated/type-graphql";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
+/**
+ * Query resolvers for fetching a single Note.
+ *
+ * Provides:
+ *  - note(id):    fetch a specific note by ID (scoped to org + owner)
+ *  - lastNote:    fetch the most recent note for the current user
+ *
+ * Both require hasRole auth scope.
+ */
 
-@Resolver(Note)
-export class NoteResolver {
-  @Query(() => Note!)
-  @UseMiddleware(hasRole())
-  async note(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number
-  ): Promise<Note> {
-    const note = await ctx.prisma.note.findFirst({
-      where: {
-        id,
-        organizationId: ctx.me.organizationId,
-        ownerId: ctx.me.roleId,
-      },
-      include: { owner: true },
-    });
+import { GraphQLError } from "graphql";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-    if (!note) {
-      throw new UserInputError("This note does not exist or has been deleted");
-    }
+// ---------------------------------------------------------------------------
+// note — fetch a single note by ID
+// ---------------------------------------------------------------------------
 
-    return note;
-  }
+builder.queryField("note", (t) =>
+  t.prismaField({
+    type: "Note",
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      // hasRole scope guarantees ctx.me is AuthRoleContext
+      const me = ctx.me as AuthRoleContext;
 
-  @Query(() => Note, { nullable: true })
-  @UseMiddleware(hasRole())
-  async lastNote(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<Note | null> {
-    return ctx.prisma.note.findFirst({
-      where: {
-        organizationId: ctx.me.organizationId,
-        ownerId: ctx.me.roleId,
-      },
-      include: { owner: true },
-      orderBy: { id: "desc" },
-    });
-  }
+      const note = await ctx.prisma.note.findFirst({
+        ...query,
+        where: {
+          id: args.id,
+          organizationId: me.organizationId,
+          ownerId: me.roleId,
+        },
+      });
 
-  @FieldResolver((_returns) => Organization)
-  async organization(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() note: Note
-  ): Promise<Organization> {
-    if (note.organization) {
-      return note.organization;
-    }
+      if (!note) {
+        throw new GraphQLError(
+          "This note does not exist or has been deleted",
+          { extensions: { code: "BAD_USER_INPUT" } },
+        );
+      }
 
-    return ctx.prisma.organization.findUniqueOrThrow({
-      where: { id: note.organizationId },
-    });
-  }
+      return note;
+    },
+  }),
+);
 
-  @FieldResolver((_returns) => Role)
-  async owner(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() note: Note
-  ): Promise<Role> {
-    if (note.owner) {
-      return note.owner;
-    }
+// ---------------------------------------------------------------------------
+// lastNote — fetch the most recent note for the current user
+// ---------------------------------------------------------------------------
 
-    return ctx.prisma.role.findUniqueOrThrow({
-      where: { id: note.ownerId },
-    });
-  }
-}
+builder.queryField("lastNote", (t) =>
+  t.prismaField({
+    type: "Note",
+    nullable: true,
+    authScopes: { hasRole: true },
+    resolve: (query, _root, _args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      return ctx.prisma.note.findFirst({
+        ...query,
+        where: {
+          organizationId: me.organizationId,
+          ownerId: me.roleId,
+        },
+        orderBy: { id: "desc" },
+      });
+    },
+  }),
+);

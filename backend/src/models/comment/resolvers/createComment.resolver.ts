@@ -1,123 +1,122 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-  Int,
-} from "type-graphql";
+/**
+ * Mutation resolver for creating a Comment on a Ticket.
+ *
+ * Provides:
+ *  - createComment(ticketId, input): creates a comment and returns the parent Ticket
+ *
+ * Requires hasRole auth scope. Creates notifications for:
+ *  - mentioned users
+ *  - ticket owner
+ *  - ticket watchers
+ */
 
-import { Length } from "class-validator";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import {
-  Ticket,
-  NotificationCategory,
-  NotificationTarget,
-} from "@generated/type-graphql";
+import { NotificationCategory, NotificationTarget } from "@prisma/client";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 import { getMentions } from "../../../utils/tiptap";
 import { logger } from "../../../logger";
 import { createNotificationsForTarget } from "../../notification/createNotification";
 
-@InputType()
-class CreateCommentInput {
-  @Field({ nullable: true })
-  @Length(1, 2048)
-  body: string;
-}
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-@Resolver(Ticket)
-export class CreateCommentResolver {
-  @Mutation(() => Ticket)
-  @UseMiddleware(hasRole())
-  async createComment(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("ticketId", () => Int)
-    ticketId: number,
-    @Arg("input")
-    input: CreateCommentInput,
-  ): Promise<Ticket> {
-    const ticket = await ctx.prisma.ticket.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: ticketId,
-      },
-      include: {
-        watchers: true,
-      },
-    });
+const CreateCommentInput = builder.inputType("CreateCommentInput", {
+  fields: (t) => ({
+    body: t.string({ required: false }),
+  }),
+});
 
-    const comment = await ctx.prisma.comment.create({
-      data: {
-        ...input,
-        ticketId,
-        authorId: ctx.me.roleId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
+// ---------------------------------------------------------------------------
+// createComment mutation — returns the parent Ticket
+// ---------------------------------------------------------------------------
 
-    // we want to notify a role only once, so we store the
-    // list of notified roles in there
-    let notifiedRolesForAction: number[] = [];
+builder.mutationField("createComment", (t) =>
+  t.prismaField({
+    type: "Ticket",
+    authScopes: { hasRole: true },
+    args: {
+      ticketId: t.arg.int({ required: true }),
+      input: t.arg({ type: CreateCommentInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    // Create notifications if necessary
-    const mentions = getMentions(comment.body);
-    logger.info(JSON.stringify({ mentions }));
-    if (mentions.length > 0) {
-      const notifiedRoleIds = await createNotificationsForTarget(
-        ctx.me.organizationId,
-        NotificationCategory.MENTION,
-        NotificationTarget.COMMENT,
-        comment.id,
-        mentions,
-        ctx.me.roleId,
-        `{} mentioned you in a comment`,
-        { ticket: comment.ticketId },
-        notifiedRolesForAction,
-      );
+      const ticket = await ctx.prisma.ticket.findFirstOrThrow({
+        where: {
+          organizationId: me.organizationId,
+          id: args.ticketId,
+        },
+        include: { watchers: true },
+      });
 
-      // update the list of notified roles
-      notifiedRolesForAction = [...notifiedRoleIds, ...notifiedRolesForAction];
-    }
+      const comment = await ctx.prisma.comment.create({
+        data: {
+          body: args.input.body ?? "",
+          ticketId: args.ticketId,
+          authorId: me.roleId,
+          organizationId: me.organizationId,
+        },
+      });
 
-    // notify the ticket's owner
-    if (ticket.ownerId) {
-      const notifiedRoleIds = await createNotificationsForTarget(
-        ctx.me.organizationId,
-        NotificationCategory.OWNED,
-        NotificationTarget.COMMENT,
-        comment.id,
-        [ticket.ownerId],
-        ctx.me.roleId,
-        `{} posted a comment on a ticket you own`,
-        { ticket: comment.ticketId },
-        notifiedRolesForAction,
-      );
+      // we want to notify a role only once, so we store the
+      // list of notified roles in there
+      let notifiedRolesForAction: number[] = [];
 
-      // update the list of notified roles
-      notifiedRolesForAction = [...notifiedRoleIds, ...notifiedRolesForAction];
-    }
+      // Create notifications if necessary
+      const mentions = getMentions(comment.body);
+      logger.info(JSON.stringify({ mentions }));
+      if (mentions.length > 0) {
+        const notifiedRoleIds = await createNotificationsForTarget(
+          me.organizationId,
+          NotificationCategory.MENTION,
+          NotificationTarget.COMMENT,
+          comment.id,
+          mentions,
+          me.roleId,
+          `{} mentioned you in a comment`,
+          { ticket: comment.ticketId },
+          notifiedRolesForAction,
+        );
+        notifiedRolesForAction = [...notifiedRoleIds, ...notifiedRolesForAction];
+      }
 
-    // notify any ticket watcher
-    if (ticket.watchers.length) {
-      const notifiedRoleIds = await createNotificationsForTarget(
-        ctx.me.organizationId,
-        NotificationCategory.WATCHED,
-        NotificationTarget.COMMENT,
-        comment.id,
-        ticket.watchers.map((role) => role.id),
-        ctx.me.roleId,
-        `{} posted a comment on a ticket you watch`,
-        { ticket: comment.ticketId },
-        notifiedRolesForAction,
-      );
+      // notify the ticket's owner
+      if (ticket.ownerId) {
+        const notifiedRoleIds = await createNotificationsForTarget(
+          me.organizationId,
+          NotificationCategory.OWNED,
+          NotificationTarget.COMMENT,
+          comment.id,
+          [ticket.ownerId],
+          me.roleId,
+          `{} posted a comment on a ticket you own`,
+          { ticket: comment.ticketId },
+          notifiedRolesForAction,
+        );
+        notifiedRolesForAction = [...notifiedRoleIds, ...notifiedRolesForAction];
+      }
 
-      // update the list of notified roles
-      notifiedRolesForAction = [...notifiedRoleIds, ...notifiedRolesForAction];
-    }
+      // notify any ticket watcher
+      if (ticket.watchers.length) {
+        await createNotificationsForTarget(
+          me.organizationId,
+          NotificationCategory.WATCHED,
+          NotificationTarget.COMMENT,
+          comment.id,
+          ticket.watchers.map((role) => role.id),
+          me.roleId,
+          `{} posted a comment on a ticket you watch`,
+          { ticket: comment.ticketId },
+          notifiedRolesForAction,
+        );
+      }
 
-    return ticket;
-  }
-}
+      // Return the ticket so the frontend can refresh its state
+      return ctx.prisma.ticket.findUniqueOrThrow({
+        ...query,
+        where: { id: ticket.id },
+      });
+    },
+  }),
+);

@@ -1,222 +1,260 @@
-import {
-  Arg,
-  Query,
-  Resolver,
-  Int,
-  FieldResolver,
-  Root,
-  Ctx,
-  UseMiddleware,
-  Mutation,
-  InputType,
-  Field,
-} from "type-graphql";
-import {
-  Role,
-  Ticket,
-  Organization,
-  Comment,
-  CommentReply,
-  NotificationCategory,
-  NotificationTarget,
-} from "@generated/type-graphql";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { MaxLength } from "class-validator";
-import { UserInputError } from "apollo-server-express";
-import { isAuthorOrAdmin } from "../../../utils/rbac";
+/**
+ * Query resolver and reply mutations for the Comment model.
+ *
+ * Provides:
+ *  - comment(id):                         fetch a single comment by ID
+ *  - addReply(commentId, input):          add a reply to a comment
+ *  - deleteReply(commentReplyId):         delete a reply (author or admin only)
+ *  - updateReply(commentReplyId, input):  edit a reply (author or admin only)
+ *
+ * The reply mutations live here because they were historically part of the
+ * Comment resolver and tightly coupled to comment ownership checks.
+ *
+ * Requires hasRole auth scope. Notifications are created for mentions,
+ * comment authors, ticket owners, and ticket watchers.
+ */
+
+import { GraphQLError } from "graphql";
+import { NotificationCategory, NotificationTarget } from "@prisma/client";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 import { getMentions } from "../../../utils/tiptap";
 import { logger } from "../../../logger";
 import { createNotificationsForTarget } from "../../notification/createNotification";
+import { isAuthorOrAdmin } from "../../../utils/rbac";
 
-@InputType()
-class AddReplyInput {
-  @Field()
-  @MaxLength(2048)
-  body: string;
-}
+// ---------------------------------------------------------------------------
+// Input types
+// ---------------------------------------------------------------------------
 
-@InputType()
-class UpdateReplyInput {
-  // TODO: we should allow for an empty field that would delete the reply
-  @Field()
-  @MaxLength(2048)
-  body: string;
-}
+const AddReplyInput = builder.inputType("AddReplyInput", {
+  fields: (t) => ({
+    body: t.string({ required: true }),
+  }),
+});
 
-@Resolver(Comment)
-export class CommentResolver {
-  @Mutation(() => CommentReply)
-  @UseMiddleware(hasRole())
-  async addReply(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("commentId", () => Int)
-    commentId: number,
-    @Arg("input")
-    input: AddReplyInput,
-  ): Promise<CommentReply> {
-    const comment = await ctx.prisma.comment.findFirstOrThrow({
-      where: {
-        id: commentId,
-        organizationId: ctx.me.organizationId,
-      },
-      include: { ticket: { include: { watchers: true } } },
-    });
+const UpdateReplyInput = builder.inputType("UpdateReplyInput", {
+  fields: (t) => ({
+    // TODO: we should allow for an empty field that would delete the reply
+    body: t.string({ required: true }),
+  }),
+});
 
-    const reply = await ctx.prisma.commentReply.create({
-      data: {
-        ...input,
-        authorId: ctx.me.roleId,
-        organizationId: ctx.me.organizationId,
-        commentId,
-      },
-    });
+// ---------------------------------------------------------------------------
+// comment query — fetch a single comment by ID
+// ---------------------------------------------------------------------------
 
-    const mentions = getMentions(reply.body);
-    logger.info(JSON.stringify({ mentions }));
-    let notifiedRolesForAction: number[] = [];
+builder.queryField("comment", (t) =>
+  t.prismaField({
+    type: "Comment",
+    authScopes: { hasRole: true },
+    args: {
+      id: t.arg.int({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    // Create notifications for the mentioned if necessary
-    if (mentions.length > 0) {
-      const notifiedRoleIds = await createNotificationsForTarget(
-        ctx.me.organizationId,
-        NotificationCategory.MENTION,
-        NotificationTarget.REPLY,
-        reply.id,
-        mentions,
-        ctx.me.roleId,
-        `{} mentioned you in a reply`,
-        { comment: comment.id, ticket: comment.ticketId },
-      );
-
-      // update the list of notified roles
-      notifiedRolesForAction = [...notifiedRoleIds, ...notifiedRolesForAction];
-    }
-
-    // notify the author of the comment only if the reply comes
-    // from someone different than the author themselve
-    if (comment.authorId !== ctx.me.roleId) {
-      const notifiedRoleIds = await createNotificationsForTarget(
-        ctx.me.organizationId,
-        NotificationCategory.REPLY,
-        NotificationTarget.REPLY,
-        reply.id,
-        [comment.authorId],
-        ctx.me.roleId,
-        `{} replied to your comment`,
-        { comment: comment.id, ticket: comment.ticketId },
-        notifiedRolesForAction,
-      );
-
-      // update the list of notified roles
-      notifiedRolesForAction = [...notifiedRoleIds, ...notifiedRolesForAction];
-    }
-
-    // notify the ticket owner
-    if (comment.ticket.ownerId && comment.ticket.ownerId !== ctx.me.roleId) {
-      const notifiedRoleIds = await createNotificationsForTarget(
-        ctx.me.organizationId,
-        NotificationCategory.OWNED,
-        NotificationTarget.REPLY,
-        reply.id,
-        [comment.ticket.ownerId],
-        ctx.me.roleId,
-        `{} posted a reply on a ticket you own`,
-        { comment: comment.id, ticket: comment.ticketId },
-        notifiedRolesForAction,
-      );
-
-      // update the list of notified roles
-      notifiedRolesForAction = [...notifiedRoleIds, ...notifiedRolesForAction];
-    }
-    if (comment.ticket.watchers.length) {
-      const notifiedRoleIds = await createNotificationsForTarget(
-        ctx.me.organizationId,
-        NotificationCategory.WATCHED,
-        NotificationTarget.COMMENT,
-        comment.id,
-        comment.ticket.watchers.map((role) => role.id),
-        ctx.me.roleId,
-        `{} posted a reply on a ticket you watch`,
-        { ticket: comment.ticketId },
-        notifiedRolesForAction,
-      );
-
-      // update the list of notified roles
-      notifiedRolesForAction = [...notifiedRoleIds, ...notifiedRolesForAction];
-    }
-
-    return reply;
-  }
-
-  @Mutation(() => Int)
-  @UseMiddleware(hasRole())
-  async deleteReply(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("commentReplyId", () => Int)
-    commentReplyId: number,
-  ): Promise<number> {
-    // making sure the comment this replies belongs to is
-    // associated with the organization of the current user
-    const commentReply = await ctx.prisma.commentReply.findFirstOrThrow({
-      where: {
-        id: commentReplyId,
-        comment: {
-          organizationId: ctx.me.organizationId,
+      return ctx.prisma.comment.findFirstOrThrow({
+        ...query,
+        where: {
+          id: args.id,
+          organizationId: me.organizationId,
         },
-      },
-    });
+      });
+    },
+  }),
+);
 
-    if (isAuthorOrAdmin(ctx.me, commentReply.authorId)) {
+// ---------------------------------------------------------------------------
+// addReply mutation
+// ---------------------------------------------------------------------------
+
+builder.mutationField("addReply", (t) =>
+  t.prismaField({
+    type: "CommentReply",
+    authScopes: { hasRole: true },
+    args: {
+      commentId: t.arg.int({ required: true }),
+      input: t.arg({ type: AddReplyInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      const comment = await ctx.prisma.comment.findFirstOrThrow({
+        where: {
+          id: args.commentId,
+          organizationId: me.organizationId,
+        },
+        include: { ticket: { include: { watchers: true } } },
+      });
+
+      const reply = await ctx.prisma.commentReply.create({
+        ...query,
+        data: {
+          body: args.input.body,
+          authorId: me.roleId,
+          organizationId: me.organizationId,
+          commentId: args.commentId,
+        },
+      });
+
+      const mentions = getMentions(reply.body);
+      logger.info(JSON.stringify({ mentions }));
+      let notifiedRolesForAction: number[] = [];
+
+      // Create notifications for the mentioned if necessary
+      if (mentions.length > 0) {
+        const notifiedRoleIds = await createNotificationsForTarget(
+          me.organizationId,
+          NotificationCategory.MENTION,
+          NotificationTarget.REPLY,
+          reply.id,
+          mentions,
+          me.roleId,
+          `{} mentioned you in a reply`,
+          { comment: comment.id, ticket: comment.ticketId },
+        );
+        notifiedRolesForAction = [...notifiedRoleIds, ...notifiedRolesForAction];
+      }
+
+      // notify the author of the comment only if the reply comes
+      // from someone different than the author themselves
+      if (comment.authorId !== me.roleId) {
+        const notifiedRoleIds = await createNotificationsForTarget(
+          me.organizationId,
+          NotificationCategory.REPLY,
+          NotificationTarget.REPLY,
+          reply.id,
+          [comment.authorId],
+          me.roleId,
+          `{} replied to your comment`,
+          { comment: comment.id, ticket: comment.ticketId },
+          notifiedRolesForAction,
+        );
+        notifiedRolesForAction = [...notifiedRoleIds, ...notifiedRolesForAction];
+      }
+
+      // notify the ticket owner
+      if (comment.ticket.ownerId && comment.ticket.ownerId !== me.roleId) {
+        const notifiedRoleIds = await createNotificationsForTarget(
+          me.organizationId,
+          NotificationCategory.OWNED,
+          NotificationTarget.REPLY,
+          reply.id,
+          [comment.ticket.ownerId],
+          me.roleId,
+          `{} posted a reply on a ticket you own`,
+          { comment: comment.id, ticket: comment.ticketId },
+          notifiedRolesForAction,
+        );
+        notifiedRolesForAction = [...notifiedRoleIds, ...notifiedRolesForAction];
+      }
+
+      if (comment.ticket.watchers.length) {
+        await createNotificationsForTarget(
+          me.organizationId,
+          NotificationCategory.WATCHED,
+          NotificationTarget.COMMENT,
+          comment.id,
+          comment.ticket.watchers.map((role) => role.id),
+          me.roleId,
+          `{} posted a reply on a ticket you watch`,
+          { ticket: comment.ticketId },
+          notifiedRolesForAction,
+        );
+      }
+
+      return reply;
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// deleteReply mutation
+// ---------------------------------------------------------------------------
+
+builder.mutationField("deleteReply", (t) =>
+  t.int({
+    authScopes: { hasRole: true },
+    args: {
+      commentReplyId: t.arg.int({ required: true }),
+    },
+    resolve: async (_root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      const commentReply = await ctx.prisma.commentReply.findFirstOrThrow({
+        where: {
+          id: args.commentReplyId,
+          comment: {
+            organizationId: me.organizationId,
+          },
+        },
+      });
+
+      if (!isAuthorOrAdmin(me, commentReply.authorId)) {
+        throw new GraphQLError("You cannot delete this reply", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+
       await ctx.prisma.commentReply.delete({
         where: { id: commentReply.id },
       });
 
       // delete all notifications relating to this reply
       await ctx.prisma.notification.deleteMany({
-        where: { target: NotificationTarget.REPLY, targetId: commentReplyId },
+        where: {
+          target: NotificationTarget.REPLY,
+          targetId: args.commentReplyId,
+        },
       });
 
-      return commentReplyId;
-    } else {
-      throw new UserInputError("You cannot delete this reply");
-    }
-  }
+      return args.commentReplyId;
+    },
+  }),
+);
 
-  @Mutation(() => CommentReply)
-  @UseMiddleware(hasRole())
-  async updateReply(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("commentReplyId", () => Int)
-    commentReplyId: number,
-    @Arg("input")
-    input: UpdateReplyInput,
-  ): Promise<CommentReply> {
-    // making sure the comment this replies belongs to is
-    // associated with the organization of the current user
-    const commentReply = await ctx.prisma.commentReply.findFirstOrThrow({
-      where: {
-        id: commentReplyId,
-        comment: {
-          organizationId: ctx.me.organizationId,
+// ---------------------------------------------------------------------------
+// updateReply mutation
+// ---------------------------------------------------------------------------
+
+builder.mutationField("updateReply", (t) =>
+  t.prismaField({
+    type: "CommentReply",
+    authScopes: { hasRole: true },
+    args: {
+      commentReplyId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdateReplyInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      const commentReply = await ctx.prisma.commentReply.findFirstOrThrow({
+        where: {
+          id: args.commentReplyId,
+          comment: {
+            organizationId: me.organizationId,
+          },
         },
-      },
-      include: {
-        comment: true,
-      },
-    });
+        include: { comment: true },
+      });
 
-    if (isAuthorOrAdmin(ctx.me, commentReply.authorId)) {
-      // Create notifications if necessary
-      const mentions = getMentions(input.body);
+      if (!isAuthorOrAdmin(me, commentReply.authorId)) {
+        throw new GraphQLError("You cannot edit this reply", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+
+      // Create notifications for mentions if necessary
+      const mentions = getMentions(args.input.body);
       logger.info(JSON.stringify({ mentions }));
       await createNotificationsForTarget(
-        ctx.me.organizationId,
+        me.organizationId,
         NotificationCategory.MENTION,
         NotificationTarget.REPLY,
-        commentReplyId,
+        args.commentReplyId,
         mentions,
-        ctx.me.roleId,
+        me.roleId,
         `{} mentioned you in a reply`,
         {
           comment: commentReply.comment.id,
@@ -225,113 +263,10 @@ export class CommentResolver {
       );
 
       return ctx.prisma.commentReply.update({
+        ...query,
         where: { id: commentReply.id },
-        data: input,
+        data: { body: args.input.body },
       });
-    } else {
-      throw new UserInputError("You cannot edit this reply");
-    }
-  }
-
-  @Query(() => Comment!)
-  @UseMiddleware(hasRole())
-  async comment(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("id", () => Int) id: number,
-  ): Promise<Comment> {
-    return await ctx.prisma.comment.findFirstOrThrow({
-      where: {
-        id,
-        organizationId: ctx.me.organizationId,
-      },
-      include: { author: true },
-    });
-  }
-
-  @FieldResolver((_returns) => Ticket)
-  async ticket(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() comment: Comment,
-  ): Promise<Ticket> {
-    return ctx.prisma.ticket.findUniqueOrThrow({
-      where: { id: comment.ticketId },
-    });
-  }
-
-  @FieldResolver((_returns) => Ticket)
-  async organization(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() comment: Comment,
-  ): Promise<Organization> {
-    if (comment.organization) {
-      return comment.organization;
-    }
-
-    return ctx.prisma.organization.findUniqueOrThrow({
-      where: { id: comment.organizationId },
-    });
-  }
-
-  @FieldResolver((_returns) => Role)
-  async author(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() comment: Comment,
-  ): Promise<Role> {
-    if (comment.author) {
-      return comment.author;
-    }
-
-    return ctx.prisma.role.findUniqueOrThrow({
-      where: { id: comment.authorId },
-    });
-  }
-
-  @FieldResolver((_returns) => CommentReply, { nullable: true })
-  async acceptedReply(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() comment: Comment,
-  ): Promise<CommentReply | null> {
-    if (comment.acceptedReplyId) {
-      if (comment.acceptedReply) {
-        return comment.acceptedReply;
-      }
-
-      return ctx.prisma.commentReply.findUniqueOrThrow({
-        where: { id: comment.acceptedReplyId },
-      });
-    }
-
-    return null;
-  }
-
-  @FieldResolver((_returns) => Int)
-  async replyCount(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() comment: Comment,
-  ): Promise<number> {
-    return ctx.prisma.commentReply.count({
-      where: {
-        commentId: comment.id,
-      },
-    });
-  }
-
-  @FieldResolver((_returns) => [CommentReply])
-  async replies(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() comment: Comment,
-  ): Promise<CommentReply[]> {
-    if (comment.replies) {
-      return comment.replies;
-    } else {
-      return ctx.prisma.commentReply.findMany({
-        where: {
-          commentId: comment.id,
-        },
-        include: {
-          author: true,
-        },
-      });
-    }
-  }
-}
+    },
+  }),
+);

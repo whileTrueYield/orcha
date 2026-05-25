@@ -1,109 +1,138 @@
-import { Query, Resolver, UseMiddleware, Ctx } from "type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import {
-  RoleType,
-  TicketStatus,
-  ModelStage,
-  Ticket,
-  Role,
-} from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { RoleStatus } from "@prisma/client";
+/**
+ * Swimlane queries — roles and scheduled/awaiting-estimate tasks.
+ *
+ * Registers:
+ *  - Query.getAllRoles: [Role]
+ *  - Query.getAllScheduledTasks: [Ticket]
+ *  - Query.getAllAwaitingEstimateTasks: [Ticket]
+ *
+ * Auth: hasRole (various levels depending on query).
+ */
 
-@Resolver()
-export class SwimlaneResolver {
-  @Query((_returns) => [Role])
-  @UseMiddleware(hasRole([]))
-  async getAllRoles(@Ctx() ctx: AppContext<AuthRoleContext>): Promise<Role[]> {
-    return ctx.prisma.role.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        status: RoleStatus.ACCEPTED,
-      },
-      orderBy: { name: "asc" },
-    });
-  }
+import builder from "../../../schema/builder";
+import { RoleStatus, TicketStatus, ModelStage } from "@prisma/client";
+import { AuthRoleContext } from "../../../types";
 
-  @Query((_returns) => [Ticket])
-  @UseMiddleware(hasRole([RoleType.OWNER, RoleType.ADMIN]))
-  async getAllScheduledTasks(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<Ticket[]> {
-    return ctx.prisma.ticket.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        stage: ModelStage.PUBLISHED,
-        status: TicketStatus.SCHEDULED,
-      },
-      include: {
-        scheduleItems: {
-          take: 1,
-          orderBy: { stoppedAt: "desc" },
-          include: {
-            ticketWorkflowState: {
-              include: {
-                assignee: true,
+// ---------------------------------------------------------------------------
+// Query: getAllRoles — accepted roles in the organization
+// ---------------------------------------------------------------------------
+
+builder.queryField("getAllRoles", (t) =>
+  t.prismaField({
+    type: ["Role"],
+    authScopes: { hasRole: true },
+    resolve: (query, _root, _args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      return ctx.prisma.role.findMany({
+        ...query,
+        where: {
+          organizationId: me.organizationId,
+          status: RoleStatus.ACCEPTED,
+        },
+        orderBy: { name: "asc" },
+      });
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Query: getAllScheduledTasks — tickets currently scheduled (admin/owner)
+// ---------------------------------------------------------------------------
+
+builder.queryField("getAllScheduledTasks", (t) =>
+  t.prismaField({
+    type: ["Ticket"],
+    authScopes: { hasRole: ["OWNER", "ADMIN"] },
+    resolve: (query, _root, _args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      return ctx.prisma.ticket.findMany({
+        ...query,
+        where: {
+          organizationId: me.organizationId,
+          stage: ModelStage.PUBLISHED,
+          status: TicketStatus.SCHEDULED,
+        },
+        include: {
+          scheduleItems: {
+            take: 1,
+            orderBy: { stoppedAt: "desc" },
+            include: {
+              ticketWorkflowState: {
+                include: {
+                  assignee: true,
+                },
               },
-            },
-            nextTicketWorkflowState: {
-              include: {
-                assignee: true,
+              nextTicketWorkflowState: {
+                include: {
+                  assignee: true,
+                },
               },
+              role: true,
             },
-            role: true,
           },
+          ticketWorkflowStates: {
+            where: {
+              isActive: true,
+            },
+            orderBy: { position: "asc" },
+            include: {
+              assignee: true,
+            },
+          },
+          product: true,
+          workflow: true,
         },
-        ticketWorkflowStates: {
-          where: {
-            isActive: true,
-          },
-          orderBy: { position: "asc" },
-          include: {
-            assignee: true,
-          },
-        },
-        product: true,
-        workflow: true,
-      },
-    });
-  }
+      });
+    },
+  }),
+);
 
-  @Query((_returns) => [Ticket])
-  @UseMiddleware(hasRole([RoleType.OWNER, RoleType.ADMIN]))
-  async getAllAwaitingEstimateTasks(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<Ticket[]> {
-    return ctx.prisma.ticket.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        stage: ModelStage.PUBLISHED,
-        status: TicketStatus.UNSCHEDULED,
-        estimating: true,
-        ticketWorkflowStates: {
-          some: {
-            isActive: true,
-            assigneeId: { not: null },
-            OR: [
-              { estimateMaximum: null },
-              { estimateMinimum: null },
-              { estimateMostLikely: null },
-            ],
+// ---------------------------------------------------------------------------
+// Query: getAllAwaitingEstimateTasks — unscheduled tickets needing estimates
+// ---------------------------------------------------------------------------
+
+builder.queryField("getAllAwaitingEstimateTasks", (t) =>
+  t.prismaField({
+    type: ["Ticket"],
+    authScopes: { hasRole: ["OWNER", "ADMIN"] },
+    resolve: (query, _root, _args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      return ctx.prisma.ticket.findMany({
+        ...query,
+        where: {
+          organizationId: me.organizationId,
+          stage: ModelStage.PUBLISHED,
+          status: TicketStatus.UNSCHEDULED,
+          estimating: true,
+          ticketWorkflowStates: {
+            some: {
+              isActive: true,
+              assigneeId: { not: null },
+              OR: [
+                { estimateMaximum: null },
+                { estimateMinimum: null },
+                { estimateMostLikely: null },
+              ],
+            },
           },
         },
-      },
-      include: {
-        ticketWorkflowStates: {
-          include: {
-            assignee: true,
+        include: {
+          ticketWorkflowStates: {
+            include: {
+              assignee: true,
+            },
+            where: {
+              isActive: true,
+            },
+            orderBy: { position: "asc" },
           },
-          where: {
-            isActive: true,
-          },
-          orderBy: { position: "asc" },
+          product: true,
+          workflow: true,
         },
-        product: true,
-        workflow: true,
-      },
-    });
-  }
-}
+      });
+    },
+  }),
+);

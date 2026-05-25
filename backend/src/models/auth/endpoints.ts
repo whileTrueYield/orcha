@@ -1,6 +1,6 @@
 import { config } from "../../config";
 import { Request, Response } from "express";
-import { UserStatus } from "@generated/type-graphql";
+import { UserStatus } from "@prisma/client";
 import prisma from "../../prisma";
 import { verifyConfirmation } from "./helper";
 import { randomBytes } from "crypto";
@@ -52,7 +52,7 @@ export async function pow(req: Request, res: Response) {
   const hash = randomBytes(32).toString("hex") + ":" + config.pow_difficulty;
 
   // expires in 10 seconds
-  redis.set(hash, req.ip, "EX", 10);
+  redis.set(hash, req.ip ?? "", "EX", 10);
 
   res.status(200);
   res.setHeader("Content-Type", "application/json");

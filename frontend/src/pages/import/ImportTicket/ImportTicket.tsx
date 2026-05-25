@@ -253,7 +253,7 @@ export const ImportTicket: React.FC = (props) => {
           our
           <a
             href={
-              import.meta.env.PUBLIC_URL + "/files/import-ticket-template.csv"
+              "/files/import-ticket-template.csv"
             }
             download
             className="mx-1 font-medium text-brand-600 underline hover:no-underline"

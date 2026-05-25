@@ -1,13 +1,12 @@
-import { CreateNoteResolver } from "./createNote.resolver";
-import { UpdateNoteResolver } from "./updateNote.resolver";
-import { NoteResolver } from "./note.resolver";
-import { NotesResolver } from "./notes.resolver";
-import { DeleteNoteResolver } from "./deleteNote.resolver";
+/**
+ * Side-effect barrel for Note resolvers.
+ *
+ * Importing this module registers all Note query and mutation fields
+ * on the Pothos builder. No exports — purely side-effect imports.
+ */
 
-export default [
-  CreateNoteResolver,
-  UpdateNoteResolver,
-  NoteResolver,
-  NotesResolver,
-  DeleteNoteResolver,
-];
+import "./note.resolver";
+import "./notes.resolver";
+import "./createNote.resolver";
+import "./updateNote.resolver";
+import "./deleteNote.resolver";

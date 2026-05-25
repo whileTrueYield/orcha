@@ -5,14 +5,15 @@ import {
   RoleStatus,
   TicketWorkflowState,
   ScheduleStatus,
-} from "@generated/type-graphql";
+} from "@prisma/client";
 import { get, last, map, max, orderBy, uniq } from "lodash";
 import fetch from "node-fetch";
-import { RoleWorkDay, WorkWeekTime } from "../../role/entity";
+import { RoleWorkDayShape as RoleWorkDay, WorkWeekTime } from "../../role/entity";
 import prisma from "../../../prisma";
 import { Prisma, ScheduleItem, Ticket } from ".prisma/client";
 import { getProjectDescendantIds } from "../../project/helper";
 import { cronQueue } from "../../../cron/queues";
+import { logger } from "../../../logger";
 import { config } from "../../../config";
 import { addYears } from "date-fns";
 import {
@@ -607,11 +608,19 @@ export async function estimateTickets(
     ? `${config.aiUri}/scheduler/estimate/quick`
     : `${config.aiUri}/scheduler/estimate`;
 
+  const requestBody = JSON.stringify(estimateContext);
   const estimatesResp = await fetch(estimateUrl, {
     method: "post",
-    body: JSON.stringify(estimateContext),
+    body: requestBody,
     headers: { "Content-Type": "application/json" },
   });
+
+  if (!estimatesResp.ok) {
+    const errorBody = await estimatesResp.text();
+    logger.error(`[estimateTickets] ${estimateUrl} returned ${estimatesResp.status}: ${errorBody}`);
+    logger.error(`[estimateTickets] request had ${contextTasks.length} tasks, ${contextSchedules.length} schedules`);
+    throw new Error(`Estimate service returned ${estimatesResp.status}: ${errorBody}`);
+  }
 
   return (await estimatesResp.json()) as ScheduleSnapshot[];
 }

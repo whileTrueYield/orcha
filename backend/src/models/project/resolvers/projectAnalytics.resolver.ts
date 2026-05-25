@@ -1,37 +1,24 @@
-import {
-  Arg,
-  Ctx,
-  FieldResolver,
-  Int,
-  Query,
-  Resolver,
-  Root,
-  UseMiddleware,
-} from "type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { ProjectAnalytics } from "../entity";
-import {
-  getTicketQueryForDone,
-  getTicketQueryForDraft,
-  getTicketQueryForEstimated,
-  getTicketQueryForInProgress,
-  getTicketQueryForScheduled,
-  getTicketQueryForUnassigned,
-  getTicketQueryForUnestimated,
-} from "../helper";
+/**
+ * Query: projectAnalytics — ticket count breakdown per project.
+ *
+ * Field resolvers compute the actual counts lazily.
+ */
 
-@Resolver(ProjectAnalytics)
-export class ProjectAnalyticsResolver {
-  @Query(() => ProjectAnalytics, { nullable: true })
-  @UseMiddleware(hasRole())
-  async projectAnalytics(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("projectId", () => Int) projectId: number
-  ): Promise<ProjectAnalytics> {
-    return {
-      projectId,
-      organizationId: ctx.me.organizationId,
+import builder from "../../../schema/builder";
+import { ProjectAnalyticsRef } from "../entity";
+import { AuthRoleContext } from "../../../types";
+
+builder.queryField("projectAnalytics", (t) =>
+  t.field({
+    type: ProjectAnalyticsRef,
+    nullable: true,
+    authScopes: { hasRole: true },
+    args: {
+      projectId: t.arg.int({ required: true }),
+    },
+    resolve: (_root, args, ctx) => ({
+      projectId: args.projectId,
+      organizationId: (ctx.me as AuthRoleContext).organizationId,
       scheduledTicketCount: 0,
       draftTicketCount: 0,
       inProgressTicketCount: 0,
@@ -39,97 +26,6 @@ export class ProjectAnalyticsResolver {
       unassignedTicketCount: 0,
       estimatedTicketCount: 0,
       unestimatedTicketCount: 0,
-    };
-  }
-
-  @FieldResolver((_returns) => Int)
-  async unestimatedTicketCount(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() projectAnalytics: ProjectAnalytics
-  ): Promise<number> {
-    return ctx.prisma.ticket.count({
-      where: await getTicketQueryForUnestimated(
-        projectAnalytics.organizationId,
-        projectAnalytics.projectId
-      ),
-    });
-  }
-
-  @FieldResolver((_returns) => Int)
-  async scheduledTicketCount(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() projectAnalytics: ProjectAnalytics
-  ): Promise<number> {
-    return ctx.prisma.ticket.count({
-      where: await getTicketQueryForScheduled(
-        projectAnalytics.organizationId,
-        projectAnalytics.projectId
-      ),
-    });
-  }
-
-  @FieldResolver((_returns) => Int)
-  async draftTicketCount(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() projectAnalytics: ProjectAnalytics
-  ): Promise<number> {
-    return ctx.prisma.ticket.count({
-      where: await getTicketQueryForDraft(
-        projectAnalytics.organizationId,
-        projectAnalytics.projectId
-      ),
-    });
-  }
-
-  @FieldResolver((_returns) => Int)
-  async inProgressTicketCount(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() projectAnalytics: ProjectAnalytics
-  ): Promise<number> {
-    return ctx.prisma.ticket.count({
-      where: await getTicketQueryForInProgress(
-        projectAnalytics.organizationId,
-        projectAnalytics.projectId
-      ),
-    });
-  }
-
-  @FieldResolver((_returns) => Int)
-  async doneTicketCount(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() projectAnalytics: ProjectAnalytics
-  ): Promise<number> {
-    return ctx.prisma.ticket.count({
-      where: await getTicketQueryForDone(
-        projectAnalytics.organizationId,
-        projectAnalytics.projectId
-      ),
-    });
-  }
-
-  @FieldResolver((_returns) => Int)
-  async unassignedTicketCount(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() projectAnalytics: ProjectAnalytics
-  ): Promise<number> {
-    return ctx.prisma.ticket.count({
-      where: await getTicketQueryForUnassigned(
-        projectAnalytics.organizationId,
-        projectAnalytics.projectId
-      ),
-    });
-  }
-
-  @FieldResolver((_returns) => Int)
-  async estimatedTicketCount(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() projectAnalytics: ProjectAnalytics
-  ): Promise<number> {
-    return ctx.prisma.ticket.count({
-      where: await getTicketQueryForEstimated(
-        projectAnalytics.organizationId,
-        projectAnalytics.projectId
-      ),
-    });
-  }
-}
+    }),
+  }),
+);

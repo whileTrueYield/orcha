@@ -1,97 +1,91 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-  Int,
-} from "type-graphql";
+/**
+ * Mutations: createReport, duplicateReport.
+ */
 
-import { Length } from "class-validator";
-import { Report } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
 import { ModelStage } from "@prisma/client";
-import { FeatureFlags, hasFeature } from "../../../middlewares/featureFlag";
 import { map, omit } from "lodash";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class CreateReportInput {
-  @Field()
-  @Length(1, 128)
-  name: string;
-}
+const CreateReportInput = builder.inputType("CreateReportInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+  }),
+});
 
-@InputType()
-class DuplicateReportInput {
-  @Field()
-  @Length(1, 128)
-  name: string;
-}
+const DuplicateReportInput = builder.inputType("DuplicateReportInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+  }),
+});
 
-@Resolver(Report)
-export class CreateReportResolver {
-  @Mutation(() => Report)
-  @UseMiddleware(hasRole())
-  @UseMiddleware(hasFeature(FeatureFlags.REPORT))
-  async createReport(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input")
-    input: CreateReportInput
-  ): Promise<Report> {
-    const report = await ctx.prisma.report.create({
-      data: {
-        ...input,
-        organizationId: ctx.me.organizationId,
-        stage: ModelStage.DRAFT,
-      },
-    });
+// ---------------------------------------------------------------------------
+// Mutation: createReport
+// ---------------------------------------------------------------------------
 
-    return report;
-  }
+builder.mutationField("createReport", (t) =>
+  t.prismaField({
+    type: "Report",
+    authScopes: { hasRole: true },
+    args: {
+      input: t.arg({ type: CreateReportInput, required: true }),
+    },
+    resolve: (query, _root, args, ctx) =>
+      ctx.prisma.report.create({
+        ...query,
+        data: {
+          name: args.input.name,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          stage: ModelStage.DRAFT,
+        },
+      }),
+  }),
+);
 
-  @Mutation((_returns) => Report)
-  @UseMiddleware(hasRole())
-  @UseMiddleware(hasFeature(FeatureFlags.REPORT))
-  async duplicateReport(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("reportId", () => Int!) reportId: number,
-    @Arg("input")
-    input: DuplicateReportInput
-  ): Promise<Report> {
-    const report = await ctx.prisma.report.findFirstOrThrow({
-      where: {
-        id: reportId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
+// ---------------------------------------------------------------------------
+// Mutation: duplicateReport
+// ---------------------------------------------------------------------------
 
-    const reportQueries = await ctx.prisma.reportQuery.findMany({
-      where: {
-        id: reportId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
+builder.mutationField("duplicateReport", (t) =>
+  t.prismaField({
+    type: "Report",
+    authScopes: { hasRole: true },
+    args: {
+      reportId: t.arg.int({ required: true }),
+      input: t.arg({ type: DuplicateReportInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const report = await ctx.prisma.report.findFirstOrThrow({
+        where: {
+          id: args.reportId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
 
-    // create a new report with the same settings
-    const duplicatedReport = await ctx.prisma.report.create({
-      data: {
-        ...omit(report, ["id", "stage", "createdAt", "updatedAt"]),
-        ...input,
-        stage: ModelStage.DRAFT,
-      },
-    });
+      const reportQueries = await ctx.prisma.reportQuery.findMany({
+        where: {
+          id: args.reportId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
 
-    // duplicate the queries
-    await ctx.prisma.reportQuery.createMany({
-      data: map(reportQueries, (reportQuery) => ({
-        ...omit(reportQuery, ["id", "reportId", "createdAt", "updatedAt"]),
-        reportId: duplicatedReport.id,
-      })),
-    });
+      const duplicatedReport = await ctx.prisma.report.create({
+        ...query,
+        data: {
+          ...omit(report, ["id", "stage", "createdAt", "updatedAt"]),
+          ...{ name: args.input.name },
+          stage: ModelStage.DRAFT,
+        },
+      });
 
-    return duplicatedReport;
-  }
-}
+      await ctx.prisma.reportQuery.createMany({
+        data: map(reportQueries, (reportQuery) => ({
+          ...omit(reportQuery, ["id", "reportId", "createdAt", "updatedAt"]),
+          reportId: duplicatedReport.id,
+        })),
+      });
+
+      return duplicatedReport;
+    },
+  }),
+);

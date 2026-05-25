@@ -1,36 +1,46 @@
-import { Arg, Query, Resolver, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Query resolver for fetching paginated Comments.
+ *
+ * Provides:
+ *  - comments(ticketId, first, last, offset, sort, search, commentId, replyId):
+ *    paginated list scoped to organization
+ *
+ * Delegates to getPaginatedComments helper. Requires hasRole auth scope.
+ */
 
-import { Comment } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 import { PaginatedComments } from "../entity";
 import { getPaginatedComments } from "../helper";
 
-@Resolver(Comment)
-export class CommentsResolver {
-  @Query((_returns) => PaginatedComments)
-  @UseMiddleware(hasRole())
-  async comments(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("ticketId", () => Int) ticketId: number,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Comment,
-    @Arg("search", () => String, { nullable: true }) search: string,
-    @Arg("commentId", () => Int, { nullable: true }) commentId: number | null,
-    @Arg("replyId", () => Int, { nullable: true }) replyId: number | null
-  ): Promise<PaginatedComments> {
-    return getPaginatedComments({
-      organizationId: ctx.me.organizationId,
-      ticketId,
-      first,
-      last,
-      offset,
-      sort,
-      search,
-      replyId,
-      commentId,
-    });
-  }
-}
+builder.queryField("comments", (t) =>
+  t.field({
+    type: PaginatedComments,
+    authScopes: { hasRole: true },
+    args: {
+      ticketId: t.arg.int({ required: true }),
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+      commentId: t.arg.int({ required: false }),
+      replyId: t.arg.int({ required: false }),
+    },
+    resolve: (_root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      return getPaginatedComments({
+        organizationId: me.organizationId,
+        ticketId: args.ticketId,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: args.sort as any,
+        search: args.search ?? undefined,
+        commentId: args.commentId ?? undefined,
+        replyId: args.replyId ?? undefined,
+      });
+    },
+  }),
+);

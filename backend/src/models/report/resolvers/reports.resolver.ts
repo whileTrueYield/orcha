@@ -1,34 +1,34 @@
-import { Arg, Query, Resolver, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Query: reports — paginated reports list.
+ */
 
-import { Report, ModelStage } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { getPaginatedReports } from "../helper";
+import builder from "../../../schema/builder";
 import { PaginatedReports } from "../entity";
-import { FeatureFlags, hasFeature } from "../../../middlewares/featureFlag";
+import { ModelStageEnum } from "../../../schema/enums";
+import { getPaginatedReports } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Report)
-export class ReportsResolver {
-  @Query((_returns) => PaginatedReports)
-  @UseMiddleware(hasRole())
-  @UseMiddleware(hasFeature(FeatureFlags.REPORT))
-  async reports(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Report,
-    @Arg("search", () => String, { nullable: true }) search: string,
-    @Arg("stages", () => [ModelStage], { nullable: true }) stages: ModelStage[]
-  ): Promise<PaginatedReports> {
-    return getPaginatedReports({
-      organizationId: ctx.me.organizationId,
-      first,
-      last,
-      offset,
-      sort,
-      search,
-      stages,
-    });
-  }
-}
+builder.queryField("reports", (t) =>
+  t.field({
+    type: PaginatedReports,
+    authScopes: { hasRole: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+      stages: t.arg({ type: [ModelStageEnum], required: false }),
+    },
+    resolve: (_root, args, ctx) =>
+      getPaginatedReports({
+        organizationId: (ctx.me as AuthRoleContext).organizationId,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: (args.sort as any) ?? undefined,
+        search: args.search ?? undefined,
+        stages: args.stages ?? undefined,
+      }),
+  }),
+);

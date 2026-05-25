@@ -1,21 +1,79 @@
-import { Field, ObjectType } from "type-graphql";
-import { PaginatedNodes } from "../../utils/pagination";
-import { BlackoutTime, RecurringBlackoutTime } from "@generated/type-graphql";
+/**
+ * BlackoutTime and RecurringBlackoutTime Pothos type definitions,
+ * plus pure utility functions for generating and merging time-off intervals.
+ *
+ * Exports:
+ *  - BlackoutTimeRef: prismaObject for BlackoutTime
+ *  - RecurringBlackoutTimeRef: prismaObject for RecurringBlackoutTime
+ *  - PaginatedBlackoutTimes / PaginatedRecurringBlackoutTimes
+ *  - generateTimeOffsFromRecurringBlackoutTime / mergeTimeOffs: pure logic
+ */
+
+import builder from "../../schema/builder";
+import { createPaginatedType } from "../../schema/pagination";
 import { addDays } from "date-fns";
 import { zonedTimeToUtc } from "date-fns-tz";
 import { get, sortBy } from "lodash";
 
-@ObjectType()
-export class PaginatedBlackoutTimes extends PaginatedNodes {
-  @Field(() => [BlackoutTime])
-  nodes: BlackoutTime[];
-}
+// ---------------------------------------------------------------------------
+// BlackoutTime prismaObject
+// ---------------------------------------------------------------------------
 
-@ObjectType()
-export class PaginatedRecurringBlackoutTimes extends PaginatedNodes {
-  @Field(() => [RecurringBlackoutTime])
-  nodes: RecurringBlackoutTime[];
-}
+export const BlackoutTimeRef = builder.prismaObject("BlackoutTime", {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    name: t.exposeString("name"),
+    startAt: t.expose("startAt", { type: "DateTime" }),
+    stopAt: t.expose("stopAt", { type: "DateTime" }),
+    disabled: t.exposeBoolean("disabled"),
+    createdAt: t.expose("createdAt", { type: "DateTime" }),
+    updatedAt: t.expose("updatedAt", { type: "DateTime" }),
+    organizationId: t.exposeInt("organizationId"),
+    organization: t.relation("organization"),
+    roles: t.relation("roles"),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// RecurringBlackoutTime prismaObject
+// ---------------------------------------------------------------------------
+
+export const RecurringBlackoutTimeRef = builder.prismaObject("RecurringBlackoutTime", {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    startTime: t.exposeString("startTime"),
+    stopTime: t.exposeString("stopTime"),
+    timeZone: t.exposeString("timeZone"),
+    disabled: t.exposeBoolean("disabled"),
+    name: t.exposeString("name"),
+    createdAt: t.expose("createdAt", { type: "DateTime" }),
+    updatedAt: t.expose("updatedAt", { type: "DateTime" }),
+    monday: t.exposeBoolean("monday"),
+    tuesday: t.exposeBoolean("tuesday"),
+    wednesday: t.exposeBoolean("wednesday"),
+    thursday: t.exposeBoolean("thursday"),
+    friday: t.exposeBoolean("friday"),
+    saturday: t.exposeBoolean("saturday"),
+    sunday: t.exposeBoolean("sunday"),
+    organizationId: t.exposeInt("organizationId"),
+    organization: t.relation("organization"),
+    roles: t.relation("roles"),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Paginated types
+// ---------------------------------------------------------------------------
+
+export const PaginatedBlackoutTimes = createPaginatedType("BlackoutTimes", BlackoutTimeRef);
+export const PaginatedRecurringBlackoutTimes = createPaginatedType(
+  "RecurringBlackoutTimes",
+  RecurringBlackoutTimeRef,
+);
+
+// ---------------------------------------------------------------------------
+// Pure utility: generate time-off intervals from recurring blackout times
+// ---------------------------------------------------------------------------
 
 const daysOfWeek = [
   "monday",
@@ -27,12 +85,10 @@ const daysOfWeek = [
   "sunday",
 ];
 
-// function generating scheduled off time based on a recurring blackout time
-// for the next 2 years
 export function generateTimeOffsFromRecurringBlackoutTime(
-  rbots: RecurringBlackoutTime[],
+  rbots: any[],
   fromDate: Date,
-  untilDate: Date
+  untilDate: Date,
 ): Array<[number, number]> {
   const blackoutTimes: [number, number][] = [];
 
@@ -42,20 +98,18 @@ export function generateTimeOffsFromRecurringBlackoutTime(
       const dayPart = cursor.toISOString().split("T")[0];
       cursor = addDays(cursor, 1);
 
-      // only account for days of week that are enabled
       const dayOfWeek = new Date(`${dayPart}T${rbot.startTime}`).getDay();
       if (!get(rbot, daysOfWeek[dayOfWeek - 1])) {
         continue;
       }
 
-      // compute start and stop time into UTC using the recurring blackout time's timezone
       const zonedStart = zonedTimeToUtc(
         `${dayPart}T${rbot.startTime}`,
-        rbot.timeZone
+        rbot.timeZone,
       );
       const zonedStop = zonedTimeToUtc(
         `${dayPart}T${rbot.stopTime}`,
-        rbot.timeZone
+        rbot.timeZone,
       );
 
       blackoutTimes.push([
@@ -68,13 +122,12 @@ export function generateTimeOffsFromRecurringBlackoutTime(
   return blackoutTimes;
 }
 
-/**
- * Merge overlapping time offs into one
- * @param timeOffs
- * @returns
- */
+// ---------------------------------------------------------------------------
+// Pure utility: merge overlapping time-off intervals
+// ---------------------------------------------------------------------------
+
 export function mergeTimeOffs(
-  timeOffs: Array<[number, number]>
+  timeOffs: Array<[number, number]>,
 ): Array<[number, number]> {
   const mergedTimeOffs: Array<[number, number]> = [];
   const sortedTimeOffs = sortBy(timeOffs, ([start]) => start);
@@ -84,7 +137,6 @@ export function mergeTimeOffs(
     if (mergedTimeOffs.length) {
       const last = mergedTimeOffs[mergedTimeOffs.length - 1];
       const [lastStart, lastStop] = last;
-      // is there an overlap with the previous recorded time off
       if (start <= lastStop && stop >= lastStart) {
         last[0] = lastStart < start ? lastStart : start;
         last[1] = lastStop > stop ? lastStop : stop;

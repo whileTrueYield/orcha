@@ -1,9 +1,7 @@
 import { clamp, trim } from "lodash";
-import { Documentation, ModelStage } from "@generated/type-graphql";
+import { Documentation, ModelStage, Prisma } from "@prisma/client";
 import prisma from "../../prisma";
-import { Prisma } from ".prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedDocumentations } from "./entity";
 
 interface GetDocumentatingsArgs extends GetPageArgsFor<Documentation> {
   organizationId: number;
@@ -12,7 +10,7 @@ interface GetDocumentatingsArgs extends GetPageArgsFor<Documentation> {
 
 export async function getPaginatedDocumentations(
   args: GetDocumentatingsArgs
-): Promise<PaginatedDocumentations> {
+) {
   const { first, last, search, organizationId, stages } = args;
 
   // default offset to be at the start (or the end

@@ -1,25 +1,31 @@
-import { Arg, Resolver, Mutation, Int, UseMiddleware, Ctx } from "type-graphql";
-import { PersonalTag, RoleType } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+/**
+ * Mutation resolver for deleting a PersonalTag.
+ *
+ * Registers: Mutation.deletePersonalTag(personalTagId: Int!): Boolean!
+ *
+ * Requires ADMIN or OWNER role. Verifies ownership before deletion.
+ */
 
-@Resolver(PersonalTag)
-export class DeletePersonalTagResolver {
-  @Mutation((_returns) => Boolean)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async deletePersonalTag(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("personalTagId", () => Int!) personalTagId: number
-  ): Promise<boolean> {
-    const personalTag = await ctx.prisma.personalTag.findFirstOrThrow({
-      where: {
-        id: personalTagId,
-        organizationId: ctx.me.organizationId,
-        ownerId: ctx.me.roleId,
-      },
-    });
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-    await ctx.prisma.personalTag.delete({ where: { id: personalTag.id } });
-    return true;
-  }
-}
+builder.mutationField("deletePersonalTag", (t) =>
+  t.boolean({
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      personalTagId: t.arg.int({ required: true }),
+    },
+    resolve: async (_root, args, ctx) => {
+      const personalTag = await ctx.prisma.personalTag.findFirstOrThrow({
+        where: {
+          id: args.personalTagId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          ownerId: (ctx.me as AuthRoleContext).roleId,
+        },
+      });
+
+      await ctx.prisma.personalTag.delete({ where: { id: personalTag.id } });
+      return true;
+    },
+  }),
+);

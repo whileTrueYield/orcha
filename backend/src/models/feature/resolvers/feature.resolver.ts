@@ -1,65 +1,50 @@
-import { MaxLength } from "class-validator";
-import {
-  Resolver,
-  FieldResolver,
-  Root,
-  Mutation,
-  UseMiddleware,
-  Int,
-  InputType,
-  Field,
-  Ctx,
-  Arg,
-} from "type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { Feature, FeatureGroup, RoleType } from "@generated/type-graphql";
+/**
+ * Feature mutation: updateFeature.
+ *
+ * Allows ADMIN/OWNER to rename a feature within a feature group.
+ */
 
-@InputType()
-class UpdateFeatureInput {
-  @Field()
-  @MaxLength(50)
-  name: string;
-}
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Feature)
-export class FeatureResolver {
-  @Mutation(() => Feature)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updateFeature(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("featureId", () => Int)
-    featureId: number,
-    @Arg("input")
-    input: UpdateFeatureInput
-  ): Promise<Feature> {
-    const feature = await ctx.prisma.feature.findFirstOrThrow({
-      where: {
-        id: featureId,
-        featureGroup: {
-          organizationId: ctx.me.organizationId,
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
+
+const UpdateFeatureInput = builder.inputType("UpdateFeatureInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Mutation: updateFeature
+// ---------------------------------------------------------------------------
+
+builder.mutationField("updateFeature", (t) =>
+  t.prismaField({
+    type: "Feature",
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      featureId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdateFeatureInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const feature = await ctx.prisma.feature.findFirstOrThrow({
+        where: {
+          id: args.featureId,
+          featureGroup: {
+            organizationId: (ctx.me as AuthRoleContext).organizationId,
+          },
         },
-      },
-      include: { featureGroup: true },
-    });
+        include: { featureGroup: true },
+      });
 
-    return ctx.prisma.feature.update({
-      where: { id: feature.id },
-      data: input,
-    });
-  }
-
-  @FieldResolver((_returns) => FeatureGroup)
-  async featureGroup(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() feature: Feature
-  ): Promise<FeatureGroup> {
-    if (feature.featureGroup) {
-      return feature.featureGroup;
-    }
-
-    return ctx.prisma.featureGroup.findUniqueOrThrow({
-      where: { id: feature.featureGroupId },
-    });
-  }
-}
+      return ctx.prisma.feature.update({
+        ...query,
+        where: { id: feature.id },
+        data: { name: args.input.name },
+      });
+    },
+  }),
+);

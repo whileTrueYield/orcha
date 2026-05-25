@@ -1,112 +1,129 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  Int,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
+/**
+ * Mutation resolvers for updating a Comment.
+ *
+ * Provides:
+ *  - updateComment(commentId, input):     edit a comment (author or admin only)
+ *  - acceptReply(commentReplyId):         mark a reply as the accepted answer
+ *
+ * Requires hasRole auth scope. updateComment additionally requires ADMIN or OWNER role.
+ */
 
-import { Length } from "class-validator";
+import { GraphQLError } from "graphql";
 import {
   NotificationCategory,
-  Comment,
-  RoleType,
   NotificationTarget,
-} from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { UserInputError } from "apollo-server-express";
+  RoleType,
+} from "@prisma/client";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 import { isAuthorOrAdmin } from "../../../utils/rbac";
 import { getMentions } from "../../../utils/tiptap";
 import { logger } from "../../../logger";
 import { createNotificationsForTarget } from "../../notification/createNotification";
 
-@InputType()
-class UpdateCommentInput {
-  @Field()
-  @Length(1, 2048)
-  body: string;
-}
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-@Resolver(Comment)
-export class UpdateCommentResolver {
-  @Mutation(() => Comment)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updateComment(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("commentId", () => Int) commentId: number,
-    @Arg("input", () => UpdateCommentInput) input: UpdateCommentInput,
-  ): Promise<Comment> {
-    const comment = await ctx.prisma.comment.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: commentId,
-      },
-    });
+const UpdateCommentInput = builder.inputType("UpdateCommentInput", {
+  fields: (t) => ({
+    body: t.string({ required: true }),
+  }),
+});
 
-    if (comment.body === input.body) {
-      return comment;
-    }
+// ---------------------------------------------------------------------------
+// updateComment mutation
+// ---------------------------------------------------------------------------
 
-    if (isAuthorOrAdmin(ctx.me, comment.authorId)) {
-      // Create notifications if necessary
-      const mentions = getMentions(input.body);
+builder.mutationField("updateComment", (t) =>
+  t.prismaField({
+    type: "Comment",
+    authScopes: { hasRole: [RoleType.ADMIN, RoleType.OWNER] },
+    args: {
+      commentId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdateCommentInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      const comment = await ctx.prisma.comment.findFirstOrThrow({
+        where: {
+          organizationId: me.organizationId,
+          id: args.commentId,
+        },
+      });
+
+      if (comment.body === args.input.body) {
+        return comment;
+      }
+
+      if (!isAuthorOrAdmin(me, comment.authorId)) {
+        throw new GraphQLError("You cannot edit this comment", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+
+      // Create notifications for mentions if necessary
+      const mentions = getMentions(args.input.body);
       logger.info(JSON.stringify({ mentions }));
       await createNotificationsForTarget(
-        ctx.me.organizationId,
+        me.organizationId,
         NotificationCategory.MENTION,
         NotificationTarget.COMMENT,
         comment.id,
         mentions,
-        ctx.me.roleId,
+        me.roleId,
         `{} mentioned you in a comment`,
         { ticket: comment.ticketId },
       );
 
       return ctx.prisma.comment.update({
+        ...query,
         where: { id: comment.id },
-        data: input,
+        data: { body: args.input.body },
       });
-    } else {
-      throw new UserInputError("You cannot edit this comment");
-    }
-  }
+    },
+  }),
+);
 
-  @Mutation(() => Comment)
-  @UseMiddleware(hasRole())
-  async acceptReply(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("commentReplyId", () => Int) commentReplyId: number,
-  ): Promise<Comment> {
-    const reply = await ctx.prisma.commentReply.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: commentReplyId,
-      },
-      include: {
-        comment: true,
-      },
-    });
+// ---------------------------------------------------------------------------
+// acceptReply mutation
+// ---------------------------------------------------------------------------
 
-    await createNotificationsForTarget(
-      ctx.me.organizationId,
-      NotificationCategory.ACCEPTED_REPLY,
-      NotificationTarget.REPLY,
-      reply.id,
-      [reply.authorId],
-      ctx.me.roleId,
-      `{} accepted your reply`,
-      { ticket: reply.comment.ticketId, comment: reply.commentId },
-    );
+builder.mutationField("acceptReply", (t) =>
+  t.prismaField({
+    type: "Comment",
+    authScopes: { hasRole: true },
+    args: {
+      commentReplyId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    return ctx.prisma.comment.update({
-      where: { id: reply.comment.id },
-      data: {
-        acceptedReplyId: reply.id,
-      },
-    });
-  }
-}
+      const reply = await ctx.prisma.commentReply.findFirstOrThrow({
+        where: {
+          organizationId: me.organizationId,
+          id: args.commentReplyId,
+        },
+        include: { comment: true },
+      });
+
+      await createNotificationsForTarget(
+        me.organizationId,
+        NotificationCategory.ACCEPTED_REPLY,
+        NotificationTarget.REPLY,
+        reply.id,
+        [reply.authorId],
+        me.roleId,
+        `{} accepted your reply`,
+        { ticket: reply.comment.ticketId, comment: reply.commentId },
+      );
+
+      return ctx.prisma.comment.update({
+        ...query,
+        where: { id: reply.comment.id },
+        data: { acceptedReplyId: reply.id },
+      });
+    },
+  }),
+);

@@ -1,52 +1,58 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-} from "type-graphql";
+/**
+ * Mutation resolver for creating a new PersonalTag.
+ *
+ * Registers: Mutation.createPersonalTag(input: CreatePersonalTagInput!): PersonalTag!
+ *
+ * Requires ADMIN or OWNER role. Validates that no personal tag
+ * with the same name (case-insensitive) already exists for this owner.
+ */
 
-import { Length } from "class-validator";
-import { PersonalTag, RoleType } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { UserInputError } from "apollo-server-express";
+import { GraphQLError } from "graphql";
+import builder from "../../../schema/builder";
+import { PersonalTagRef } from "../entity";
 import { findPersonalTagByName } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-export class CreatePersonalTagInput {
-  @Field()
-  @Length(1, 128)
-  name: string;
-}
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-@Resolver(PersonalTag)
-export class CreatePersonalTagResolver {
-  @Mutation(() => PersonalTag)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async createPersonalTag(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input")
-    input: CreatePersonalTagInput
-  ): Promise<PersonalTag> {
-    const tagUsingSameName = await findPersonalTagByName(
-      input.name,
-      ctx.me.organizationId,
-      ctx.me.roleId
-    );
+const CreatePersonalTagInput = builder.inputType("CreatePersonalTagInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+  }),
+});
 
-    if (tagUsingSameName) {
-      throw new UserInputError("A tag with the same name already exists");
-    }
+// ---------------------------------------------------------------------------
+// Mutation
+// ---------------------------------------------------------------------------
 
-    return ctx.prisma.personalTag.create({
-      data: {
-        ...input,
-        organizationId: ctx.me.organizationId,
-        ownerId: ctx.me.roleId,
-      },
-    });
-  }
-}
+builder.mutationField("createPersonalTag", (t) =>
+  t.prismaField({
+    type: PersonalTagRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      input: t.arg({ type: CreatePersonalTagInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const existing = await findPersonalTagByName(
+        args.input.name,
+        (ctx.me as AuthRoleContext).organizationId,
+        (ctx.me as AuthRoleContext).roleId,
+      );
+
+      if (existing) {
+        throw new GraphQLError("A tag with the same name already exists");
+      }
+
+      return ctx.prisma.personalTag.create({
+        ...query,
+        data: {
+          name: args.input.name,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          ownerId: (ctx.me as AuthRoleContext).roleId,
+        },
+      });
+    },
+  }),
+);

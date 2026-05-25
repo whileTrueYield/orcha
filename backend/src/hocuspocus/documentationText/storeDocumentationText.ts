@@ -8,7 +8,7 @@ import { TiptapTransformer } from "@hocuspocus/transformer";
 
 export async function storeDocumentationText(
   token: DocumentToken,
-  state: Buffer
+  state: Uint8Array<ArrayBuffer>
 ): Promise<null> {
   const documentationPage = await prisma.documentationPage.findFirst({
     where: {

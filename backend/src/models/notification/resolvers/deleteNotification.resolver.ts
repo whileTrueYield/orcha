@@ -1,25 +1,37 @@
-import { Arg, Resolver, Mutation, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Mutation resolver for deleting a Notification.
+ *
+ * Provides:
+ *  - deleteNotification(notificationId): deletes a notification belonging to the current user
+ *
+ * Requires hasRole auth scope. Verifies org + role before deleting.
+ */
 
-import { Notification } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Notification)
-export class DeleteNotificationResolver {
-  @Mutation((_returns) => Notification)
-  @UseMiddleware(hasRole([]))
-  async deleteNotification(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("notificationId", () => Int!) notificationId: number
-  ): Promise<Notification> {
-    const notification = await ctx.prisma.notification.findFirstOrThrow({
-      where: {
-        id: notificationId,
-        organizationId: ctx.me.organizationId,
-        roleId: ctx.me.roleId,
-      },
-    });
+builder.mutationField("deleteNotification", (t) =>
+  t.prismaField({
+    type: "Notification",
+    authScopes: { hasRole: true },
+    args: {
+      notificationId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    return ctx.prisma.notification.delete({ where: { id: notification.id } });
-  }
-}
+      const notification = await ctx.prisma.notification.findFirstOrThrow({
+        where: {
+          id: args.notificationId,
+          organizationId: me.organizationId,
+          roleId: me.roleId,
+        },
+      });
+
+      return ctx.prisma.notification.delete({
+        ...query,
+        where: { id: notification.id },
+      });
+    },
+  }),
+);

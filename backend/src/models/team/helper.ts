@@ -1,9 +1,7 @@
 import prisma from "../../prisma";
 import { clamp, trim } from "lodash";
-import { Team } from "@generated/type-graphql";
+import { Team, Prisma } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedTeams } from "./entity";
-import { Prisma } from ".prisma/client";
 
 export async function findTeamByCode(
   code: string,
@@ -22,7 +20,7 @@ interface GetPageArgs extends GetPageArgsFor<Team> {
 }
 export async function getPaginatedTeams(
   args: GetPageArgs
-): Promise<PaginatedTeams> {
+) {
   const { first, last, organizationId, search } = args;
 
   // default offset to be at the start (or the end

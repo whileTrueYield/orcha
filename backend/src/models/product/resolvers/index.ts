@@ -1,17 +1,12 @@
-import { CreateProductResolver } from "./createProduct.resolver";
-import { UpdateProductResolver } from "./updateProduct.resolver";
-import { ProductResolver } from "./product.resolver";
-import { ProductsResolver } from "./products.resolver";
-import { ProductByCodeResolver } from "./productByCode.resolver";
-import { DeleteProductResolver } from "./deleteProduct.resolver";
-import { MiniProductsResolver } from "./miniProducts.resolver";
+/**
+ * Side-effect barrel — importing this module registers all Product
+ * queries and mutations on the Pothos builder.
+ */
 
-export default [
-  CreateProductResolver,
-  UpdateProductResolver,
-  ProductResolver,
-  ProductByCodeResolver,
-  ProductsResolver,
-  DeleteProductResolver,
-  MiniProductsResolver,
-];
+import "./product.resolver";
+import "./productByCode.resolver";
+import "./products.resolver";
+import "./createProduct.resolver";
+import "./updateProduct.resolver";
+import "./deleteProduct.resolver";
+import "./miniProducts.resolver";

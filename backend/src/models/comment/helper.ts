@@ -1,9 +1,16 @@
+/**
+ * Pagination helpers for Comments and CommentReplies.
+ *
+ * Builds Prisma queries with optional filters (ticket, author, search)
+ * and returns paginated results compatible with the Paginated* types.
+ *
+ * Exports: getPaginatedComments, getPaginatedCommentReplies.
+ */
+
 import { clamp, trim } from "lodash";
-import { Comment } from "@generated/type-graphql";
+import { Comment, Prisma } from "@prisma/client";
 import prisma from "../../prisma";
-import { Prisma } from ".prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedCommentReplies, PaginatedComments } from "./entity";
 
 interface GetPaginatedCommentsArgs extends GetPageArgsFor<Comment> {
   organizationId: number;
@@ -13,9 +20,7 @@ interface GetPaginatedCommentsArgs extends GetPageArgsFor<Comment> {
   commentId?: number | null;
 }
 
-export async function getPaginatedComments(
-  args: GetPaginatedCommentsArgs
-): Promise<PaginatedComments> {
+export async function getPaginatedComments(args: GetPaginatedCommentsArgs) {
   const {
     first,
     last,
@@ -27,8 +32,7 @@ export async function getPaginatedComments(
     replyId,
   } = args;
 
-  // default offset to be at the start (or the end
-  // depending on direction)
+  // default offset to be at the start (or the end depending on direction)
   const offset = args.offset ? args.offset : 0;
 
   // by default sort on createdAt
@@ -75,14 +79,10 @@ export async function getPaginatedComments(
     commentQuery.ticketId = ticketId;
   }
 
-  // filtering by ticket ID is optional since we might also want
-  // to filter by author
   if (commentId) {
     commentQuery.id = commentId;
   }
 
-  // filtering by ticket ID is optional since we might also want
-  // to filter by author
   if (replyId) {
     commentQuery.replies = { some: { id: replyId } };
   }
@@ -121,12 +121,11 @@ interface GetPaginatedCommentRepliesArgs extends GetPageArgsFor<Comment> {
 }
 
 export async function getPaginatedCommentReplies(
-  args: GetPaginatedCommentRepliesArgs
-): Promise<PaginatedCommentReplies> {
+  args: GetPaginatedCommentRepliesArgs,
+) {
   const { first, last, search, commentId, organizationId } = args;
 
-  // default offset to be at the start (or the end
-  // depending on direction)
+  // default offset to be at the start (or the end depending on direction)
   const offset = args.offset ? args.offset : 0;
 
   // by default sort on createdAt
@@ -149,7 +148,7 @@ export async function getPaginatedCommentReplies(
     },
   };
 
-  // We allow search on comments by name
+  // We allow search on comment replies by body or author name
   const query = trim(search);
   if (query) {
     commentReplyQuery.OR = [

@@ -1,147 +1,91 @@
-import {
-  Arg,
-  Query,
-  Resolver,
-  Int,
-  UseMiddleware,
-  Ctx,
-  FieldResolver,
-  Root,
-} from "type-graphql";
-import {
-  Organization,
-  Role,
-  ScheduleItem,
-  Ticket,
-  TicketWorkflowState,
-} from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+/**
+ * ScheduleItem queries — single item, active items, and last item.
+ *
+ * Registers:
+ *  - Query.scheduleItem(scheduleItemId): ScheduleItem
+ *  - Query.activeScheduleItems: [ScheduleItem]
+ *  - Query.lastScheduleItem: ScheduleItem
+ *
+ * The ScheduleItem relation fields (ticket, organization, role,
+ * ticketWorkflowState, nextTicketWorkflowState) are already defined
+ * on the prismaObject in entity.ts via t.relation().
+ *
+ * Auth: hasRole (any linked user).
+ */
 
-@Resolver(ScheduleItem)
-export class ScheduleItemResolver {
-  @Query(() => ScheduleItem)
-  @UseMiddleware(hasRole())
-  async scheduleItem(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("scheduleItemId", () => Int) scheduleItemId: number
-  ): Promise<ScheduleItem> {
-    return ctx.prisma.scheduleItem.findFirstOrThrow({
-      where: {
-        id: scheduleItemId,
-        organizationId: ctx.me.organizationId,
-        roleId: ctx.me.roleId,
-      },
-    });
-  }
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-  @Query(() => [ScheduleItem])
-  @UseMiddleware(hasRole())
-  async activeScheduleItems(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<ScheduleItem[]> {
-    return ctx.prisma.scheduleItem.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        roleId: ctx.me.roleId,
-        stoppedAt: null,
-      },
-    });
-  }
+// ---------------------------------------------------------------------------
+// Query: scheduleItem
+// ---------------------------------------------------------------------------
 
-  // Returns the last schedule item for the current user
-  @Query(() => ScheduleItem)
-  @UseMiddleware(hasRole())
-  async lastScheduleItem(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<ScheduleItem> {
-    return ctx.prisma.scheduleItem.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        roleId: ctx.me.roleId,
-      },
-      orderBy: {
-        startedAt: "desc",
-      },
-    });
-  }
+builder.queryField("scheduleItem", (t) =>
+  t.prismaField({
+    type: "ScheduleItem",
+    authScopes: { hasRole: true },
+    args: {
+      scheduleItemId: t.arg.int({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-  @FieldResolver((_returns) => Ticket)
-  async ticket(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() scheduleItem: ScheduleItem
-  ): Promise<Ticket> {
-    if (scheduleItem.ticket) {
-      return scheduleItem.ticket;
-    }
+      return ctx.prisma.scheduleItem.findFirstOrThrow({
+        ...query,
+        where: {
+          id: args.scheduleItemId,
+          organizationId: me.organizationId,
+          roleId: me.roleId,
+        },
+      });
+    },
+  }),
+);
 
-    return ctx.prisma.ticket.findUniqueOrThrow({
-      where: { id: scheduleItem.ticketId },
-    });
-  }
+// ---------------------------------------------------------------------------
+// Query: activeScheduleItems
+// ---------------------------------------------------------------------------
 
-  @FieldResolver((_returns) => Organization)
-  async organization(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() scheduleItem: ScheduleItem
-  ): Promise<Organization> {
-    if (scheduleItem.organization) {
-      return scheduleItem.organization;
-    }
+builder.queryField("activeScheduleItems", (t) =>
+  t.prismaField({
+    type: ["ScheduleItem"],
+    authScopes: { hasRole: true },
+    resolve: (query, _root, _args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    return ctx.prisma.organization.findUniqueOrThrow({
-      where: { id: scheduleItem.organizationId },
-    });
-  }
+      return ctx.prisma.scheduleItem.findMany({
+        ...query,
+        where: {
+          organizationId: me.organizationId,
+          roleId: me.roleId,
+          stoppedAt: null,
+        },
+      });
+    },
+  }),
+);
 
-  @FieldResolver((_returns) => Role)
-  async role(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() scheduleItem: ScheduleItem
-  ): Promise<Role> {
-    if (scheduleItem.role) {
-      return scheduleItem.role;
-    }
+// ---------------------------------------------------------------------------
+// Query: lastScheduleItem — most recent item for the current user
+// ---------------------------------------------------------------------------
 
-    return ctx.prisma.role.findUniqueOrThrow({
-      where: { id: scheduleItem.roleId },
-      include: { user: true },
-    });
-  }
+builder.queryField("lastScheduleItem", (t) =>
+  t.prismaField({
+    type: "ScheduleItem",
+    authScopes: { hasRole: true },
+    resolve: (query, _root, _args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-  @FieldResolver((_returns) => TicketWorkflowState)
-  async ticketWorkflowState(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() scheduleItem: ScheduleItem
-  ): Promise<TicketWorkflowState> {
-    if (scheduleItem.ticketWorkflowState) {
-      return scheduleItem.ticketWorkflowState;
-    }
-
-    return ctx.prisma.ticketWorkflowState.findUniqueOrThrow({
-      where: { id: scheduleItem.ticketWorkflowStateId },
-    });
-  }
-
-  @FieldResolver((_returns) => TicketWorkflowState, { nullable: true })
-  async nextTicketWorkflowState(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Root() scheduleItem: ScheduleItem
-  ): Promise<TicketWorkflowState | null> {
-    if (scheduleItem.nextTicketWorkflowStateId) {
-      if (scheduleItem.nextTicketWorkflowState) {
-        return scheduleItem.nextTicketWorkflowState;
-      } else {
-        const ticketWorkflowState =
-          await ctx.prisma.ticketWorkflowState.findUniqueOrThrow({
-            where: { id: scheduleItem.nextTicketWorkflowStateId },
-            include: { workflowState: true },
-          });
-
-        return ticketWorkflowState;
-      }
-    }
-
-    return null;
-  }
-}
+      return ctx.prisma.scheduleItem.findFirstOrThrow({
+        ...query,
+        where: {
+          organizationId: me.organizationId,
+          roleId: me.roleId,
+        },
+        orderBy: {
+          startedAt: "desc",
+        },
+      });
+    },
+  }),
+);

@@ -6,7 +6,7 @@ import { DocumentToken } from "../documentToken";
 
 export async function fetchDocumentationText(
   token: DocumentToken
-): Promise<Buffer | null> {
+): Promise<Uint8Array | null> {
   const documentationPage = await prisma.documentationPage.findFirst({
     where: {
       id: token.documentId,

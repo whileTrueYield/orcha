@@ -74,7 +74,7 @@ class StartedTask(BaseModel):
 class Task(BaseModel):
     uid: str
     ancestors: List[str] = []
-    deadline: Optional[int]
+    deadline: Optional[int] = None
     employee_id: int
     min: int
     max: int

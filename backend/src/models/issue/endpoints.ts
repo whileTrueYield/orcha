@@ -1,4 +1,4 @@
-import { OrganizationStatus } from "@generated/type-graphql";
+import { OrganizationStatus } from "@prisma/client";
 import { Request, Response } from "express";
 import { filter, get, trim, truncate } from "lodash";
 import prisma from "../../prisma";

@@ -1,29 +1,34 @@
-import { Query, Resolver, UseMiddleware, Ctx } from "type-graphql";
-import { MiniProduct } from "../entity";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+/**
+ * Query resolver for listing lightweight product summaries.
+ *
+ * Registers: Query.miniProducts: [MiniProduct!]!
+ *
+ * Requires any linked role. Returns only non-deleted products
+ * for the caller's organisation.
+ */
+
 import { ModelStage } from "@prisma/client";
+import builder from "../../../schema/builder";
+import { MiniProductRef } from "../entity";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(MiniProduct)
-export class MiniProductsResolver {
-  @Query((_returns) => [MiniProduct])
-  @UseMiddleware(hasRole())
-  async miniProducts(
-    @Ctx() ctx: AppContext<AuthRoleContext>
-  ): Promise<MiniProduct[]> {
-    const products = await ctx.prisma.product.findMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        stage: { not: ModelStage.DELETED },
-      },
-    });
+builder.queryField("miniProducts", (t) =>
+  t.field({
+    type: [MiniProductRef],
+    authScopes: { hasRole: true },
+    resolve: async (_root, _args, ctx) => {
+      const products = await ctx.prisma.product.findMany({
+        where: {
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          stage: { not: ModelStage.DELETED },
+        },
+      });
 
-    return products.map(
-      (product): MiniProduct => ({
-        id: product.id,
-        name: product.name,
-        stage: product.stage,
-      })
-    );
-  }
-}
+      return products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        stage: p.stage,
+      }));
+    },
+  }),
+);

@@ -1,25 +1,34 @@
-import { Arg, Resolver, Mutation, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Mutation resolver for deleting a Note.
+ *
+ * Provides:
+ *  - deleteNote(noteId): deletes a note owned by the current user
+ *
+ * Requires hasRole auth scope. Verifies org + owner before deleting.
+ */
 
-import { Note } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Note)
-export class DeleteNoteResolver {
-  @Mutation((_returns) => Note)
-  @UseMiddleware(hasRole([]))
-  async deleteNote(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("noteId", () => Int!) noteId: number
-  ): Promise<Note> {
-    const note = await ctx.prisma.note.findFirstOrThrow({
-      where: {
-        id: noteId,
-        organizationId: ctx.me.organizationId,
-        ownerId: ctx.me.roleId,
-      },
-    });
+builder.mutationField("deleteNote", (t) =>
+  t.prismaField({
+    type: "Note",
+    authScopes: { hasRole: true },
+    args: {
+      noteId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    return ctx.prisma.note.delete({ where: { id: note.id } });
-  }
-}
+      const note = await ctx.prisma.note.findFirstOrThrow({
+        where: {
+          id: args.noteId,
+          organizationId: me.organizationId,
+          ownerId: me.roleId,
+        },
+      });
+
+      return ctx.prisma.note.delete({ ...query, where: { id: note.id } });
+    },
+  }),
+);

@@ -1,24 +1,14 @@
-import { BlackoutTimeResolver } from "./blackoutTime.resolver";
-import { BlackoutTimesResolver } from "./blackoutTimes.resolver";
-import { CreateBlackoutTimeResolver } from "./createBlackOut.resolver";
-import { CreateRecurringBlackoutTimeResolver } from "./createRecurringBlackOut.resolver";
-import { DeleteBlackoutTimeResolver } from "./deleteBlackOut.resolver";
-import { DeleteRecurringBlackoutTimeResolver } from "./deleteRecurringBlackOut.resolver";
-import { RecurringBlackoutTimeResolver } from "./recurringBlackoutTime.resolver";
-import { RecurringBlackoutTimesResolver } from "./recurringBlackoutTimes.resolver";
-import { UpdateBlackoutTimeResolver } from "./updateBlackoutTime.resolver";
-import { UpdateRecurringBlackoutTimeResolver } from "./updateRecurringBlackoutTime.resolver";
+/**
+ * BlackoutTime resolver registrations — side-effect imports.
+ */
 
-export default [
-  BlackoutTimeResolver,
-  UpdateBlackoutTimeResolver,
-  BlackoutTimesResolver,
-  CreateBlackoutTimeResolver,
-  DeleteBlackoutTimeResolver,
-
-  RecurringBlackoutTimeResolver,
-  RecurringBlackoutTimesResolver,
-  UpdateRecurringBlackoutTimeResolver,
-  CreateRecurringBlackoutTimeResolver,
-  DeleteRecurringBlackoutTimeResolver,
-];
+import "./blackoutTime.resolver";
+import "./blackoutTimes.resolver";
+import "./createBlackOut.resolver";
+import "./createRecurringBlackOut.resolver";
+import "./deleteBlackOut.resolver";
+import "./deleteRecurringBlackOut.resolver";
+import "./recurringBlackoutTime.resolver";
+import "./recurringBlackoutTimes.resolver";
+import "./updateBlackoutTime.resolver";
+import "./updateRecurringBlackoutTime.resolver";

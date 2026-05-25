@@ -1,30 +1,37 @@
-import { Arg, Resolver, Mutation, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Mutation: deleteScheduleItem — remove a schedule item (admin/owner only).
+ *
+ * Registers: Mutation.deleteScheduleItem(scheduleItemId): Boolean
+ *
+ * Auth: hasRole with ADMIN or OWNER.
+ */
 
-import { ScheduleItem, RoleType } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(ScheduleItem)
-export class DeleteScheduleItemResolver {
-  @Mutation((_returns) => Boolean)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async deleteScheduleItem(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("scheduleItemId", () => Int!) scheduleItemId: number
-  ): Promise<boolean> {
-    const scheduleItem = await ctx.prisma.scheduleItem.findFirstOrThrow({
-      where: {
-        id: scheduleItemId,
-        organizationId: ctx.me.organizationId,
-        roleId: ctx.me.roleId,
-      },
-    });
+builder.mutationField("deleteScheduleItem", (t) =>
+  t.boolean({
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      scheduleItemId: t.arg.int({ required: true }),
+    },
+    resolve: async (_root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    if (scheduleItem) {
-      await ctx.prisma.scheduleItem.delete({ where: { id: scheduleItem.id } });
-      return true;
-    }
+      const scheduleItem = await ctx.prisma.scheduleItem.findFirstOrThrow({
+        where: {
+          id: args.scheduleItemId,
+          organizationId: me.organizationId,
+          roleId: me.roleId,
+        },
+      });
 
-    return false;
-  }
-}
+      if (scheduleItem) {
+        await ctx.prisma.scheduleItem.delete({ where: { id: scheduleItem.id } });
+        return true;
+      }
+
+      return false;
+    },
+  }),
+);

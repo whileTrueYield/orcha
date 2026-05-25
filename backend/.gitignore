@@ -13,3 +13,4 @@ _upload
 
 *.key
 *.key.*
+schema.graphql

@@ -1,16 +1,35 @@
-import { Field, ObjectType, ID } from "type-graphql";
+/**
+ * SearchResult Pothos type — custom (non-Prisma) object returned by
+ * the full-text search queries.
+ *
+ * Exports: SearchResultRef (for use in resolver return types).
+ */
 
-@ObjectType()
-export class SearchResult {
-  @Field(() => ID)
+import builder from "../../schema/builder";
+
+// ---------------------------------------------------------------------------
+// Shape interface — plain TS contract for the SearchResult type
+// ---------------------------------------------------------------------------
+
+interface SearchResultShape {
   id: string;
-
-  @Field()
   name: string;
-
-  @Field(() => String)
   description: string;
-
-  @Field(() => String)
   meta: string;
 }
+
+// ---------------------------------------------------------------------------
+// GraphQL object type
+// ---------------------------------------------------------------------------
+
+export const SearchResultRef =
+  builder.objectRef<SearchResultShape>("SearchResult");
+
+builder.objectType(SearchResultRef, {
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    name: t.exposeString("name"),
+    description: t.exposeString("description"),
+    meta: t.exposeString("meta"),
+  }),
+});

@@ -1,17 +1,11 @@
-import { CreateReportResolver } from "./createReport.resolver";
-import { CreateReportQueryResolver } from "./createReportQuery.resolver";
-import { DeleteReportResolver } from "./deleteReport.resolver";
-import { ReportResolver } from "./report.resolver";
-import { ReportQueryResolver } from "./reportQuery.resolver";
-import { ReportsResolver } from "./reports.resolver";
-import { UpdateReportQueryResolver } from "./updateReportQuery.resolver";
+/**
+ * Report resolver registrations — side-effect imports.
+ */
 
-export default [
-  CreateReportResolver,
-  DeleteReportResolver,
-  ReportResolver,
-  ReportsResolver,
-  CreateReportQueryResolver,
-  UpdateReportQueryResolver,
-  ReportQueryResolver,
-];
+import "./report.resolver";
+import "./reports.resolver";
+import "./createReport.resolver";
+import "./deleteReport.resolver";
+import "./createReportQuery.resolver";
+import "./updateReportQuery.resolver";
+import "./reportQuery.resolver";

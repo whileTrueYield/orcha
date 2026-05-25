@@ -1,30 +1,35 @@
-import { Arg, Query, Resolver, Int, UseMiddleware, Ctx } from "type-graphql";
+/**
+ * Query resolver for listing Teams (paginated).
+ *
+ * Registers: Query.teams(...): PaginatedTeam
+ *
+ * Requires any linked role. Scoped to the caller's organisation.
+ */
 
-import { Team } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
+import builder from "../../../schema/builder";
 import { PaginatedTeams } from "../entity";
 import { getPaginatedTeams } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Team)
-export class TeamsResolver {
-  @Query((_returns) => PaginatedTeams)
-  @UseMiddleware(hasRole())
-  async teams(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("first", () => Int, { nullable: true }) first: number,
-    @Arg("last", () => Int, { nullable: true }) last: number,
-    @Arg("offset", () => Int, { nullable: true }) offset: number,
-    @Arg("sort", () => String, { nullable: true }) sort: keyof Team,
-    @Arg("search", () => String, { nullable: true }) search: string
-  ): Promise<PaginatedTeams> {
-    return getPaginatedTeams({
-      organizationId: ctx.me.organizationId,
-      first,
-      last,
-      offset,
-      sort,
-      search,
-    });
-  }
-}
+builder.queryField("teams", (t) =>
+  t.field({
+    type: PaginatedTeams,
+    authScopes: { hasRole: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+    },
+    resolve: (_root, args, ctx) =>
+      getPaginatedTeams({
+        organizationId: (ctx.me as AuthRoleContext).organizationId,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: args.sort as any,
+        search: args.search ?? undefined,
+      }),
+  }),
+);

@@ -1,37 +1,43 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-} from "type-graphql";
+/**
+ * CreateDrawing mutation — creates a new drawing in the caller's org.
+ *
+ * Exports: none (side-effect: registers `createDrawing` mutation on the builder).
+ */
 
-import { Drawing } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class CreateDrawingInput {
-  @Field({ nullable: true })
-  data: string;
-}
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-@Resolver(Drawing)
-export class CreateDrawingResolver {
-  @Mutation(() => Drawing)
-  @UseMiddleware(hasRole())
-  async createDrawing(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input")
-    input: CreateDrawingInput
-  ): Promise<Drawing> {
-    return ctx.prisma.drawing.create({
-      data: {
-        ...input,
-        organizationId: ctx.me.organizationId,
-      },
-    });
-  }
-}
+const CreateDrawingInput = builder.inputType("CreateDrawingInput", {
+  fields: (t) => ({
+    data: t.string({ required: false }),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Mutation
+// ---------------------------------------------------------------------------
+
+builder.mutationField("createDrawing", (t) =>
+  t.prismaField({
+    type: "Drawing",
+    authScopes: { hasRole: true },
+    args: {
+      input: t.arg({ type: CreateDrawingInput, required: true }),
+    },
+    resolve: (query, _root, args, ctx) => {
+      // hasRole scope guarantees AuthRoleContext at runtime.
+      const me = ctx.me as AuthRoleContext;
+      return ctx.prisma.drawing.create({
+        ...query,
+        data: {
+          data: args.input.data ?? "",
+          organizationId: me.organizationId,
+        },
+      });
+    },
+  }),
+);

@@ -1,3 +1,11 @@
+/**
+ * Barrel re-export of all model entity types.
+ *
+ * This file consolidates entity exports so consuming code (mocker, cron,
+ * helpers) can import types from a single path. Prisma model types are
+ * now sourced from @prisma/client instead of the removed @generated/type-graphql.
+ */
+
 export * from "./auth/entity";
 export * from "./comment/entity";
 export * from "./documentation/entity";
@@ -19,4 +27,44 @@ export * from "./ticket/entity";
 export * from "./todo/entity";
 export * from "./user/entity";
 export * from "./workflow/entity";
-export * from "@generated/type-graphql/models";
+
+// Re-export Prisma model types so consumers that previously imported from
+// @generated/type-graphql/models via this barrel continue to work.
+export {
+  BlackoutTime,
+  Comment,
+  CommentReply,
+  DemoRequest,
+  Documentation,
+  DocumentationPage,
+  Estimate,
+  Feature,
+  FeatureFlag,
+  FeatureGroup,
+  Issue,
+  IssueAction,
+  Note,
+  Notification,
+  Organization,
+  OrganizationAddress,
+  Page,
+  Product,
+  Project,
+  RecurringBlackoutTime,
+  Report,
+  ReportQuery,
+  Role,
+  ScheduleConfig,
+  ScheduleItem,
+  Skill,
+  Tag,
+  Team,
+  Ticket,
+  TicketText,
+  TicketWorkflowState,
+  TimeOff,
+  Todo,
+  User,
+  Workflow,
+  WorkflowState,
+} from "@prisma/client";

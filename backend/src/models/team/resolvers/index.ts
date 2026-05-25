@@ -1,15 +1,11 @@
-import { CreateTeamResolver } from "./createTeam.resolver";
-import { UpdateTeamResolver } from "./updateTeam.resolver";
-import { TeamResolver } from "./team.resolver";
-import { TeamsResolver } from "./teams.resolver";
-import { TeamByCodeResolver } from "./teamByCode.resolver";
-import { DeleteTeamResolver } from "./deleteTeam.resolver";
+/**
+ * Side-effect barrel — importing this module registers all Team
+ * queries and mutations on the Pothos builder.
+ */
 
-export default [
-  CreateTeamResolver,
-  UpdateTeamResolver,
-  TeamResolver,
-  TeamByCodeResolver,
-  TeamsResolver,
-  DeleteTeamResolver,
-];
+import "./team.resolver";
+import "./teamByCode.resolver";
+import "./teams.resolver";
+import "./createTeam.resolver";
+import "./updateTeam.resolver";
+import "./deleteTeam.resolver";

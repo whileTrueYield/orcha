@@ -1,49 +1,41 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  Int,
-  UseMiddleware,
-  Ctx,
-} from "type-graphql";
+/**
+ * Mutation: updateFeatureGroup — update name/description of a feature group.
+ */
 
-import { Length, MaxLength } from "class-validator";
-import { FeatureGroup, RoleType } from "@generated/type-graphql";
-import { AuthRoleContext, AppContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
+import builder from "../../../schema/builder";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class UpdateFeatureGroupInput {
-  @Field({ nullable: true })
-  @Length(1, 128)
-  name: string;
+const UpdateFeatureGroupInput = builder.inputType("UpdateFeatureGroupInput", {
+  fields: (t) => ({
+    name: t.string({ required: false }),
+    description: t.string({ required: false }),
+  }),
+});
 
-  @Field({ nullable: true })
-  @MaxLength(10 * 1024)
-  description: string;
-}
+builder.mutationField("updateFeatureGroup", (t) =>
+  t.prismaField({
+    type: "FeatureGroup",
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      featureGroupId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdateFeatureGroupInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const featureGroup = await ctx.prisma.featureGroup.findFirstOrThrow({
+        where: {
+          id: args.featureGroupId,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+        },
+      });
 
-@Resolver(FeatureGroup)
-export class UpdateFeatureResolver {
-  @Mutation(() => FeatureGroup)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async updateFeatureGroup(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("featureGroupId", () => Int) featureGroupId: number,
-    @Arg("input", () => UpdateFeatureGroupInput) input: UpdateFeatureGroupInput
-  ): Promise<FeatureGroup> {
-    const featureGroup = await ctx.prisma.featureGroup.findFirstOrThrow({
-      where: {
-        id: featureGroupId,
-        organizationId: ctx.me.organizationId,
-      },
-    });
-
-    return ctx.prisma.featureGroup.update({
-      where: { id: featureGroup.id },
-      data: input,
-    });
-  }
-}
+      return ctx.prisma.featureGroup.update({
+        ...query,
+        where: { id: featureGroup.id },
+        data: {
+          name: args.input.name ?? undefined,
+          description: args.input.description ?? undefined,
+        },
+      });
+    },
+  }),
+);

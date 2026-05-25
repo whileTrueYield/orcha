@@ -1,271 +1,289 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-} from "type-graphql";
+/**
+ * Role preference mutations: updateRolePreferences, updateRoleNoteColorPreferences,
+ * addToRecentSearchHit, updateRoleEmail, updateRoleStartReminder, updateRoleAutoResume.
+ */
 
-import {
-  Role,
-  RoleEmail,
-  RoleStartReminder,
-  RoleAutoResume,
-  NoteColor,
-} from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
+import builder from "../../../schema/builder";
+import { NoteColorEnum } from "../../../schema/enums";
 import { getRolePreferences, updateRolePreferences } from "../entity";
 import { getNextWorkDayStartDate } from "../jobs/workDayEmail";
-import { without } from "lodash";
 import { getNextReminderStartDate } from "../jobs/startReminder";
 import { config } from "../../../config";
+import { without } from "lodash";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class UpdateRolePreferencesInput {
-  @Field((_type) => Boolean)
-  showOnboarding: boolean;
-}
+// ---------------------------------------------------------------------------
+// Input types
+// ---------------------------------------------------------------------------
 
-@InputType()
-class UpdateRoleEmailInput {
-  @Field((_type) => Boolean)
-  nextWorkDayNotificationOptOut: boolean;
-}
+const UpdateRolePreferencesInput = builder.inputType("UpdateRolePreferencesInput", {
+  fields: (t) => ({
+    showOnboarding: t.boolean({ required: true }),
+  }),
+});
 
-@InputType()
-class UpdateRoleNotColorsInput {
-  @Field((_type) => NoteColor)
-  color: NoteColor;
+const UpdateRoleEmailInput = builder.inputType("UpdateRoleEmailInput", {
+  fields: (t) => ({
+    nextWorkDayNotificationOptOut: t.boolean({ required: true }),
+  }),
+});
 
-  @Field((_type) => String)
-  value: string;
-}
+const UpdateRoleNoteColorsInput = builder.inputType("UpdateRoleNoteColorsInput", {
+  fields: (t) => ({
+    color: t.field({ type: NoteColorEnum, required: true }),
+    value: t.string({ required: true }),
+  }),
+});
 
-@InputType()
-class UpdateRoleStartReminderInput {
-  @Field((_type) => Boolean)
-  nextStartNotificationOptOut: boolean;
-}
+const UpdateRoleStartReminderInput = builder.inputType("UpdateRoleStartReminderInput", {
+  fields: (t) => ({
+    nextStartNotificationOptOut: t.boolean({ required: true }),
+  }),
+});
 
-@InputType()
-class UpdateRoleAutoResumeInput {
-  @Field((_type) => Boolean)
-  nextStartNotificationOptOut: boolean;
-}
+const UpdateRoleAutoResumeInput = builder.inputType("UpdateRoleAutoResumeInput", {
+  fields: (t) => ({
+    nextStartNotificationOptOut: t.boolean({ required: true }),
+  }),
+});
 
-@Resolver(Role)
-export class UpdateRolePreferencesResolver {
-  // TODO: This method should be renamed UpdateOnboardingPreference
-  // but I'm not even sure we should keep that feature yet since
-  // it is not fully built
-  @Mutation(() => Role)
-  @UseMiddleware(hasRole())
-  async updateRolePreferences(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input", () => UpdateRolePreferencesInput)
-    input: UpdateRolePreferencesInput
-  ): Promise<Role> {
-    const role = await ctx.me.getRole();
+// ---------------------------------------------------------------------------
+// Mutation: updateRolePreferences (onboarding)
+// ---------------------------------------------------------------------------
 
-    const preferences = updateRolePreferences(role, {
-      showOnboarding: input.showOnboarding,
-    });
+builder.mutationField("updateRolePreferences", (t) =>
+  t.prismaField({
+    type: "Role",
+    authScopes: { hasRole: true },
+    args: {
+      input: t.arg({ type: UpdateRolePreferencesInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const role = await (ctx.me as AuthRoleContext).getRole();
 
-    return ctx.prisma.role.update({
-      where: { id: ctx.me.roleId },
-      data: { preferences: JSON.stringify(preferences) },
-    });
-  }
+      const preferences = updateRolePreferences(role, {
+        showOnboarding: args.input.showOnboarding,
+      });
 
-  @Mutation(() => Role)
-  @UseMiddleware(hasRole())
-  async updateRoleNoteColorPreferences(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input", () => UpdateRoleNotColorsInput)
-    input: UpdateRoleNotColorsInput
-  ): Promise<Role> {
-    const role = await ctx.me.getRole();
+      return ctx.prisma.role.update({
+        ...query,
+        where: { id: (ctx.me as AuthRoleContext).roleId },
+        data: { preferences: JSON.stringify(preferences) },
+      });
+    },
+  }),
+);
 
-    const preferences = updateRolePreferences(role, {
-      noteColors: {
-        ...getRolePreferences(role).noteColors,
-        [input.color]: input.value,
-      },
-    });
+// ---------------------------------------------------------------------------
+// Mutation: updateRoleNoteColorPreferences
+// ---------------------------------------------------------------------------
 
-    return ctx.prisma.role.update({
-      where: { id: ctx.me.roleId },
-      data: { preferences: JSON.stringify(preferences) },
-    });
-  }
+builder.mutationField("updateRoleNoteColorPreferences", (t) =>
+  t.prismaField({
+    type: "Role",
+    authScopes: { hasRole: true },
+    args: {
+      input: t.arg({ type: UpdateRoleNoteColorsInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const role = await (ctx.me as AuthRoleContext).getRole();
 
-  // FIXME: To be remove after november 1st, 2023
-  @Mutation(() => Role, {
-    deprecationReason:
-      "We store and display recently visited project and ticket instead",
-  })
-  @UseMiddleware(hasRole())
-  async addToRecentSearchHit(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("searchResult", () => String)
-    searchResult: string
-  ): Promise<Role> {
-    const role = await ctx.me.getRole();
-    const preferences = getRolePreferences(role);
-
-    // if the search result is already in the list, remove it so it
-    // will get push to the top of the list after
-    if (preferences.recentSearchHits.indexOf(searchResult) > -1) {
-      preferences.recentSearchHits = without(
-        preferences.recentSearchHits,
-        searchResult
-      );
-    }
-
-    // remove last search hit if we reach 10 stored results
-    if (preferences.recentSearchHits.length > 9) {
-      preferences.recentSearchHits.pop();
-    }
-
-    preferences.recentSearchHits.unshift(searchResult);
-
-    return ctx.prisma.role.update({
-      where: { id: ctx.me.roleId },
-      data: { preferences: JSON.stringify(preferences) },
-    });
-  }
-
-  @Mutation(() => RoleEmail)
-  @UseMiddleware(hasRole())
-  async updateRoleEmail(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input", () => UpdateRoleEmailInput)
-    input: UpdateRoleEmailInput
-  ): Promise<RoleEmail> {
-    let roleEmail = await ctx.prisma.roleEmail.findFirst({
-      where: {
-        roleId: ctx.me.roleId,
-      },
-    });
-
-    const role = await ctx.prisma.role.findUniqueOrThrow({
-      where: { id: ctx.me.roleId },
-    });
-
-    if (!roleEmail) {
-      return ctx.prisma.roleEmail.create({
-        data: {
-          roleId: ctx.me.roleId,
-          nextWorkDayNotificationOptOut: input.nextWorkDayNotificationOptOut,
-          nextWorkDayNotificationDate: await getNextWorkDayStartDate(
-            role,
-            new Date()
-          ),
+      const preferences = updateRolePreferences(role, {
+        noteColors: {
+          ...getRolePreferences(role).noteColors,
+          [args.input.color]: args.input.value,
         },
       });
-    } else {
-      return ctx.prisma.roleEmail.update({
-        where: { roleId: ctx.me.roleId },
-        data: {
-          nextWorkDayNotificationOptOut: input.nextWorkDayNotificationOptOut,
-          nextWorkDayNotificationDate: await getNextWorkDayStartDate(
-            role,
-            new Date()
-          ),
-        },
+
+      return ctx.prisma.role.update({
+        ...query,
+        where: { id: (ctx.me as AuthRoleContext).roleId },
+        data: { preferences: JSON.stringify(preferences) },
       });
-    }
-  }
+    },
+  }),
+);
 
-  @Mutation(() => RoleStartReminder)
-  @UseMiddleware(hasRole())
-  async updateRoleStartReminder(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input", () => UpdateRoleStartReminderInput)
-    input: UpdateRoleStartReminderInput
-  ): Promise<RoleStartReminder> {
-    let roleStartReminder = await ctx.prisma.roleStartReminder.findFirst({
-      where: {
-        roleId: ctx.me.roleId,
-      },
-    });
+// ---------------------------------------------------------------------------
+// Mutation: addToRecentSearchHit (deprecated)
+// ---------------------------------------------------------------------------
 
-    const role = await ctx.prisma.role.findUniqueOrThrow({
-      where: { id: ctx.me.roleId },
-    });
+builder.mutationField("addToRecentSearchHit", (t) =>
+  t.prismaField({
+    type: "Role",
+    authScopes: { hasRole: true },
+    deprecationReason: "We store and display recently visited project and ticket instead",
+    args: {
+      searchResult: t.arg.string({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const role = await (ctx.me as AuthRoleContext).getRole();
+      const preferences = getRolePreferences(role);
 
-    if (!roleStartReminder) {
-      return ctx.prisma.roleStartReminder.create({
-        data: {
-          roleId: ctx.me.roleId,
-          nextStartNotificationOptOut: input.nextStartNotificationOptOut,
-          nextStartNotificationDate: await getNextReminderStartDate(
-            role,
-            new Date(),
-            config.workReminderOffset
-          ),
-        },
+      if (preferences.recentSearchHits.indexOf(args.searchResult) > -1) {
+        preferences.recentSearchHits = without(
+          preferences.recentSearchHits,
+          args.searchResult,
+        );
+      }
+
+      if (preferences.recentSearchHits.length > 9) {
+        preferences.recentSearchHits.pop();
+      }
+
+      preferences.recentSearchHits.unshift(args.searchResult);
+
+      return ctx.prisma.role.update({
+        ...query,
+        where: { id: (ctx.me as AuthRoleContext).roleId },
+        data: { preferences: JSON.stringify(preferences) },
       });
-    } else {
-      return ctx.prisma.roleStartReminder.update({
-        where: { roleId: ctx.me.roleId },
-        data: {
-          nextStartNotificationOptOut: input.nextStartNotificationOptOut,
-          nextStartNotificationDate: await getNextReminderStartDate(
-            role,
-            new Date(),
-            config.workReminderOffset
-          ),
-        },
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Mutation: updateRoleEmail
+// ---------------------------------------------------------------------------
+
+builder.mutationField("updateRoleEmail", (t) =>
+  t.prismaField({
+    type: "RoleEmail",
+    authScopes: { hasRole: true },
+    args: {
+      input: t.arg({ type: UpdateRoleEmailInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const roleEmail = await ctx.prisma.roleEmail.findFirst({
+        where: { roleId: (ctx.me as AuthRoleContext).roleId },
       });
-    }
-  }
 
-  @Mutation(() => RoleAutoResume)
-  @UseMiddleware(hasRole())
-  async updateRoleAutoResume(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input", () => UpdateRoleAutoResumeInput)
-    input: UpdateRoleAutoResumeInput
-  ): Promise<RoleAutoResume> {
-    let roleAutoResume = await ctx.prisma.roleAutoResume.findFirst({
-      where: {
-        roleId: ctx.me.roleId,
-      },
-      include: { role: true },
-    });
-
-    if (!roleAutoResume) {
       const role = await ctx.prisma.role.findUniqueOrThrow({
-        where: { id: ctx.me.roleId },
+        where: { id: (ctx.me as AuthRoleContext).roleId },
       });
 
-      return ctx.prisma.roleAutoResume.create({
-        data: {
-          roleId: ctx.me.roleId,
-          nextStartNotificationOptOut: input.nextStartNotificationOptOut,
-          nextStartNotificationDate: await getNextReminderStartDate(
-            role,
-            new Date(),
-            0
-          ),
-        },
+      if (!roleEmail) {
+        return ctx.prisma.roleEmail.create({
+          ...query,
+          data: {
+            roleId: (ctx.me as AuthRoleContext).roleId,
+            nextWorkDayNotificationOptOut: args.input.nextWorkDayNotificationOptOut,
+            nextWorkDayNotificationDate: await getNextWorkDayStartDate(role, new Date()),
+          },
+        });
+      } else {
+        return ctx.prisma.roleEmail.update({
+          ...query,
+          where: { roleId: (ctx.me as AuthRoleContext).roleId },
+          data: {
+            nextWorkDayNotificationOptOut: args.input.nextWorkDayNotificationOptOut,
+            nextWorkDayNotificationDate: await getNextWorkDayStartDate(role, new Date()),
+          },
+        });
+      }
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Mutation: updateRoleStartReminder
+// ---------------------------------------------------------------------------
+
+builder.mutationField("updateRoleStartReminder", (t) =>
+  t.prismaField({
+    type: "RoleStartReminder",
+    authScopes: { hasRole: true },
+    args: {
+      input: t.arg({ type: UpdateRoleStartReminderInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const roleStartReminder = await ctx.prisma.roleStartReminder.findFirst({
+        where: { roleId: (ctx.me as AuthRoleContext).roleId },
       });
-    } else {
-      return ctx.prisma.roleAutoResume.update({
-        where: { roleId: ctx.me.roleId },
-        data: {
-          nextStartNotificationOptOut: input.nextStartNotificationOptOut,
-          nextStartNotificationDate: await getNextReminderStartDate(
-            roleAutoResume.role,
-            new Date(),
-            0
-          ),
-        },
+
+      const role = await ctx.prisma.role.findUniqueOrThrow({
+        where: { id: (ctx.me as AuthRoleContext).roleId },
       });
-    }
-  }
-}
+
+      if (!roleStartReminder) {
+        return ctx.prisma.roleStartReminder.create({
+          ...query,
+          data: {
+            roleId: (ctx.me as AuthRoleContext).roleId,
+            nextStartNotificationOptOut: args.input.nextStartNotificationOptOut,
+            nextStartNotificationDate: await getNextReminderStartDate(
+              role,
+              new Date(),
+              config.workReminderOffset,
+            ),
+          },
+        });
+      } else {
+        return ctx.prisma.roleStartReminder.update({
+          ...query,
+          where: { roleId: (ctx.me as AuthRoleContext).roleId },
+          data: {
+            nextStartNotificationOptOut: args.input.nextStartNotificationOptOut,
+            nextStartNotificationDate: await getNextReminderStartDate(
+              role,
+              new Date(),
+              config.workReminderOffset,
+            ),
+          },
+        });
+      }
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Mutation: updateRoleAutoResume
+// ---------------------------------------------------------------------------
+
+builder.mutationField("updateRoleAutoResume", (t) =>
+  t.prismaField({
+    type: "RoleAutoResume",
+    authScopes: { hasRole: true },
+    args: {
+      input: t.arg({ type: UpdateRoleAutoResumeInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const roleAutoResume = await ctx.prisma.roleAutoResume.findFirst({
+        where: { roleId: (ctx.me as AuthRoleContext).roleId },
+        include: { role: true },
+      });
+
+      if (!roleAutoResume) {
+        const role = await ctx.prisma.role.findUniqueOrThrow({
+          where: { id: (ctx.me as AuthRoleContext).roleId },
+        });
+
+        return ctx.prisma.roleAutoResume.create({
+          ...query,
+          data: {
+            roleId: (ctx.me as AuthRoleContext).roleId,
+            nextStartNotificationOptOut: args.input.nextStartNotificationOptOut,
+            nextStartNotificationDate: await getNextReminderStartDate(
+              role,
+              new Date(),
+              0,
+            ),
+          },
+        });
+      } else {
+        return ctx.prisma.roleAutoResume.update({
+          ...query,
+          where: { roleId: (ctx.me as AuthRoleContext).roleId },
+          data: {
+            nextStartNotificationOptOut: args.input.nextStartNotificationOptOut,
+            nextStartNotificationDate: await getNextReminderStartDate(
+              roleAutoResume.role,
+              new Date(),
+              0,
+            ),
+          },
+        });
+      }
+    },
+  }),
+);

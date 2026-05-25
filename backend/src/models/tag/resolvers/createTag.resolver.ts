@@ -1,55 +1,59 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  UseMiddleware,
-  Ctx,
-} from "type-graphql";
+/**
+ * Mutation resolver for creating a new organisation-level Tag.
+ *
+ * Registers: Mutation.createTag(input: CreateTagInput!): Tag!
+ *
+ * Requires ADMIN or OWNER role. Validates that no tag with the
+ * same name (case-insensitive) already exists in the organisation.
+ */
 
-import { Length } from "class-validator";
-import { Tag, RoleType } from "@generated/type-graphql";
-import { hasRole } from "../../../middlewares/isAuthenticated";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { UserInputError } from "apollo-server-express";
+import { GraphQLError } from "graphql";
+import builder from "../../../schema/builder";
+import { TagRef } from "../entity";
 import { findTagByName } from "../helper";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-export class CreateTagInput {
-  @Field()
-  @Length(1, 128)
-  name: string;
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-  @Field()
-  @Length(1, 128)
-  color: string;
-}
+const CreateTagInput = builder.inputType("CreateTagInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+    color: t.string({ required: true }),
+  }),
+});
 
-@Resolver(Tag)
-export class CreateTagResolver {
-  @Mutation(() => Tag)
-  @UseMiddleware(hasRole([RoleType.ADMIN, RoleType.OWNER]))
-  async createTag(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("input")
-    input: CreateTagInput
-  ): Promise<Tag> {
-    const tagUsingSameName = await findTagByName(
-      input.name,
-      ctx.me.organizationId
-    );
+// ---------------------------------------------------------------------------
+// Mutation
+// ---------------------------------------------------------------------------
 
-    if (tagUsingSameName) {
-      throw new UserInputError("A tag with the same name already exists");
-    }
+builder.mutationField("createTag", (t) =>
+  t.prismaField({
+    type: TagRef,
+    authScopes: { hasRole: ["ADMIN", "OWNER"] },
+    args: {
+      input: t.arg({ type: CreateTagInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const existing = await findTagByName(
+        args.input.name,
+        (ctx.me as AuthRoleContext).organizationId,
+      );
 
-    return ctx.prisma.tag.create({
-      data: {
-        ...input,
-        organizationId: ctx.me.organizationId,
-        authorId: ctx.me.roleId,
-      },
-    });
-  }
-}
+      if (existing) {
+        throw new GraphQLError("A tag with the same name already exists");
+      }
+
+      return ctx.prisma.tag.create({
+        ...query,
+        data: {
+          name: args.input.name,
+          color: args.input.color,
+          organizationId: (ctx.me as AuthRoleContext).organizationId,
+          authorId: (ctx.me as AuthRoleContext).roleId,
+        },
+      });
+    },
+  }),
+);

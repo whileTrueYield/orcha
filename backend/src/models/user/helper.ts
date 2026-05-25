@@ -1,13 +1,14 @@
+/**
+ * User helper functions for lookup, preferences, and pagination.
+ *
+ * Exports: findByEmail, getUserPreferences, updatePreferences, getPaginatedUsers.
+ */
+
 import prisma from "../../prisma";
 import { clamp, trim } from "lodash";
-import { User } from "@generated/type-graphql";
+import { User, Prisma } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import {
-  DEFAULT_USER_PREFERENCES,
-  PaginatedUsers,
-  UserPreferences,
-} from "./entity";
-import { Prisma } from ".prisma/client";
+import { DEFAULT_USER_PREFERENCES, UserPreferences } from "./entity";
 
 interface GetPageArgs extends GetPageArgsFor<User> {
   organizationId?: number;
@@ -23,7 +24,9 @@ export const getUserPreferences = (user: User): UserPreferences => {
   if (user.preferences) {
     try {
       return JSON.parse(user.preferences);
-    } catch (error) {}
+    } catch {
+      // fall through to default
+    }
   }
 
   return DEFAULT_USER_PREFERENCES;
@@ -31,7 +34,7 @@ export const getUserPreferences = (user: User): UserPreferences => {
 
 export async function updatePreferences(
   user: User,
-  preferences: Partial<UserPreferences>
+  preferences: Partial<UserPreferences>,
 ): Promise<User> {
   const userPreferences = getUserPreferences(user);
 
@@ -43,13 +46,10 @@ export async function updatePreferences(
   });
 }
 
-export async function getPaginatedUsers(
-  args: GetPageArgs
-): Promise<PaginatedUsers> {
+export async function getPaginatedUsers(args: GetPageArgs) {
   const { first, last, organizationId, search } = args;
 
-  // default offset to be at the start (or the end
-  // depending on direction)
+  // default offset to be at the start (or the end depending on direction)
   const offset = args.offset ? args.offset : 0;
 
   // by default sort on createdAt
@@ -67,14 +67,13 @@ export async function getPaginatedUsers(
 
   const userQuery: Prisma.UserWhereInput = {};
 
-  // We allow search on users by body
+  // We allow search on users by email
   const query = trim(search);
   if (query) {
     userQuery.OR = [{ email: { contains: query, mode: "insensitive" } }];
   }
 
-  // filtering by ticket ID is optional since we might also want
-  // to filter by author
+  // optionally filter by organization membership
   if (organizationId) {
     userQuery.roles = { some: { organizationId } };
   }

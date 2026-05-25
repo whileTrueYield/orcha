@@ -1,14 +1,17 @@
-import { Field, Int, ObjectType } from "type-graphql";
+/**
+ * Prisma query helpers for relation field operations.
+ *
+ * Exports: setToRecords, connectToRecords, BatchPayload.
+ */
 
 /**
- *
  * Helper function to be used in a prisma query to associate
  * a relation field with a set of objects using their primary key
  *
  * ```
  * prisma.reportingQuery.create({
  *   data: {
- *     byProducts: connectToRecords(products)
+ *     byProducts: setToRecords(products)
  *   }
  * });
  * ```
@@ -18,7 +21,6 @@ export function setToRecords<A extends { id: number }>(objects: Array<A>) {
 }
 
 /**
- *
  * Helper function to be used in a prisma query to associate
  * a relation field with a set of objects using their primary key
  *
@@ -36,8 +38,9 @@ export function connectToRecords<A extends { id: number }>(objects: Array<A>) {
   } else return {};
 }
 
-@ObjectType()
-export class BatchPayload {
-  @Field((_type) => Int)
+// TODO: BatchPayload was a TypeGraphQL @ObjectType. If needed as a Pothos
+// output type, define it on the builder in schema/. For now it's a plain
+// interface used by resolver return types.
+export interface BatchPayload {
   count: number;
 }

@@ -1,67 +1,87 @@
-import {
-  Arg,
-  Resolver,
-  Mutation,
-  InputType,
-  Field,
-  Int,
-  Ctx,
-  UseMiddleware,
-} from "type-graphql";
+/**
+ * Mutation resolvers for updating a Note.
+ *
+ * Provides:
+ *  - updateNote(noteId, input):  update a note's body
+ *  - updateNoteColor(noteId, color): change a note's color
+ *
+ * Both require hasRole auth scope and verify org/owner ownership.
+ */
 
-import { Length } from "class-validator";
-import { Note, NoteColor } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
+import builder from "../../../schema/builder";
+import { NoteColorEnum } from "../../../schema/enums";
+import { AuthRoleContext } from "../../../types";
 
-@InputType()
-class UpdateNoteInput {
-  @Field({ nullable: true })
-  @Length(1, 2048)
-  body: string;
-}
+// ---------------------------------------------------------------------------
+// Input type
+// ---------------------------------------------------------------------------
 
-@Resolver(Note)
-export class UpdateNoteResolver {
-  @Mutation(() => Note)
-  @UseMiddleware(hasRole())
-  async updateNote(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("noteId", () => Int) noteId: number,
-    @Arg("input", () => UpdateNoteInput) input: UpdateNoteInput
-  ): Promise<Note> {
-    const note = await ctx.prisma.note.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: noteId,
-        ownerId: ctx.me.roleId,
-      },
-    });
+const UpdateNoteInput = builder.inputType("UpdateNoteInput", {
+  fields: (t) => ({
+    body: t.string({ required: false }),
+  }),
+});
 
-    return ctx.prisma.note.update({
-      where: { id: note.id },
-      data: input,
-    });
-  }
+// ---------------------------------------------------------------------------
+// updateNote mutation
+// ---------------------------------------------------------------------------
 
-  @Mutation(() => Note)
-  @UseMiddleware(hasRole())
-  async updateNoteColor(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("noteId", () => Int) noteId: number,
-    @Arg("color", () => NoteColor) color: NoteColor
-  ): Promise<Note> {
-    const note = await ctx.prisma.note.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: noteId,
-        ownerId: ctx.me.roleId,
-      },
-    });
+builder.mutationField("updateNote", (t) =>
+  t.prismaField({
+    type: "Note",
+    authScopes: { hasRole: true },
+    args: {
+      noteId: t.arg.int({ required: true }),
+      input: t.arg({ type: UpdateNoteInput, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
 
-    return ctx.prisma.note.update({
-      where: { id: note.id },
-      data: { color },
-    });
-  }
-}
+      const note = await ctx.prisma.note.findFirstOrThrow({
+        where: {
+          organizationId: me.organizationId,
+          id: args.noteId,
+          ownerId: me.roleId,
+        },
+      });
+
+      return ctx.prisma.note.update({
+        ...query,
+        where: { id: note.id },
+        data: { body: args.input.body ?? undefined },
+      });
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// updateNoteColor mutation
+// ---------------------------------------------------------------------------
+
+builder.mutationField("updateNoteColor", (t) =>
+  t.prismaField({
+    type: "Note",
+    authScopes: { hasRole: true },
+    args: {
+      noteId: t.arg.int({ required: true }),
+      color: t.arg({ type: NoteColorEnum, required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      const note = await ctx.prisma.note.findFirstOrThrow({
+        where: {
+          organizationId: me.organizationId,
+          id: args.noteId,
+          ownerId: me.roleId,
+        },
+      });
+
+      return ctx.prisma.note.update({
+        ...query,
+        where: { id: note.id },
+        data: { color: args.color },
+      });
+    },
+  }),
+);

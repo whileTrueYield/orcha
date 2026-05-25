@@ -1,65 +1,272 @@
-import { Field, Int, ObjectType } from "type-graphql";
-import {
-  RoleType,
-  RoleStatus,
-  Role,
-  Product,
-  Workflow,
-  Project,
-} from "@generated/type-graphql";
-import { PaginatedNodes } from "../../utils/pagination";
+/**
+ * Role Pothos type definitions and preference utilities.
+ *
+ * Exports:
+ *  - RoleRef: prismaObject for Role (omits preferences, workWeek)
+ *  - MiniRoleRef: lightweight Role for fuzzy search
+ *  - RoleWorkDayRef / WorkWeekTimeRef: work schedule shapes
+ *  - HabitProductWorkflowRef / RoleHabitRef: habit tracking types
+ *  - RoleNoteColorPreferencesRef / RolePreferencesRef: preference types
+ *  - PaginatedRoles: paginated wrapper
+ *  - DEFAULT_WORK_WEEK / EMPTY_WORK_WEEK / DEFAULT_ROLE_PREFERENCES: constants
+ *  - getRolePreferences / updateRolePreferences: preference helpers
+ *  - roleStatuses / roleTypes: enum value lists
+ */
+
+import { RoleStatus, RoleType } from "@prisma/client";
+import builder from "../../schema/builder";
+import { RoleStatusEnum, RoleTypeEnum } from "../../schema/enums";
+import { createPaginatedType } from "../../schema/pagination";
 import { logger } from "../../logger";
 
-@ObjectType()
-export class RoleWorkDay {
-  @Field((_type) => String)
-  startTime: string;
+export const roleStatuses = Object.values(RoleStatus);
+export const roleTypes = Object.values(RoleType);
 
-  @Field((_type) => String)
+// ---------------------------------------------------------------------------
+// Role prismaObject — omits preferences, workWeek
+// ---------------------------------------------------------------------------
+
+export const RoleRef = builder.prismaObject("Role", {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    timeZone: t.exposeString("timeZone"),
+    name: t.exposeString("name"),
+    title: t.exposeString("title", { nullable: true }),
+    description: t.exposeString("description", { nullable: true }),
+    avatarUrl: t.exposeString("avatarUrl", { nullable: true }),
+    coverUrl: t.exposeString("coverUrl", { nullable: true }),
+    status: t.expose("status", { type: RoleStatusEnum }),
+    type: t.expose("type", { type: RoleTypeEnum }),
+    createdAt: t.expose("createdAt", { type: "DateTime" }),
+    updatedAt: t.expose("updatedAt", { type: "DateTime" }),
+    userId: t.exposeInt("userId"),
+    organizationId: t.exposeInt("organizationId"),
+    user: t.relation("user"),
+    organization: t.relation("organization"),
+    skills: t.relation("skills"),
+    teams: t.relation("teams"),
+    ticketsAuthored: t.relation("ticketsAuthored"),
+    ticketsOwned: t.relation("ticketsOwned"),
+    ticketsWatched: t.relation("ticketsWatched"),
+    assignments: t.relation("assignments"),
+    notes: t.relation("notes"),
+    checklists: t.relation("checklists"),
+    notifications: t.relation("notifications"),
+    pinnedProjects: t.relation("pinnedProjects"),
+    roleEmail: t.relation("roleEmail", { nullable: true }),
+    roleStartReminder: t.relation("roleStartReminder", { nullable: true }),
+    roleAutoResume: t.relation("roleAutoResume", { nullable: true }),
+    preferences: t.field({
+      type: RolePreferencesRef,
+      resolve: (role) => getRolePreferences(role),
+    }),
+    workWeek: t.field({
+      type: WorkWeekTimeRef,
+      resolve: (role) =>
+        role.workWeek
+          ? { ...EMPTY_WORK_WEEK, ...JSON.parse(role.workWeek) }
+          : EMPTY_WORK_WEEK,
+    }),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// RoleEmail — email notification settings for a role
+// ---------------------------------------------------------------------------
+
+export const RoleEmailRef = builder.prismaObject("RoleEmail", {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    roleId: t.exposeInt("roleId"),
+    nextWorkDayNotificationDate: t.expose("nextWorkDayNotificationDate", { type: "DateTime" }),
+    nextWorkDayNotificationOffset: t.exposeInt("nextWorkDayNotificationOffset"),
+    nextWorkDayNotificationOptOut: t.exposeBoolean("nextWorkDayNotificationOptOut"),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// RoleStartReminder — start-of-day reminder settings for a role
+// ---------------------------------------------------------------------------
+
+export const RoleStartReminderRef = builder.prismaObject("RoleStartReminder", {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    roleId: t.exposeInt("roleId"),
+    nextStartNotificationDate: t.expose("nextStartNotificationDate", { type: "DateTime" }),
+    nextStartNotificationOffset: t.exposeInt("nextStartNotificationOffset"),
+    nextStartNotificationOptOut: t.exposeBoolean("nextStartNotificationOptOut"),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// RoleAutoResume — auto-resume settings for a role
+// ---------------------------------------------------------------------------
+
+export const RoleAutoResumeRef = builder.prismaObject("RoleAutoResume", {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    roleId: t.exposeInt("roleId"),
+    nextStartNotificationDate: t.expose("nextStartNotificationDate", { type: "DateTime" }),
+    nextStartNotificationOptOut: t.exposeBoolean("nextStartNotificationOptOut"),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// MiniRole — lightweight shape for fuzzy search
+// ---------------------------------------------------------------------------
+
+interface MiniRoleShape {
+  id: number;
+  name: string;
+  title?: string | null;
+  avatarUrl?: string | null;
+}
+
+export const MiniRoleRef = builder.objectRef<MiniRoleShape>("MiniRole");
+builder.objectType(MiniRoleRef, {
+  fields: (t) => ({
+    id: t.exposeInt("id"),
+    name: t.exposeString("name"),
+    title: t.exposeString("title", { nullable: true }),
+    avatarUrl: t.exposeString("avatarUrl", { nullable: true }),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// RoleWorkDay / WorkWeekTime — work schedule shapes
+// ---------------------------------------------------------------------------
+
+export interface RoleWorkDayShape {
+  startTime: string;
   stopTime: string;
 }
 
-@ObjectType()
-export class WorkWeekTime {
-  @Field((_type) => [RoleWorkDay])
-  monday: RoleWorkDay[];
+export const RoleWorkDayRef = builder.objectRef<RoleWorkDayShape>("RoleWorkDay");
+builder.objectType(RoleWorkDayRef, {
+  fields: (t) => ({
+    startTime: t.exposeString("startTime"),
+    stopTime: t.exposeString("stopTime"),
+  }),
+});
 
-  @Field((_type) => [RoleWorkDay])
-  tuesday: RoleWorkDay[];
-
-  @Field((_type) => [RoleWorkDay])
-  wednesday: RoleWorkDay[];
-
-  @Field((_type) => [RoleWorkDay])
-  thursday: RoleWorkDay[];
-
-  @Field((_type) => [RoleWorkDay])
-  friday: RoleWorkDay[];
-
-  @Field((_type) => [RoleWorkDay])
-  saturday: RoleWorkDay[];
-
-  @Field((_type) => [RoleWorkDay])
-  sunday: RoleWorkDay[];
+export interface WorkWeekTime {
+  monday: RoleWorkDayShape[];
+  tuesday: RoleWorkDayShape[];
+  wednesday: RoleWorkDayShape[];
+  thursday: RoleWorkDayShape[];
+  friday: RoleWorkDayShape[];
+  saturday: RoleWorkDayShape[];
+  sunday: RoleWorkDayShape[];
 }
 
-@ObjectType()
-export class HabitProductWorkflow {
-  @Field((_type) => Product)
-  product: Product;
+export const WorkWeekTimeRef = builder.objectRef<WorkWeekTime>("WorkWeekTime");
+builder.objectType(WorkWeekTimeRef, {
+  fields: (t) => ({
+    monday: t.field({ type: [RoleWorkDayRef], resolve: (p) => p.monday }),
+    tuesday: t.field({ type: [RoleWorkDayRef], resolve: (p) => p.tuesday }),
+    wednesday: t.field({ type: [RoleWorkDayRef], resolve: (p) => p.wednesday }),
+    thursday: t.field({ type: [RoleWorkDayRef], resolve: (p) => p.thursday }),
+    friday: t.field({ type: [RoleWorkDayRef], resolve: (p) => p.friday }),
+    saturday: t.field({ type: [RoleWorkDayRef], resolve: (p) => p.saturday }),
+    sunday: t.field({ type: [RoleWorkDayRef], resolve: (p) => p.sunday }),
+  }),
+});
 
-  @Field((_type) => Workflow)
-  workflow: Workflow;
+// ---------------------------------------------------------------------------
+// HabitProductWorkflow / RoleHabit — habit tracking types
+// ---------------------------------------------------------------------------
+
+interface HabitProductWorkflowShape {
+  product: any;
+  workflow: any;
 }
 
-@ObjectType()
-export class RoleHabit {
-  @Field((_type) => [HabitProductWorkflow])
-  productWorkflows: HabitProductWorkflow[];
+export const HabitProductWorkflowRef = builder.objectRef<HabitProductWorkflowShape>(
+  "HabitProductWorkflow",
+);
+builder.objectType(HabitProductWorkflowRef, {
+  fields: (t) => ({
+    product: t.field({
+      type: "Product" as any,
+      resolve: (p) => p.product,
+    }),
+    workflow: t.field({
+      type: "Workflow" as any,
+      resolve: (p) => p.workflow,
+    }),
+  }),
+});
 
-  @Field((_type) => [Project])
-  projects: Project[];
+interface RoleHabitShape {
+  productWorkflows: HabitProductWorkflowShape[];
+  projects: any[];
 }
+
+export const RoleHabitRef = builder.objectRef<RoleHabitShape>("RoleHabit");
+builder.objectType(RoleHabitRef, {
+  fields: (t) => ({
+    productWorkflows: t.field({
+      type: [HabitProductWorkflowRef],
+      resolve: (p) => p.productWorkflows,
+    }),
+    projects: t.field({
+      type: ["Project" as any],
+      resolve: (p) => p.projects,
+    }),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// RoleNoteColorPreferences / RolePreferences
+// ---------------------------------------------------------------------------
+
+interface RoleNoteColorPreferencesShape {
+  YELLOW: string;
+  BLUE: string;
+  PURPLE: string;
+  GREEN: string;
+  PINK: string;
+  ORANGE: string;
+}
+
+export const RoleNoteColorPreferencesRef =
+  builder.objectRef<RoleNoteColorPreferencesShape>("RoleNoteColorPreferences");
+builder.objectType(RoleNoteColorPreferencesRef, {
+  fields: (t) => ({
+    YELLOW: t.exposeString("YELLOW"),
+    BLUE: t.exposeString("BLUE"),
+    PURPLE: t.exposeString("PURPLE"),
+    GREEN: t.exposeString("GREEN"),
+    PINK: t.exposeString("PINK"),
+    ORANGE: t.exposeString("ORANGE"),
+  }),
+});
+
+export interface RolePreferences {
+  showOnboarding: boolean;
+  recentSearchHits: string[];
+  recentlyVisited: string[];
+  lastProjectId: number | null;
+  noteColors: RoleNoteColorPreferencesShape;
+}
+
+export const RolePreferencesRef = builder.objectRef<RolePreferences>("RolePreferences");
+builder.objectType(RolePreferencesRef, {
+  fields: (t) => ({
+    showOnboarding: t.exposeBoolean("showOnboarding"),
+    recentSearchHits: t.stringList({ resolve: (p) => p.recentSearchHits }),
+    recentlyVisited: t.stringList({ resolve: (p) => p.recentlyVisited }),
+    lastProjectId: t.int({ nullable: true, resolve: (p) => p.lastProjectId }),
+    noteColors: t.field({
+      type: RoleNoteColorPreferencesRef,
+      resolve: (p) => p.noteColors,
+    }),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
 export const EMPTY_WORK_WEEK: WorkWeekTime = {
   monday: [],
@@ -96,71 +303,6 @@ export const DEFAULT_WORK_WEEK: WorkWeekTime = {
   sunday: [],
 };
 
-export const roleStatuses = Object.values(RoleStatus);
-export const roleTypes = Object.values(RoleType);
-
-// This is a restricted role set to allow for fast
-// queriying in the frontend using a fuzzy library
-@ObjectType()
-export class MiniRole {
-  @Field()
-  id: number;
-
-  @Field()
-  name: string;
-
-  @Field(() => String, { nullable: true })
-  title?: string | null;
-
-  @Field(() => String, { nullable: true })
-  avatarUrl?: string | null;
-}
-
-@ObjectType()
-export class PaginatedRoles extends PaginatedNodes {
-  @Field(() => [Role])
-  nodes: Role[];
-}
-
-@ObjectType()
-export class RoleNoteColorPreferences {
-  @Field((_type) => String)
-  YELLOW: string;
-
-  @Field((_type) => String)
-  BLUE: string;
-
-  @Field((_type) => String)
-  PURPLE: string;
-
-  @Field((_type) => String)
-  GREEN: string;
-
-  @Field((_type) => String)
-  PINK: string;
-
-  @Field((_type) => String)
-  ORANGE: string;
-}
-
-@ObjectType()
-export class RolePreferences {
-  @Field((_type) => Boolean)
-  showOnboarding: boolean;
-
-  @Field((_type) => [String])
-  recentSearchHits: string[];
-
-  @Field((_type) => [String])
-  recentlyVisited: string[];
-
-  @Field((_type) => Int, { nullable: true })
-  lastProjectId: number | null;
-
-  @Field((_type) => RoleNoteColorPreferences)
-  noteColors: RoleNoteColorPreferences;
-}
-
 export const DEFAULT_ROLE_PREFERENCES: RolePreferences = {
   showOnboarding: true,
   recentSearchHits: [],
@@ -176,20 +318,19 @@ export const DEFAULT_ROLE_PREFERENCES: RolePreferences = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Preference helpers
+// ---------------------------------------------------------------------------
+
 /**
  * Partially update the preferences of a role.
  *
- * If not preferences have been set, it will fallback on the
- * default preferences. This method is resilient to badly formatted
- * JSON string but will log any error.
- *
- * @param role Role containing current preferences
- * @param values New set of preference to be updated
- * @returns RolePreferences
+ * Falls back on DEFAULT_ROLE_PREFERENCES when none are set.
+ * Resilient to badly formatted JSON — logs but does not crash.
  */
 export const updateRolePreferences = (
-  role: Role,
-  values: Partial<RolePreferences>
+  role: any,
+  values: Partial<RolePreferences>,
 ): RolePreferences => {
   return {
     ...getRolePreferences(role),
@@ -198,16 +339,10 @@ export const updateRolePreferences = (
 };
 
 /**
- * Resilient way of retrieving the role preferences without
- * failing.
- *
- * In case of parsing issue, the method fallsback to the
- * DEFAULT_ROLE_PREFERENCES.
- *
- * @param role Role containing the preferences
- * @returns RolePreferences
+ * Resilient retrieval of role preferences. Falls back to defaults
+ * when the stored JSON is malformed.
  */
-export const getRolePreferences = (role: Role): RolePreferences => {
+export const getRolePreferences = (role: any): RolePreferences => {
   try {
     return {
       ...DEFAULT_ROLE_PREFERENCES,
@@ -218,3 +353,9 @@ export const getRolePreferences = (role: Role): RolePreferences => {
     return { ...DEFAULT_ROLE_PREFERENCES };
   }
 };
+
+// ---------------------------------------------------------------------------
+// Paginated types
+// ---------------------------------------------------------------------------
+
+export const PaginatedRoles = createPaginatedType("Roles", RoleRef);

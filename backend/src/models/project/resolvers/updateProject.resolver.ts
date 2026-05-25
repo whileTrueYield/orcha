@@ -1,231 +1,162 @@
-import { Arg, Resolver, Mutation, Ctx, UseMiddleware, Int } from "type-graphql";
+/**
+ * Project update mutations: updateProjectName (deprecated), moveProjectToRoot,
+ * moveIntoProject, renameProject, publishProject, updateProjectOwner.
+ */
 
-import { Project, RoleStatus } from "@generated/type-graphql";
-import { AppContext, AuthRoleContext } from "../../../types";
-import { hasRole } from "../../../middlewares/isAuthenticated";
+import builder from "../../../schema/builder";
+import { ModelStage, RoleStatus } from "@prisma/client";
 import { getProjectDescendantIds, renameProject } from "../helper";
-import { ModelStage } from "@prisma/client";
 import { map } from "lodash";
-import { UserInputError } from "apollo-server-express";
+import { GraphQLError } from "graphql";
+import { AuthRoleContext } from "../../../types";
 
-@Resolver(Project)
-export class UpdateProjectResolver {
-  @Mutation(() => Project, { deprecationReason: "Use renameProject instead" })
-  @UseMiddleware(hasRole())
-  async updateProjectName(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("projectId", () => Int) projectId: number,
-    @Arg("name", () => String) name: string
-  ): Promise<Project> {
-    const project = await ctx.prisma.project.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: projectId,
-      },
-    });
+builder.mutationField("updateProjectName", (t) =>
+  t.prismaField({
+    type: "Project",
+    deprecationReason: "Use renameProject instead",
+    authScopes: { hasRole: true },
+    args: {
+      projectId: t.arg.int({ required: true }),
+      name: t.arg.string({ required: true }),
+    },
+    resolve: async (_query, _root, args, ctx) => {
+      const project = await ctx.prisma.project.findFirstOrThrow({
+        where: { organizationId: (ctx.me as AuthRoleContext).organizationId, id: args.projectId },
+      });
+      return renameProject(project, args.name);
+    },
+  }),
+);
 
-    return renameProject(project, name);
-  }
+builder.mutationField("moveProjectToRoot", (t) =>
+  t.prismaField({
+    type: "Project",
+    authScopes: { hasRole: true },
+    args: { projectId: t.arg.int({ required: true }) },
+    resolve: async (query, _root, args, ctx) => {
+      const project = await ctx.prisma.project.findFirstOrThrow({
+        where: { organizationId: (ctx.me as AuthRoleContext).organizationId, id: args.projectId },
+      });
+      return ctx.prisma.project.update({ ...query, where: { id: project.id }, data: { parentId: null } });
+    },
+  }),
+);
 
-  @Mutation(() => Project)
-  @UseMiddleware(hasRole())
-  async moveProjectToRoot(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("projectId", () => Int) projectId: number
-  ): Promise<Project> {
-    const project = await ctx.prisma.project.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: projectId,
-      },
-    });
+builder.mutationField("moveIntoProject", (t) =>
+  t.boolean({
+    authScopes: { hasRole: true },
+    args: {
+      sources: t.arg.stringList({ required: true }),
+      projectId: t.arg.int({ required: true }),
+    },
+    resolve: async (_root, args, ctx) => {
+      const ticketIds: number[] = [];
+      const projectIds: number[] = [];
 
-    return await ctx.prisma.project.update({
-      where: { id: project.id },
-      data: { parentId: null },
-    });
-  }
-
-  @Mutation(() => Boolean)
-  @UseMiddleware(hasRole())
-  async moveIntoProject(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("sources", () => [String]) sources: string[],
-    @Arg("projectId", () => Int) projectId: number
-  ): Promise<boolean> {
-    // parse all the sources
-    const ticketIds: number[] = [];
-    const projectIds: number[] = [];
-
-    const project = await ctx.prisma.project.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: projectId,
-        stage: { not: ModelStage.DELETED },
-      },
-    });
-
-    if (project.stage === ModelStage.ARCHIVED || project.ancestorIsArchived) {
-      throw new UserInputError(
-        "Cannot move a project or ticket inside an archived project"
-      );
-    }
-
-    if (project.stage === ModelStage.DRAFT) {
-      throw new UserInputError(
-        "Cannot move a project or ticket inside a draft project"
-      );
-    }
-
-    if (project.stage !== ModelStage.PUBLISHED) {
-      throw new UserInputError(
-        "Cannot move a project or ticket inside an unpublished project"
-      );
-    }
-
-    for (const source of sources) {
-      const [sourceType, sourceId] = source.split(":");
-
-      switch (sourceType) {
-        case "ticket":
-          ticketIds.push(parseInt(sourceId, 10));
-          break;
-        case "project":
-          projectIds.push(parseInt(sourceId, 10));
-          break;
-      }
-    }
-
-    // get list of child project names for the destination project
-    const reservedNames = await ctx.prisma.project
-      .findMany({
-        select: { name: true },
-        where: { parentId: projectId },
-      })
-      .then((v) => map(v, "name"));
-
-    // let make sure no project movement creates a circular dependency
-    for (const id of projectIds) {
-      if (id === projectId) {
-        throw new Error("Cannot move a project into itself");
-      }
-      const childrenIds = await getProjectDescendantIds(id);
-      if (childrenIds.indexOf(projectId) > -1) {
-        throw new Error("Cannot move a project into one of its children");
-      }
-
-      // check if there is a name conflict between project and destination
-      const conflictingName = await ctx.prisma.project.findFirst({
-        select: { name: true },
-        where: { id, name: { in: reservedNames, mode: "insensitive" } },
+      const project = await ctx.prisma.project.findFirstOrThrow({
+        where: { organizationId: (ctx.me as AuthRoleContext).organizationId, id: args.projectId, stage: { not: ModelStage.DELETED } },
       });
 
-      if (conflictingName) {
-        throw new UserInputError(
-          `Cannot move project: ${conflictingName.name} already exists at this location`
-        );
+      if (project.stage === ModelStage.ARCHIVED || project.ancestorIsArchived) {
+        throw new GraphQLError("Cannot move a project or ticket inside an archived project", { extensions: { code: "BAD_USER_INPUT" } });
       }
-    }
+      if (project.stage === ModelStage.DRAFT) {
+        throw new GraphQLError("Cannot move a project or ticket inside a draft project", { extensions: { code: "BAD_USER_INPUT" } });
+      }
+      if (project.stage !== ModelStage.PUBLISHED) {
+        throw new GraphQLError("Cannot move a project or ticket inside an unpublished project", { extensions: { code: "BAD_USER_INPUT" } });
+      }
 
-    // move the tickets
-    await ctx.prisma.ticket.updateMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: { in: ticketIds },
-      },
-      data: {
-        projectId: project.id,
-      },
-    });
+      for (const source of args.sources) {
+        const [sourceType, sourceId] = source.split(":");
+        switch (sourceType) {
+          case "ticket": ticketIds.push(parseInt(sourceId, 10)); break;
+          case "project": projectIds.push(parseInt(sourceId, 10)); break;
+        }
+      }
 
-    // move the projects
-    await ctx.prisma.project.updateMany({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: { in: projectIds },
-      },
-      data: {
-        parentId: project.id,
-      },
-    });
+      const reservedNames = await ctx.prisma.project
+        .findMany({ select: { name: true }, where: { parentId: args.projectId } })
+        .then((v) => map(v, "name"));
 
-    return true;
-  }
+      for (const id of projectIds) {
+        if (id === args.projectId) throw new Error("Cannot move a project into itself");
+        const childrenIds = await getProjectDescendantIds(id);
+        if (childrenIds.indexOf(args.projectId) > -1) throw new Error("Cannot move a project into one of its children");
+        const conflictingName = await ctx.prisma.project.findFirst({
+          select: { name: true },
+          where: { id, name: { in: reservedNames, mode: "insensitive" } },
+        });
+        if (conflictingName) throw new GraphQLError(`Cannot move project: ${conflictingName.name} already exists at this location`, { extensions: { code: "BAD_USER_INPUT" } });
+      }
 
-  @Mutation(() => Project)
-  @UseMiddleware(hasRole())
-  async renameProject(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("projectId", () => Int) projectId: number,
-    @Arg("name", () => String) name: string
-  ): Promise<Project> {
-    const project = await ctx.prisma.project.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: projectId,
-      },
-    });
-
-    return renameProject(project, name);
-  }
-
-  /**
-   * Publish a project, the project must be in the Draft stage
-   */
-  @Mutation(() => Project)
-  @UseMiddleware(hasRole())
-  async publishProject(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("projectId", () => Int) projectId: number
-  ): Promise<Project> {
-    const project = await ctx.prisma.project.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: projectId,
-        stage: ModelStage.DRAFT,
-      },
-    });
-
-    return ctx.prisma.project.update({
-      where: { id: project.id },
-      data: {
-        stage: ModelStage.PUBLISHED,
-      },
-    });
-  }
-
-  @Mutation(() => Project)
-  @UseMiddleware(hasRole())
-  async updateProjectOwner(
-    @Ctx() ctx: AppContext<AuthRoleContext>,
-    @Arg("projectId", () => Int) projectId: number,
-    @Arg("ownerId", () => Int, { nullable: true }) ownerId: number | null
-  ): Promise<Project> {
-    const project = await ctx.prisma.project.findFirstOrThrow({
-      where: {
-        organizationId: ctx.me.organizationId,
-        id: projectId,
-      },
-    });
-
-    if (ownerId === null) {
-      return ctx.prisma.project.update({
-        where: { id: project.id },
-        data: { ownerId: ownerId },
+      await ctx.prisma.ticket.updateMany({
+        where: { organizationId: (ctx.me as AuthRoleContext).organizationId, id: { in: ticketIds } },
+        data: { projectId: project.id },
       });
-    }
+      await ctx.prisma.project.updateMany({
+        where: { organizationId: (ctx.me as AuthRoleContext).organizationId, id: { in: projectIds } },
+        data: { parentId: project.id },
+      });
 
-    const owner = await ctx.prisma.role.findFirstOrThrow({
-      where: {
-        id: ownerId,
-        organizationId: ctx.me.organizationId,
-        status: RoleStatus.ACCEPTED,
-      },
-    });
+      return true;
+    },
+  }),
+);
 
-    return ctx.prisma.project.update({
-      where: { id: project.id },
-      data: { ownerId: owner.id },
-    });
-  }
-}
+builder.mutationField("renameProject", (t) =>
+  t.prismaField({
+    type: "Project",
+    authScopes: { hasRole: true },
+    args: {
+      projectId: t.arg.int({ required: true }),
+      name: t.arg.string({ required: true }),
+    },
+    resolve: async (_query, _root, args, ctx) => {
+      const project = await ctx.prisma.project.findFirstOrThrow({
+        where: { organizationId: (ctx.me as AuthRoleContext).organizationId, id: args.projectId },
+      });
+      return renameProject(project, args.name);
+    },
+  }),
+);
+
+builder.mutationField("publishProject", (t) =>
+  t.prismaField({
+    type: "Project",
+    authScopes: { hasRole: true },
+    args: { projectId: t.arg.int({ required: true }) },
+    resolve: async (query, _root, args, ctx) => {
+      const project = await ctx.prisma.project.findFirstOrThrow({
+        where: { organizationId: (ctx.me as AuthRoleContext).organizationId, id: args.projectId, stage: ModelStage.DRAFT },
+      });
+      return ctx.prisma.project.update({ ...query, where: { id: project.id }, data: { stage: ModelStage.PUBLISHED } });
+    },
+  }),
+);
+
+builder.mutationField("updateProjectOwner", (t) =>
+  t.prismaField({
+    type: "Project",
+    authScopes: { hasRole: true },
+    args: {
+      projectId: t.arg.int({ required: true }),
+      ownerId: t.arg.int({ required: false }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const project = await ctx.prisma.project.findFirstOrThrow({
+        where: { organizationId: (ctx.me as AuthRoleContext).organizationId, id: args.projectId },
+      });
+
+      if (args.ownerId === null || args.ownerId === undefined) {
+        return ctx.prisma.project.update({ ...query, where: { id: project.id }, data: { ownerId: null } });
+      }
+
+      const owner = await ctx.prisma.role.findFirstOrThrow({
+        where: { id: args.ownerId, organizationId: (ctx.me as AuthRoleContext).organizationId, status: RoleStatus.ACCEPTED },
+      });
+
+      return ctx.prisma.project.update({ ...query, where: { id: project.id }, data: { ownerId: owner.id } });
+    },
+  }),
+);

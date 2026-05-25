@@ -1,8 +1,7 @@
 import prisma from "../../prisma";
 import { clamp, trim } from "lodash";
-import { Skill } from "@generated/type-graphql";
+import { Skill } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { PaginatedSkills } from "./entity";
 import { Prisma } from ".prisma/client";
 
 interface GetPageArgs extends GetPageArgsFor<Skill> {
@@ -11,9 +10,9 @@ interface GetPageArgs extends GetPageArgsFor<Skill> {
   featureId?: number;
 }
 
-export async function getPaginatedSkills(
-  args: GetPageArgs
-): Promise<PaginatedSkills> {
+// Return type matches the plain shape produced by paginateNodes.
+// The GraphQL type (PaginatedSkills) is a Pothos ref defined in entity.ts.
+export async function getPaginatedSkills(args: GetPageArgs) {
   const { first, last, featureId, roleId, search, organizationId } = args;
 
   // default offset to be at the start (or the end
