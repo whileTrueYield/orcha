@@ -62,16 +62,17 @@ builder.queryField("batchGetTicketTags", (t) =>
     type: ["Ticket"],
     authScopes: { hasRole: true },
     args: {
-      ticketIds: t.arg.intList({ required: true }),
+      ticketIds: t.arg({ type: ['Int'], required: { list: true, items: false } }),
     },
     resolve: (query, _root, args, ctx) => {
       const me = ctx.me as AuthRoleContext;
+      const ticketIds = args.ticketIds.filter((id): id is number => id != null);
       return ctx.prisma.ticket.findMany({
         ...query,
         where: {
           organizationId: me.organizationId,
           stage: { not: ModelStage.DELETED },
-          id: { in: args.ticketIds },
+          id: { in: ticketIds },
         },
         include: { ...query.include, tags: true },
       });
@@ -88,16 +89,17 @@ builder.queryField("batchGetTickets", (t) =>
     type: ["Ticket"],
     authScopes: { hasRole: true },
     args: {
-      ticketIds: t.arg.intList({ required: true }),
+      ticketIds: t.arg({ type: ['Int'], required: { list: true, items: false } }),
     },
     resolve: (query, _root, args, ctx) => {
       const me = ctx.me as AuthRoleContext;
+      const ticketIds = args.ticketIds.filter((id): id is number => id != null);
       return ctx.prisma.ticket.findMany({
         ...query,
         where: {
           organizationId: me.organizationId,
           stage: { not: ModelStage.DELETED },
-          id: { in: args.ticketIds },
+          id: { in: ticketIds },
         },
         include: { ...query.include, ticketWorkflowStates: true },
       });
@@ -114,18 +116,22 @@ builder.mutationField("batchUpdateTicketTags", (t) =>
     type: ["Ticket"],
     authScopes: { hasRole: true },
     args: {
-      ticketIds: t.arg.intList({ required: true }),
-      addTagIds: t.arg.intList({ required: true }),
-      removeTagIds: t.arg.intList({ required: true }),
+      ticketIds: t.arg({ type: ['Int'], required: { list: true, items: false } }),
+      addTagIds: t.arg({ type: ['Int'], required: { list: true, items: false } }),
+      removeTagIds: t.arg({ type: ['Int'], required: { list: true, items: false } }),
     },
     resolve: async (_query, _root, args, ctx) => {
       const me = ctx.me as AuthRoleContext;
+      // Nullable-item lists — strip nulls before passing to Prisma
+      const ticketIds = args.ticketIds.filter((id): id is number => id != null);
+      const addTagIds = args.addTagIds.filter((id): id is number => id != null);
+      const removeTagIds = args.removeTagIds.filter((id): id is number => id != null);
 
       const tickets = await ctx.prisma.ticket.findMany({
         where: {
           organizationId: me.organizationId,
           stage: { not: ModelStage.DELETED },
-          id: { in: args.ticketIds },
+          id: { in: ticketIds },
         },
         include: { tags: true },
       });
@@ -138,14 +144,14 @@ builder.mutationField("batchUpdateTicketTags", (t) =>
       const tagsToAdd = await ctx.prisma.tag.findMany({
         where: {
           organizationId: me.organizationId,
-          id: { in: args.addTagIds },
+          id: { in: addTagIds },
         },
       });
 
       for (const ticket of tickets) {
         let { tags } = ticket;
         // Remove tags first, then add new ones
-        tags = reject(tags, (tag) => args.removeTagIds.includes(tag.id));
+        tags = reject(tags, (tag) => removeTagIds.includes(tag.id));
         tags = [...tags, ...tagsToAdd];
 
         await ctx.prisma.ticket.update({
@@ -170,17 +176,18 @@ builder.mutationField("batchUpdateTickets", (t) =>
     type: TicketBatchPayloadRef,
     authScopes: { hasRole: true },
     args: {
-      ticketIds: t.arg.intList({ required: true }),
+      ticketIds: t.arg({ type: ['Int'], required: { list: true, items: false } }),
       input: t.arg({ type: BatchUpdateTicketsInput, required: true }),
     },
     resolve: async (_root, args, ctx) => {
       const me = ctx.me as AuthRoleContext;
       const input = args.input;
+      const ticketIds = args.ticketIds.filter((id): id is number => id != null);
 
       const ticketUpdateData: Prisma.TicketUncheckedUpdateManyInput = {};
       const ticketUpdateWhere: Prisma.TicketWhereInput = {
         organizationId: me.organizationId,
-        id: { in: args.ticketIds },
+        id: { in: ticketIds },
 
         // Archived and deleted tickets are read-only
         stage: { notIn: [ModelStage.DELETED, ModelStage.ARCHIVED] },

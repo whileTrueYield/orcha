@@ -24,13 +24,13 @@ const WorkDayTimeInput = builder.inputType("WorkDayTimeInput", {
 
 const UpdateRoleWorkWeekInput = builder.inputType("UpdateRoleWorkWeekInput", {
   fields: (t) => ({
-    monday: t.field({ type: [WorkDayTimeInput], required: true }),
-    tuesday: t.field({ type: [WorkDayTimeInput], required: true }),
-    wednesday: t.field({ type: [WorkDayTimeInput], required: true }),
-    thursday: t.field({ type: [WorkDayTimeInput], required: true }),
-    friday: t.field({ type: [WorkDayTimeInput], required: true }),
-    saturday: t.field({ type: [WorkDayTimeInput], required: true }),
-    sunday: t.field({ type: [WorkDayTimeInput], required: true }),
+    monday: t.field({ type: [WorkDayTimeInput], required: { list: true, items: false } }),
+    tuesday: t.field({ type: [WorkDayTimeInput], required: { list: true, items: false } }),
+    wednesday: t.field({ type: [WorkDayTimeInput], required: { list: true, items: false } }),
+    thursday: t.field({ type: [WorkDayTimeInput], required: { list: true, items: false } }),
+    friday: t.field({ type: [WorkDayTimeInput], required: { list: true, items: false } }),
+    saturday: t.field({ type: [WorkDayTimeInput], required: { list: true, items: false } }),
+    sunday: t.field({ type: [WorkDayTimeInput], required: { list: true, items: false } }),
   }),
 });
 
@@ -199,11 +199,13 @@ builder.mutationField("updateRoleWorkWeek", (t) =>
       }
 
       const assertNoOverlap = (hours: typeof input.monday, day: string) => {
-        const hoursCopy = [...hours];
+        // Nullable-item list — strip nulls before overlap checks
+        const validHours = hours.filter((h): h is NonNullable<typeof h> => h != null);
+        const hoursCopy = [...validHours];
         let timeBlock;
 
         while ((timeBlock = hoursCopy.pop())) {
-          for (const otherTimeBlock of hours) {
+          for (const otherTimeBlock of validHours) {
             if (
               timeBlock.startTime > otherTimeBlock.startTime &&
               timeBlock.startTime < otherTimeBlock.stopTime

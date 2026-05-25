@@ -175,22 +175,25 @@ builder.mutationField("commitScheduleChanges", (t) =>
   t.boolean({
     authScopes: { hasRole: true },
     args: {
-      removeTicketIds: t.arg.intList({ required: true }),
-      addTicketIds: t.arg.intList({ required: true }),
+      removeTicketIds: t.arg({ type: ['Int'], required: { list: true, items: false } }),
+      addTicketIds: t.arg({ type: ['Int'], required: { list: true, items: false } }),
       scheduleConfigs: t.arg({
         type: [UpdateScheduleConfigInput],
-        required: true,
+        required: { list: true, items: false },
       }),
     },
     resolve: async (_root, args, ctx) => {
       const me = ctx.me as AuthRoleContext;
+      // Nullable-item lists — strip nulls before passing to Prisma
+      const removeTicketIds = args.removeTicketIds.filter((id): id is number => id != null);
+      const addTicketIds = args.addTicketIds.filter((id): id is number => id != null);
 
       const ticketsToUnschedule = await ctx.prisma.ticket.findMany({
         where: {
           organizationId: me.organizationId,
           stage: ModelStage.PUBLISHED,
           status: TicketStatus.SCHEDULED,
-          id: { in: args.removeTicketIds },
+          id: { in: removeTicketIds },
         },
         include: { workflow: true, product: true, project: true },
       });
@@ -198,7 +201,7 @@ builder.mutationField("commitScheduleChanges", (t) =>
       const ticketsToSchedule = await ctx.prisma.ticket.findMany({
         where: {
           organizationId: me.organizationId,
-          id: { in: args.addTicketIds },
+          id: { in: addTicketIds },
         },
         include: { ticketWorkflowStates: { where: { isActive: true } } },
       });
@@ -212,7 +215,7 @@ builder.mutationField("commitScheduleChanges", (t) =>
 
       // Schedule the new tickets
       await ctx.prisma.ticket.updateMany({
-        where: { id: { in: args.addTicketIds } },
+        where: { id: { in: addTicketIds } },
         data: { status: TicketStatus.SCHEDULED, scheduledAt: now },
       });
 
@@ -236,7 +239,12 @@ builder.mutationField("commitScheduleChanges", (t) =>
         where: { organizationId: me.organizationId },
       });
 
-      for (const filter of args.scheduleConfigs) {
+      // Nullable-item list — skip null entries from the schedule configs
+      const scheduleConfigs = args.scheduleConfigs.filter(
+        (c): c is NonNullable<typeof c> => c != null,
+      );
+
+      for (const filter of scheduleConfigs) {
         const products = await ctx.prisma.product.findMany({
           where: {
             organizationId: me.organizationId,
@@ -388,7 +396,7 @@ builder.queryField("planningProjection", (t) =>
       ticketIds: t.arg.intList({ required: true }),
       scheduleConfigs: t.arg({
         type: [ScheduleConfigForEstimateInput],
-        required: true,
+        required: { list: true, items: false },
       }),
     },
     resolve: async (_root, args, ctx) => {
@@ -434,11 +442,16 @@ builder.queryField("planningProjection", (t) =>
         },
       });
 
+      // Nullable-item list — strip null entries before passing to estimator
+      const scheduleConfigsForEstimate = args.scheduleConfigs.filter(
+        (c): c is NonNullable<typeof c> => c != null,
+      );
+
       const snapshots = keyBy(
         await estimateTickets(
           me.organizationId,
           scheduledTickets,
-          args.scheduleConfigs,
+          scheduleConfigsForEstimate,
           true,
         ),
         "uid",

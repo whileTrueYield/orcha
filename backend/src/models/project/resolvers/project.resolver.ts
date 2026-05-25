@@ -454,7 +454,7 @@ builder.mutationField("setProjectChecklist", (t) =>
     authScopes: { hasRole: true },
     args: {
       projectId: t.arg.int({ required: true }),
-      input: t.arg({ type: [UpdateProjectChecklistInput], required: true }),
+      input: t.arg({ type: [UpdateProjectChecklistInput], required: { list: true, items: false } }),
     },
     resolve: async (query, _root, args, ctx) => {
       const project = await ctx.prisma.project.findFirstOrThrow({

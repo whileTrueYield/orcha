@@ -47,7 +47,7 @@ export const ScheduleConfigRef = builder.prismaObject("ScheduleConfig", {
 // Input types
 // ---------------------------------------------------------------------------
 
-export const UpdateScheduleConfigInput = builder.inputType("UpdateScheduleConfigInput", {
+export const UpdateScheduleConfigInput = builder.inputType("UpdateScheduleConfig", {
   fields: (t) => ({
     priority: t.int({ required: true }),
     productIds: t.intList({ required: true }),
@@ -58,7 +58,7 @@ export const UpdateScheduleConfigInput = builder.inputType("UpdateScheduleConfig
   }),
 });
 
-const UpdateScheduleConfigsInput = builder.inputType("UpdateScheduleConfigsInput", {
+const UpdateScheduleConfigsInput = builder.inputType("UpdateScheduleConfigs", {
   fields: (t) => ({
     configs: t.field({
       type: [UpdateScheduleConfigInput],
@@ -108,12 +108,15 @@ builder.queryField("ticketsCount", (t) =>
     authScopes: { hasRole: ["ADMIN", "OWNER"] },
     args: {
       filter: t.arg({ type: UpdateScheduleConfigInput, required: true }),
-      removedTicketIds: t.arg.intList({ required: true }),
-      addedTicketIds: t.arg.intList({ required: true }),
+      removedTicketIds: t.arg({ type: ['Int'], required: { list: true, items: false } }),
+      addedTicketIds: t.arg({ type: ['Int'], required: { list: true, items: false } }),
     },
     resolve: async (_root, args, ctx) => {
       const me = ctx.me as AuthRoleContext;
       const filter = args.filter;
+      // Nullable-item lists — strip nulls before passing to Prisma
+      const removedTicketIds = args.removedTicketIds.filter((id): id is number => id != null);
+      const addedTicketIds = args.addedTicketIds.filter((id): id is number => id != null);
 
       const where: Prisma.TicketWhereInput = {
         organizationId: me.organizationId,
@@ -121,10 +124,10 @@ builder.queryField("ticketsCount", (t) =>
         OR: [
           {
             status: TicketStatus.SCHEDULED,
-            id: { notIn: args.removedTicketIds },
+            id: { notIn: removedTicketIds },
           },
           {
-            id: { in: args.addedTicketIds },
+            id: { in: addedTicketIds },
           },
         ],
       };
