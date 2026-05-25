@@ -120,7 +120,9 @@ export async function generateDemo() {
       name: productInfo.name,
       code: productInfo.code,
       description: productInfo.description,
-      coverUrl: productInfo.coverUrl,
+      coverUrl: productInfo.coverUrl
+        ? `${config.uploadCdnUri}/${productInfo.coverUrl}`
+        : undefined,
     });
 
     products[productInfo.name.toLowerCase()] = productRecord;

@@ -60,6 +60,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend/src/mocker/demo/profile-pics:/demo-pics:ro
+      - ./backend/src/mocker/demo/product-pics:/demo-product-pics:ro
     entrypoint: >
       /bin/sh -c "
       mc alias set orcha http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
@@ -68,6 +69,7 @@ services:
       mc mb --ignore-existing orcha/${__DOCKER_DOCS_BUCKET};
       mc anonymous set download orcha/${__DOCKER_DOCS_BUCKET};
       mc cp --recursive /demo-pics/ orcha/${__DOCKER_UPLOADS_BUCKET}/demo/;
+      mc cp --recursive /demo-product-pics/ orcha/${__DOCKER_UPLOADS_BUCKET}/demo/;
       exit 0;
       "
     environment:
