@@ -36,6 +36,7 @@ export const TipTapBubbleMenu: React.FC = () => {
 
   return (
     <BubbleMenu
+      editor={editor}
       shouldShow={({ editor, from, to }) => from !== to && shouldShow(editor)}
     >
       <div className="flex flex-row space-x-0.5 rounded bg-gray-700 p-1">

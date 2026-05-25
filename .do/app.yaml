@@ -2,7 +2,7 @@
 # Orcha — Digital Ocean App Platform spec
 # ============================================================================
 #
-# Six services + one static frontend on orcha.run (ADR #0002, #0003).
+# Three services, two static sites, one worker on orcha.run (ADR #0002, #0003).
 # Prisma migrations run at API startup (idempotent, no-op when current).
 #
 # Managed resources (defined below, auto-wired via ${resource.VAR}):
@@ -174,53 +174,19 @@ services:
     instance_size_slug: professional-xs
     instance_count: 1
 
-  # -- Support widget --
-  - name: support
-    github:
-      repo: whileTrueYield/orcha
-      branch: main
-      deploy_on_push: true
-    source_dir: support
-    dockerfile_path: support/Dockerfile
-    http_port: 3001
-    instance_size_slug: basic-xxs
-    instance_count: 1
-    routes:
-      - path: /support
-    envs:
-      - key: NODE_ENV
-        scope: RUN_AND_BUILD_TIME
-        value: production
-      - key: PORT
-        scope: RUN_TIME
-        value: "3001"
-      - key: VITE_WEBSITE_NAME
-        scope: BUILD_TIME
-        value: Orcha Support
-      - key: VITE_SUPPORT_URI
-        scope: BUILD_TIME
-        value: https://orcha.run/support
-      - key: VITE_API_URI
-        scope: BUILD_TIME
-        value: https://orcha.run/api
-      - key: VITE_DOCUMENTATION_URI
-        scope: BUILD_TIME
-        value: https://orcha.run/api
-      - key: VITE_UPLOADS_CDN_URL
-        scope: BUILD_TIME
-        value: https://orcha-uploads.sfo3.cdn.digitaloceanspaces.com
+# ---- Static sites (CDN-served, no compute) --------------------------------
 
-  # -- Frontend (SPA served by nginx) --
+static_sites:
+  # -- Frontend (React SPA) --
   - name: frontend
     github:
       repo: whileTrueYield/orcha
       branch: main
       deploy_on_push: true
     source_dir: /
-    dockerfile_path: frontend/Dockerfile.prod
-    http_port: 80
-    instance_size_slug: basic-xxs
-    instance_count: 1
+    build_command: cp backend/src/generated/graphql.ts frontend/src/types/graphql.ts && cd frontend && yarn install --pure-lockfile && yarn build
+    output_dir: frontend/build
+    catchall_document: index.html
     routes:
       - path: /
     envs:
@@ -251,6 +217,35 @@ services:
       - key: VITE_DEMO_MODE
         scope: BUILD_TIME
         value: "false"
+
+  # -- Support widget --
+  - name: support
+    github:
+      repo: whileTrueYield/orcha
+      branch: main
+      deploy_on_push: true
+    source_dir: support
+    build_command: yarn install --pure-lockfile && yarn webpack && yarn build
+    output_dir: build
+    catchall_document: index.html
+    routes:
+      - path: /support
+    envs:
+      - key: VITE_WEBSITE_NAME
+        scope: BUILD_TIME
+        value: Orcha Support
+      - key: VITE_SUPPORT_URI
+        scope: BUILD_TIME
+        value: https://orcha.run/support
+      - key: VITE_API_URI
+        scope: BUILD_TIME
+        value: https://orcha.run/api
+      - key: VITE_DOCUMENTATION_URI
+        scope: BUILD_TIME
+        value: https://orcha.run/api
+      - key: VITE_UPLOADS_CDN_URL
+        scope: BUILD_TIME
+        value: https://orcha-uploads.sfo3.cdn.digitaloceanspaces.com
 
 # ---- Workers (no HTTP) ---------------------------------------------------
 
