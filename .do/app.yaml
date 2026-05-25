@@ -19,8 +19,56 @@ name: orcha
 region: sfo
 
 domains:
-  - domain: orcha.run
+  - domain: app.orcha.run
     type: PRIMARY
+  - domain: api.orcha.run
+    type: ALIAS
+  - domain: support.orcha.run
+    type: ALIAS
+  - domain: orcha.run
+    type: ALIAS
+
+# ---- Ingress (subdomain-based routing) -------------------------------------
+# Authority matching routes each subdomain to its component.
+# orcha.run routes to the frontend until a marketing site is added.
+
+ingress:
+  rules:
+    - match:
+        authority:
+          exact: api.orcha.run
+        path:
+          prefix: /ws
+      component:
+        name: hocuspocus
+    - match:
+        authority:
+          exact: api.orcha.run
+        path:
+          prefix: /
+      component:
+        name: api
+    - match:
+        authority:
+          exact: app.orcha.run
+        path:
+          prefix: /
+      component:
+        name: frontend
+    - match:
+        authority:
+          exact: support.orcha.run
+        path:
+          prefix: /
+      component:
+        name: support
+    - match:
+        authority:
+          exact: orcha.run
+        path:
+          prefix: /
+      component:
+        name: frontend
 
 # ---- App-level env vars --------------------------------------------------
 # Managed in DO console only — NOT in this file.
@@ -63,10 +111,8 @@ services:
     http_port: 4000
     instance_size_slug: professional-xs
     instance_count: 1
-    routes:
-      - path: /api
     health_check:
-      http_path: /api/alive
+      http_path: /alive
       initial_delay_seconds: 30
       period_seconds: 10
       timeout_seconds: 5
@@ -93,30 +139,25 @@ services:
         value: orcha.run
       - key: ORCHA_WEBAPP_URI
         scope: RUN_TIME
-        value: https://orcha.run
+        value: https://app.orcha.run
       - key: ORCHA_WWW_URI
         scope: RUN_TIME
         value: https://orcha.run
       - key: ORCHA_API_URI
         scope: RUN_TIME
-        value: https://orcha.run/api
+        value: https://api.orcha.run
       - key: ORCHA_API_WS_URI
         scope: RUN_TIME
-        value: wss://orcha.run/ws
+        value: wss://api.orcha.run/ws
       - key: ORCHA_SUPPORT_URI
         scope: RUN_TIME
-        value: https://orcha.run/support
+        value: https://support.orcha.run
       - key: ORCHA_TEST_INTERFACE
         scope: RUN_TIME
         value: "false"
       - key: NO_COLOR
         scope: RUN_TIME
         value: "true"
-      # DO App Platform preserves the /api prefix — tell Express to mount there
-      - key: API_PATH_PREFIX
-        scope: RUN_TIME
-        value: /api
-      # Resource references (can't inherit — need explicit wiring)
       - key: ORCHA_AI_URI
         scope: RUN_TIME
         value: "${ai.PRIVATE_URL}"
@@ -135,8 +176,6 @@ services:
     http_port: 38268
     instance_size_slug: basic-xxs
     instance_count: 1
-    routes:
-      - path: /ws
     run_command: node dist/hocuspocus/server.js
     envs:
       - key: DATABASE_URL
@@ -156,7 +195,7 @@ services:
         value: orcha.run
       - key: ORCHA_API_WS_URI
         scope: RUN_TIME
-        value: wss://orcha.run/ws
+        value: wss://api.orcha.run/ws
       - key: REDIS_URL
         scope: RUN_TIME
         value: "${orcha-redis.REDIS_URL}"
@@ -187,30 +226,28 @@ static_sites:
     build_command: cp backend/src/generated/graphql.ts frontend/src/types/graphql.ts && cd frontend && yarn install --pure-lockfile && yarn build
     output_dir: frontend/build
     catchall_document: index.html
-    routes:
-      - path: /
     envs:
       - key: VITE_API_URI
         scope: BUILD_TIME
-        value: https://orcha.run/api
+        value: https://api.orcha.run
       - key: VITE_API_WS_URI
         scope: BUILD_TIME
-        value: wss://orcha.run/ws
+        value: wss://api.orcha.run/ws
       - key: VITE_GRAPHQL_URI
         scope: BUILD_TIME
-        value: https://orcha.run/api/graphql
+        value: https://api.orcha.run/graphql
       - key: VITE_UPLOADS_CDN_URL
         scope: BUILD_TIME
         value: https://orcha-uploads.sfo3.cdn.digitaloceanspaces.com
       - key: VITE_SUPPORT_URI
         scope: BUILD_TIME
-        value: https://orcha.run/support
+        value: https://support.orcha.run
       - key: VITE_DOCUMENTATION_URI
         scope: BUILD_TIME
-        value: https://orcha.run/api
+        value: https://api.orcha.run
       - key: VITE_WEBSITE_DOMAIN
         scope: BUILD_TIME
-        value: orcha.run
+        value: app.orcha.run
       - key: VITE_VAPID_PUBLIC_KEY
         scope: BUILD_TIME
         value: BFYUfpTkC_8_C8qHD5_IWaTjwBE4HR0xgytWgNoCuNsmJTKwj62jnYtn3uuOBdRUSgnstIm6YiJxzS2HC2BpnMU
@@ -228,21 +265,19 @@ static_sites:
     build_command: yarn install --pure-lockfile && yarn webpack && yarn build
     output_dir: build
     catchall_document: index.html
-    routes:
-      - path: /support
     envs:
       - key: VITE_WEBSITE_NAME
         scope: BUILD_TIME
         value: Orcha Support
       - key: VITE_SUPPORT_URI
         scope: BUILD_TIME
-        value: https://orcha.run/support
+        value: https://support.orcha.run
       - key: VITE_API_URI
         scope: BUILD_TIME
-        value: https://orcha.run/api
+        value: https://api.orcha.run
       - key: VITE_DOCUMENTATION_URI
         scope: BUILD_TIME
-        value: https://orcha.run/api
+        value: https://api.orcha.run
       - key: VITE_UPLOADS_CDN_URL
         scope: BUILD_TIME
         value: https://orcha-uploads.sfo3.cdn.digitaloceanspaces.com
@@ -282,19 +317,19 @@ workers:
         value: orcha.run
       - key: ORCHA_WEBAPP_URI
         scope: RUN_TIME
-        value: https://orcha.run
+        value: https://app.orcha.run
       - key: ORCHA_WWW_URI
         scope: RUN_TIME
         value: https://orcha.run
       - key: ORCHA_API_URI
         scope: RUN_TIME
-        value: https://orcha.run/api
+        value: https://api.orcha.run
       - key: ORCHA_API_WS_URI
         scope: RUN_TIME
-        value: wss://orcha.run/ws
+        value: wss://api.orcha.run/ws
       - key: ORCHA_SUPPORT_URI
         scope: RUN_TIME
-        value: https://orcha.run/support
+        value: https://support.orcha.run
       - key: ORCHA_TEST_INTERFACE
         scope: RUN_TIME
         value: "false"
