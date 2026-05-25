@@ -294,7 +294,7 @@ export const DemoRequestProcessing: React.FC<{ demoRequestId: string }> = (
             Ready to sign up?
             <a
               className="ml-1 text-sm text-sky-600 hover:text-sky-700 hover:underline"
-              href="https://app.orcha.io/auth/register"
+              href="https://app.orcha.run/auth/register"
             >
               Start using Orcha
             </a>

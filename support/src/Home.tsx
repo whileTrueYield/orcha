@@ -86,7 +86,7 @@ export const Home: React.FC<Props> = (props) => {
       <div className="border-t py-2 text-xs text-gray-400 text-center w-full">
         Powered by{" "}
         <a
-          href="https://www.orcha.io#source=widget"
+          href="https://www.orcha.run#source=widget"
           target="_blank"
           rel="noreferrer"
           className="hover:text-sky-600 hover:underline font-semibold"
