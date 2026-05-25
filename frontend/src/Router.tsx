@@ -76,7 +76,7 @@ export const MainRouter: React.FC = () => {
     // when in DEMO_MODE we will generate account through the registration
     // of an email at the demo page, we don't allow creating regular accounts
     // if (import.meta.env.VITE_DEMO_MODE && false) {
-    if (import.meta.env.VITE_DEMO_MODE) {
+    if (import.meta.env.VITE_DEMO_MODE === "true") {
       return (
         <>
           <SupportIntegration forceDisplay />
@@ -109,7 +109,7 @@ export const MainRouter: React.FC = () => {
           path={urlResolver.issue.paths.clientView}
           component={IssueClientView}
         />
-        {import.meta.env.VITE_DEMO_MODE && (
+        {import.meta.env.VITE_DEMO_MODE === "true" && (
           <Route
             exact
             path={urlResolver.demo.paths.demoRequest}
