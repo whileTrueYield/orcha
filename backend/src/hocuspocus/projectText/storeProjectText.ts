@@ -9,7 +9,7 @@ import { notifyMentionedUsersInProject } from "../../models/notification/createN
 
 export async function storeProjectText(
   token: DocumentToken,
-  state: Uint8Array<ArrayBuffer>,
+  state: Uint8Array,
 ): Promise<null> {
   logger.info("storing project text");
   const project = await prisma.project.findFirst({
@@ -34,7 +34,7 @@ export async function storeProjectText(
     logger.info("project.projectText exists, updating it");
     await prisma.projectText.updateMany({
       where: { projectId: project.id },
-      data: { bytes: state },
+      data: { bytes: Buffer.from(state) },
     });
 
     // store the indexable data into the database for search
@@ -61,7 +61,7 @@ export async function storeProjectText(
     await prisma.projectText.create({
       data: {
         project: { connect: { id: project.id } },
-        bytes: state,
+        bytes: Buffer.from(state),
       },
     });
   }

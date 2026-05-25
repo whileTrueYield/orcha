@@ -9,7 +9,7 @@ import { notifyMentionedUsersInTicket } from "../../models/notification/createNo
 
 export async function storeTicketText(
   token: DocumentToken,
-  state: Uint8Array<ArrayBuffer>,
+  state: Uint8Array,
 ): Promise<null> {
   logger.info("storing ticket text");
   const ticket = await prisma.ticket.findFirst({
@@ -35,7 +35,7 @@ export async function storeTicketText(
   if (ticket.ticketText) {
     await prisma.ticketText.updateMany({
       where: { ticketId: ticket.id },
-      data: { bytes: state },
+      data: { bytes: Buffer.from(state) },
     });
 
     // store the indexable data into the database for search
@@ -63,7 +63,7 @@ export async function storeTicketText(
     await prisma.ticketText.create({
       data: {
         ticket: { connect: { id: ticket.id } },
-        bytes: state,
+        bytes: Buffer.from(state),
       },
     });
   }

@@ -8,7 +8,7 @@ import { TiptapTransformer } from "@hocuspocus/transformer";
 
 export async function storeDocumentationText(
   token: DocumentToken,
-  state: Uint8Array<ArrayBuffer>
+  state: Uint8Array
 ): Promise<null> {
   const documentationPage = await prisma.documentationPage.findFirst({
     where: {
@@ -32,7 +32,7 @@ export async function storeDocumentationText(
   if (documentationPage.documentationPageText) {
     await prisma.documentationPageText.updateMany({
       where: { documentationPageId: documentationPage.id },
-      data: { bytes: state },
+      data: { bytes: Buffer.from(state) },
     });
 
     // store the indexable data into the database for search
@@ -50,7 +50,7 @@ export async function storeDocumentationText(
     await prisma.documentationPageText.create({
       data: {
         documentationPage: { connect: { id: documentationPage.id } },
-        bytes: state,
+        bytes: Buffer.from(state),
       },
     });
   }
