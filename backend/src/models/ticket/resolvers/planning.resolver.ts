@@ -474,16 +474,14 @@ builder.queryField("planningProjection", (t) =>
         const lastState = last(ticket.ticketWorkflowStates);
         if (lastState) {
           const uid = buildUid("TicketWorkflowState", lastState.id);
-          const snapshot = snapshots[uid];
-
-          if (!snapshot) continue;
 
           planningTickets.push({
             id: ticket.id,
             title: ticket.title,
             status: ticket.status,
             localId: ticket.localId || 0,
-            eta: new Date(snapshot.end_p80 * 1000),
+            // Estimates are in seconds, not milliseconds
+            eta: new Date(snapshots[uid].end_p80 * 1000),
             milestone: ticket.milestone,
             workflowName: ticket.workflow?.name || "n/a",
             productCode: ticket.product?.code || "n/a",
