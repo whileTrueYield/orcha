@@ -7,13 +7,10 @@
  *  - MiniDocumentationPageRef: lightweight page shape (id, position, parentId, title)
  *  - PaginatedDocumentations:  paginated wrapper for Documentation
  *
- * IMPORTANT: DocumentationPage intentionally omits these fields:
- *  - indexableContent (internal search index)
- *  - urls            (internal JSON blob)
- *  - keywords        (internal JSON blob)
- *
- * These are Prisma columns used only by the publishing pipeline and
- * must not leak into the public GraphQL API.
+ * DocumentationPage exposes indexableContent, urls, and keywords as raw
+ * strings. These were previously hidden behind @TypeGraphQL.omit(output: true),
+ * which only suppressed codegen — the fields were always queryable via GraphQL
+ * and the frontend depends on them.
  */
 
 import builder from "../../schema/builder";
@@ -58,8 +55,6 @@ export const DocumentationRef = builder.prismaObject("Documentation", {
 
 // ---------------------------------------------------------------------------
 // DocumentationPage — prismaObject
-//
-// Omitted fields: indexableContent, urls, keywords
 // ---------------------------------------------------------------------------
 
 export const DocumentationPageRef = builder.prismaObject("DocumentationPage", {
@@ -69,6 +64,9 @@ export const DocumentationPageRef = builder.prismaObject("DocumentationPage", {
     body: t.exposeString("body"),
     position: t.exposeInt("position"),
     customId: t.exposeString("customId", { nullable: true }),
+    indexableContent: t.exposeString("indexableContent"),
+    urls: t.exposeString("urls"),
+    keywords: t.exposeString("keywords"),
     createdAt: t.expose("createdAt", { type: "DateTime" }),
     updatedAt: t.expose("updatedAt", { type: "DateTime" }),
     organizationId: t.exposeInt("organizationId"),
@@ -78,7 +76,6 @@ export const DocumentationPageRef = builder.prismaObject("DocumentationPage", {
     parentId: t.exposeInt("parentId", { nullable: true }),
     parent: t.relation("parent", { nullable: true }),
     children: t.relation("children"),
-    // DO NOT expose: indexableContent, urls, keywords
   }),
 });
 

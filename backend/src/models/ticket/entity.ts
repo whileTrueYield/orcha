@@ -2,7 +2,7 @@
  * Ticket Pothos type definitions.
  *
  * Exports:
- *  - TicketRef: prismaObject for Ticket (omits checklist, paths, indexableContent)
+ *  - TicketRef: prismaObject for Ticket
  *  - TicketWorkflowStateRef: prismaObject for TicketWorkflowState
  *  - TicketWorkflowStateNoteRef: prismaObject for TicketWorkflowStateNote
  *  - PlanningTicketRef / NextTicketRef / ChecklistItemRef / etc.
@@ -25,7 +25,7 @@ import { createPaginatedType } from "../../schema/pagination";
 export const ticketStatuses = Object.values(PrismaTicketStatus);
 
 // ---------------------------------------------------------------------------
-// Ticket prismaObject — omits checklist, paths, indexableContent
+// Ticket prismaObject
 // ---------------------------------------------------------------------------
 
 export const TicketRef = builder.prismaObject("Ticket", {
@@ -37,6 +37,7 @@ export const TicketRef = builder.prismaObject("Ticket", {
     localId: t.exposeInt("localId", { nullable: true }),
     milestone: t.exposeBoolean("milestone"),
     estimating: t.exposeBoolean("estimating"),
+    indexableContent: t.exposeString("indexableContent"),
     createdAt: t.expose("createdAt", { type: "DateTime" }),
     updatedAt: t.expose("updatedAt", { type: "DateTime" }),
     eta: t.expose("eta", { type: "DateTime", nullable: true }),
@@ -79,12 +80,12 @@ export const TicketRef = builder.prismaObject("Ticket", {
     cases: t.relation("cases"),
     // issues is an alias for the `cases` relation — the old schema exposed it as `issues`
     issues: t.relation("cases"),
-    // DO NOT expose: checklist, paths, indexableContent
+    // checklist is exposed as a computed field in ticketWorkflowState.resolver.ts
   }),
 });
 
 // ---------------------------------------------------------------------------
-// TicketWorkflowState prismaObject — omits checklist
+// TicketWorkflowState prismaObject
 // ---------------------------------------------------------------------------
 
 export const TicketWorkflowStateRef = builder.prismaObject("TicketWorkflowState", {
@@ -111,7 +112,7 @@ export const TicketWorkflowStateRef = builder.prismaObject("TicketWorkflowState"
     nextScheduleItems: t.relation("nextScheduleItems"),
     ticketWorkflowStateNotes: t.relation("ticketWorkflowStateNotes"),
     fromTicketWorkflowStateNotes: t.relation("fromTicketWorkflowStateNotes"),
-    // DO NOT expose: checklist
+    // checklist is exposed as a computed field in ticketWorkflowState.resolver.ts
   }),
 });
 

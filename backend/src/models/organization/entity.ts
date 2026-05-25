@@ -102,6 +102,7 @@ export const OrganizationRef = builder.prismaObject("Organization", {
     estimatedAt: t.expose("estimatedAt", { type: "DateTime" }),
     status: t.expose("status", { type: OrganizationStatusEnum }),
     scheduleStatus: t.expose("scheduleStatus", { type: ScheduleStatusEnum }),
+    preferences: t.exposeString("preferences"),
 
     // Address relations
     mailingAddressId: t.exposeInt("mailingAddressId", { nullable: true }),

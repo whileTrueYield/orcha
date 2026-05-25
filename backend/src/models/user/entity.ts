@@ -1,13 +1,13 @@
 /**
  * Pothos type definitions for the User model.
  *
- * OMITTED FIELDS: password and preferences are NOT exposed in the
- * prismaObject. The preferences field is parsed from the DB column
- * and returned as a typed UserPreferences object via a dedicated
- * field resolver in user.resolver.ts.
+ * password is NOT exposed in the prismaObject (security).
+ * preferences is exposed as a typed UserPreferences object via a
+ * computed field resolver in user.resolver.ts (parses the raw JSON
+ * column into a structured type).
  *
  * Exports:
- *  - UserRef:             prismaObject for User (excludes password, preferences)
+ *  - UserRef:             prismaObject for User (excludes password)
  *  - UserPreferencesRef:  plain objectRef for the parsed preferences shape
  *  - PaginatedUsers:      paginated wrapper via createPaginatedType
  *  - DEFAULT_USER_PREFERENCES: fallback when preferences JSON is absent/invalid
@@ -47,9 +47,9 @@ builder.objectType(UserPreferencesRef, {
 // ---------------------------------------------------------------------------
 // User — prismaObject backed by the Prisma User model
 //
-// password and preferences are intentionally omitted:
-//  - password: security — never exposed over the API
-//  - preferences: stored as JSON string, exposed via UserPreferences resolver
+// password is intentionally omitted — never exposed over the API.
+// preferences is exposed as a computed field in user.resolver.ts
+// (returns a typed UserPreferences object instead of the raw JSON string).
 // ---------------------------------------------------------------------------
 
 export const UserRef = builder.prismaObject("User", {

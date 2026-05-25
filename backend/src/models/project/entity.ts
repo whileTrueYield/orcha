@@ -2,13 +2,13 @@
  * Project Pothos type definitions.
  *
  * Exports:
- *  - ProjectRef: prismaObject for Project (omits indexableContent, checklist, byPaths, secondaryByPaths)
+ *  - ProjectRef: prismaObject for Project
  *  - MiniProjectRef / ProjectAnalyticsRef / ProjectTicketRef / etc.
  *  - PaginatedProjects: paginated wrapper
  *  - ProjectTicketQueryCategoryEnum: enum for ticket category queries
  *
- * Note: Project.byPaths and Project.secondaryByPaths are NOT exposed (omitted fields).
- * Project.indexableContent and Project.checklist are also NOT exposed.
+ * Project.checklist is exposed as a computed field returning [ChecklistItem]
+ * (see project.resolver.ts).
  */
 
 import { TicketStatus, ModelStage } from "@prisma/client";
@@ -20,7 +20,7 @@ import {
 import { createPaginatedType } from "../../schema/pagination";
 
 // ---------------------------------------------------------------------------
-// Project prismaObject — omits indexableContent, checklist
+// Project prismaObject
 // ---------------------------------------------------------------------------
 
 export const ProjectRef = builder.prismaObject("Project", {
@@ -30,6 +30,7 @@ export const ProjectRef = builder.prismaObject("Project", {
     duration: t.exposeInt("duration"),
     stage: t.expose("stage", { type: ModelStageEnum }),
     ancestorIsArchived: t.exposeBoolean("ancestorIsArchived"),
+    indexableContent: t.exposeString("indexableContent"),
     createdAt: t.expose("createdAt", { type: "DateTime" }),
     updatedAt: t.expose("updatedAt", { type: "DateTime" }),
     organizationId: t.exposeInt("organizationId"),
@@ -46,7 +47,7 @@ export const ProjectRef = builder.prismaObject("Project", {
     pinnedByRoles: t.relation("pinnedByRoles"),
     scheduleConfigs: t.relation("scheduleConfigs"),
     // projectData and projectText are internal storage models — not exposed in the GraphQL schema
-    // DO NOT expose: indexableContent, checklist, byPaths, secondaryByPaths
+    // checklist is exposed as a computed field in project.resolver.ts
   }),
 });
 

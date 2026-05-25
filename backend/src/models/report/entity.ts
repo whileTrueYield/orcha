@@ -3,7 +3,7 @@
  *
  * Exports:
  *  - ReportRef: prismaObject for Report
- *  - ReportQueryRef: prismaObject for ReportQuery (omits byPaths, secondaryByPaths)
+ *  - ReportQueryRef: prismaObject for ReportQuery
  *  - FilterElementRef / QueryAggregateRef / ReportAggregateRef: custom types
  *  - PaginatedReports: paginated wrapper
  *  - reportWidgetTypes: all ReportWidgetType values
@@ -40,7 +40,7 @@ export const ReportRef = builder.prismaObject("Report", {
 });
 
 // ---------------------------------------------------------------------------
-// ReportQuery prismaObject — omits byPaths, secondaryByPaths
+// ReportQuery prismaObject
 // ---------------------------------------------------------------------------
 
 export const ReportQueryRef = builder.prismaObject("ReportQuery", {
@@ -56,6 +56,8 @@ export const ReportQueryRef = builder.prismaObject("ReportQuery", {
     aggregateField: t.expose("aggregateField", { type: ReportAggregateFieldEnum }),
     organizationId: t.exposeInt("organizationId"),
     reportId: t.exposeInt("reportId"),
+    byPaths: t.exposeString("byPaths"),
+    secondaryByPaths: t.exposeString("secondaryByPaths"),
     createdAt: t.expose("createdAt", { type: "DateTime" }),
     updatedAt: t.expose("updatedAt", { type: "DateTime" }),
     fromDate: t.exposeString("fromDate", { nullable: true }),
@@ -80,7 +82,6 @@ export const ReportQueryRef = builder.prismaObject("ReportQuery", {
     secondaryIsTicketNotStarted: t.exposeBoolean("secondaryIsTicketNotStarted", { nullable: true }),
     organization: t.relation("organization"),
     report: t.relation("report"),
-    // DO NOT expose: byPaths, secondaryByPaths
   }),
 });
 

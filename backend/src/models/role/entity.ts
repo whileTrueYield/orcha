@@ -56,7 +56,8 @@ export const RoleRef = builder.prismaObject("Role", {
     roleEmail: t.relation("roleEmail", { nullable: true }),
     roleStartReminder: t.relation("roleStartReminder", { nullable: true }),
     roleAutoResume: t.relation("roleAutoResume", { nullable: true }),
-    // DO NOT expose: preferences, workWeek
+    preferences: t.exposeString("preferences"),
+    workWeek: t.exposeString("workWeek"),
   }),
 });
 
