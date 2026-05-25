@@ -32,12 +32,23 @@ the impact on your current plan before committing to the change.
 
 ```sh
 git clone https://github.com/whileTrueYield/orcha.git && cd orcha
-make        # copies .env, boots 7 containers, runs migrations
+make        # copies .env, boots 7 containers in demo mode with sample data
 ```
 
-Open http://localhost:3000. The stack boots in demo mode with sample data.
+Open http://localhost:3000.
 
 **Requires:** Docker and Docker Compose. Nothing else.
+
+### Development mode
+
+```sh
+make dev    # real auth, isolated DB, Mailpit email catcher, file watching
+```
+
+Unlike the demo, `make dev` runs with real authentication and email flows.
+Registration and invitation emails are caught by Mailpit at
+http://localhost:8025. The dev stack uses its own database and MinIO volumes
+so it won't interfere with the demo instance.
 
 ## How it works
 
@@ -73,7 +84,9 @@ architecture is documented in depth in [ARCHITECTURE.md](ARCHITECTURE.md).
 ## Development
 
 ```sh
-make watch             # hot-reload on file changes
+make dev               # start dev stack with file watching
+make demo              # start demo instance (seeded data, no auth)
+make watch             # hot-reload on file changes (demo mode)
 make types             # regenerate GraphQL types after schema changes
 make ssh-backend       # shell into a running container
 make help              # full command list
@@ -81,13 +94,14 @@ make help              # full command list
 
 Useful URLs once up:
 
-| Service        | URL                        |
-|----------------|----------------------------|
-| App            | http://localhost:3000       |
-| GraphQL API    | http://localhost:4000       |
-| MinIO Console  | http://localhost:9001       |
-| Prisma Studio  | http://localhost:5555       |
-| Logs (Dozzle)  | http://localhost:10350      |
+| Service        | URL                        | Mode     |
+|----------------|----------------------------|----------|
+| App            | http://localhost:3000       | both     |
+| GraphQL API    | http://localhost:4000       | both     |
+| MinIO Console  | http://localhost:9001       | both     |
+| Prisma Studio  | http://localhost:5555       | both     |
+| Logs (Dozzle)  | http://localhost:10350      | both     |
+| Mailpit        | http://localhost:8025       | dev only |
 
 ## License
 
