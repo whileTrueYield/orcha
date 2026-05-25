@@ -279,7 +279,7 @@ builder.mutationField("logout", (t) =>
             resolve(false);
             return;
           }
-          ctx.res.clearCookie("seshID", { path: "/" });
+          ctx.res.clearCookie("sessionId", { path: "/" });
           resolve(true);
         });
       }),
