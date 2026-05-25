@@ -31,7 +31,9 @@ const rootReducer: typeof allReducers = (state, action) => {
     state = undefined as any;
   }
   if (action.type === "LOGIN_SUCCESS") {
-    GQLClient.resetStore();
+    // resetStore clears cache and refetches active queries. During
+    // registration there may be no valid queries to refetch — ignore errors.
+    GQLClient.resetStore().catch(() => {});
   }
 
   return allReducers(state, action);
