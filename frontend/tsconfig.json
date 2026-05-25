@@ -12,11 +12,7 @@
     "module": "esnext",
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "rootDirs": ["src", "../backend/src/generated"],
     "baseUrl": "src",
-    "paths": {
-      "types/graphql": ["../../backend/src/generated/graphql"]
-    },
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
@@ -36,5 +32,5 @@
     "excludeDirectories": ["**/node_modules", "_build"],
     "excludeFiles": ["build/fileWhichChangesOften.ts"]
   },
-  "include": ["src", "../backend/src/generated/graphql.ts"]
+  "include": ["src"]
 }

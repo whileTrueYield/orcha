@@ -10,5 +10,4 @@ generates:
     plugins:
       - "typescript"
     config:
-      avoidOptionals: true
-      maybeValue: "T | undefined"
+      maybeValue: "T | null"

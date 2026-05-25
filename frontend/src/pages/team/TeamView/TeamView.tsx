@@ -21,7 +21,7 @@ import Tiptap from "components/TipTap/TipTap";
 type Props = RouteComponentProps<{ teamId: string }>;
 
 const GET_TEAM = gql`
-  query getTeam($id: Int!, $first: Int!, $search: String, $offset: Int) {
+  query getTeam($id: Int!) {
     team(id: $id) {
       id
       name
@@ -30,15 +30,12 @@ const GET_TEAM = gql`
       coverUrl
       updatedAt
       createdAt
-      members(first: $first, search: $search, offset: $offset) {
-        totalCount
-        nodes {
-          id
-          type
-          title
-          name
-          avatarUrl
-        }
+      members {
+        id
+        type
+        title
+        name
+        avatarUrl
       }
     }
   }
@@ -62,17 +59,8 @@ export const TeamView: React.FC<Props> = (props) => {
     useDebouncedState("", 500, resetPage);
   const searchElt = useSlashForSearch();
 
-  const paginationVariables = {
-    first: pagination.pageSize,
-    search: filter,
-    offset: pagination.pageSize * pagination.page,
-  };
-
   const { data, loading } = useQuery<QueryReturnValue["team"]>(GET_TEAM, {
-    variables: {
-      id: teamId || "0",
-      ...paginationVariables,
-    },
+    variables: { id: teamId || "0" },
   });
 
   const team = data?.team;
@@ -84,8 +72,17 @@ export const TeamView: React.FC<Props> = (props) => {
     return null;
   }
 
-  const members = team.members.nodes;
-  const total = team.members.totalCount;
+  // members is now a plain Role[] — paginate client-side
+  const allMembers = filter
+    ? team.members.filter((m) =>
+        m.name.toLowerCase().includes(filter.toLowerCase())
+      )
+    : team.members;
+  const members = allMembers.slice(
+    pagination.page * pagination.pageSize,
+    (pagination.page + 1) * pagination.pageSize
+  );
+  const total = allMembers.length;
 
   const displayCover = () => {
     if (team.coverUrl) {
@@ -243,7 +240,7 @@ export const TeamView: React.FC<Props> = (props) => {
 
       <div className="mt-4 px-4 sm:px-0 md:col-span-2 md:mt-0">
         <ul className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {team.members.nodes.map((member) => renderMember(member))}
+          {members.map((member) => renderMember(member))}
         </ul>
         <Paginator
           total={total}

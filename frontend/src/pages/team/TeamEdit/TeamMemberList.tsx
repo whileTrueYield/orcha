@@ -36,19 +36,10 @@ export const TeamMemberList: FCWithFragments<Props> = (props) => {
     useDebouncedState("", 500, resetPage);
   const searchElt = useSlashForSearch();
 
-  const paginationVariables = {
-    first: pagination.pageSize,
-    search: filter,
-    offset: pagination.pageSize * pagination.page,
-  };
-
   const { data, loading, refetch } = useQuery<QueryReturnValue["team"]>(
     GET_MEMBERS,
     {
-      variables: {
-        id: teamId,
-        ...paginationVariables,
-      },
+      variables: { id: teamId },
       onError: onGraphQLError({ title: "Retrieve team members error" }),
     }
   );
@@ -85,15 +76,24 @@ export const TeamMemberList: FCWithFragments<Props> = (props) => {
     return null;
   }
 
-  const members = team.members.nodes;
-  const total = team.members.totalCount;
+  // members is now a plain Role[] — filter and paginate client-side
+  // (the backend no longer exposes a paginated members resolver)
+  const allMembers = filter
+    ? team.members.filter((m) =>
+        m.name.toLowerCase().includes(filter.toLowerCase())
+      )
+    : team.members;
+  const members = allMembers.slice(
+    pagination.page * pagination.pageSize,
+    (pagination.page + 1) * pagination.pageSize
+  );
+  const total = allMembers.length;
 
   const onRemoveMembers = (roles: Role[]) => {
     removeMembers({
       variables: {
         teamId: team.id,
         roleIds: idsAsNumber(roles),
-        ...paginationVariables,
       },
     });
   };
@@ -103,7 +103,6 @@ export const TeamMemberList: FCWithFragments<Props> = (props) => {
       variables: {
         teamId: team.id,
         roleIds: idsAsNumber(roles),
-        ...paginationVariables,
       },
     });
   };
@@ -210,7 +209,7 @@ export const TeamMemberList: FCWithFragments<Props> = (props) => {
           </div>
           <div className="mt-4 px-4 sm:px-0 md:col-span-2 md:mt-0">
             <ul className=" grid grid-cols-1 overflow-hidden rounded-lg border sm:grid-cols-2 sm:gap-6 sm:border-0 sm:bg-gray-100 sm:p-4 md:grid-cols-2">
-              {team.members.nodes.map((member) => renderMember(member))}
+              {members.map((member) => renderMember(member))}
             </ul>
             <Paginator
               total={total}
@@ -241,20 +240,12 @@ TeamMemberList.fragments = {
 };
 
 const GET_MEMBERS = gql`
-  query getTeamMembersForTeamMemberList(
-    $id: Int!
-    $first: Int!
-    $search: String
-    $offset: Int
-  ) {
+  query getTeamMembersForTeamMemberList($id: Int!) {
     team(id: $id) {
       id
       memberIds
-      members(first: $first, search: $search, offset: $offset) {
-        totalCount
-        nodes {
-          ...TeamMemberList_MembersFragment
-        }
+      members {
+        ...TeamMemberList_MembersFragment
       }
     }
   }
@@ -262,21 +253,12 @@ const GET_MEMBERS = gql`
 `;
 
 const MUTATE_REMOVE_MEMBERS = gql`
-  mutation TeamRemoveMembers(
-    $teamId: Int!
-    $roleIds: [Int!]!
-    $first: Int!
-    $search: String
-    $offset: Int
-  ) {
+  mutation TeamRemoveMembers($teamId: Int!, $roleIds: [Int!]!) {
     removeMembers(teamId: $teamId, roleIds: $roleIds) {
       id
       memberIds
-      members(first: $first, search: $search, offset: $offset) {
-        totalCount
-        nodes {
-          ...TeamMemberList_MembersFragment
-        }
+      members {
+        ...TeamMemberList_MembersFragment
       }
     }
   }
@@ -284,21 +266,12 @@ const MUTATE_REMOVE_MEMBERS = gql`
 `;
 
 const MUTATE_ADD_MEMBERS = gql`
-  mutation TeamAddMembers(
-    $teamId: Int!
-    $roleIds: [Int!]!
-    $first: Int!
-    $search: String
-    $offset: Int
-  ) {
+  mutation TeamAddMembers($teamId: Int!, $roleIds: [Int!]!) {
     addMembers(teamId: $teamId, roleIds: $roleIds) {
       id
       memberIds
-      members(first: $first, search: $search, offset: $offset) {
-        totalCount
-        nodes {
-          ...TeamMemberList_MembersFragment
-        }
+      members {
+        ...TeamMemberList_MembersFragment
       }
     }
   }

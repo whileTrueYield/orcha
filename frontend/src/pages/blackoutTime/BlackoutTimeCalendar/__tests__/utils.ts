@@ -10,7 +10,7 @@ describe("Running text in UTC Timezones", () => {
 
 describe("recurringBlackoutTimeToCalendarEvent", () => {
   it("convert BlackoutTime to CalendarEvent (simple)", () => {
-    const blackoutTime: RecurringBlackoutTime = {
+    const blackoutTime = {
       id: 1,
       organizationId: 1,
       startTime: "08:00", // 8:00 am
@@ -28,7 +28,7 @@ describe("recurringBlackoutTimeToCalendarEvent", () => {
       roles: [],
       createdAt: new Date("2023-01-02T03:00:00Z"),
       updatedAt: new Date("2023-01-02T03:00:00Z"),
-    };
+    } as unknown as RecurringBlackoutTime;
 
     const event = recurringBlackoutTimeToCalendarEvents(
       blackoutTime,
@@ -51,7 +51,7 @@ describe("recurringBlackoutTimeToCalendarEvent", () => {
   });
 
   it("convert BlackoutTime to CalendarEvent (with negative TZ)", () => {
-    const blackoutTime: RecurringBlackoutTime = {
+    const blackoutTime = {
       id: 1,
       organizationId: 1,
       startTime: "03:00", // 3:00 am
@@ -69,7 +69,7 @@ describe("recurringBlackoutTimeToCalendarEvent", () => {
       roles: [],
       createdAt: new Date("2023-01-02T03:00:00Z"),
       updatedAt: new Date("2023-01-02T03:00:00Z"),
-    };
+    } as unknown as RecurringBlackoutTime;
 
     const event = recurringBlackoutTimeToCalendarEvents(
       blackoutTime,
@@ -89,7 +89,7 @@ describe("recurringBlackoutTimeToCalendarEvent", () => {
   });
 
   it("convert BlackoutTime to CalendarEvent (with positive TZ)", () => {
-    const blackoutTime: RecurringBlackoutTime = {
+    const blackoutTime = {
       id: 1,
       organizationId: 1,
       startTime: "08:00", // 8:00 am
@@ -107,7 +107,7 @@ describe("recurringBlackoutTimeToCalendarEvent", () => {
       roles: [],
       createdAt: new Date("2023-01-02T03:00:00Z"),
       updatedAt: new Date("2023-01-02T03:00:00Z"),
-    };
+    } as unknown as RecurringBlackoutTime;
 
     const event = recurringBlackoutTimeToCalendarEvents(
       blackoutTime,
@@ -127,7 +127,7 @@ describe("recurringBlackoutTimeToCalendarEvent", () => {
   });
 
   it("convert BlackoutTime to CalendarEvent (with split negative TZ)", () => {
-    const blackoutTime: RecurringBlackoutTime = {
+    const blackoutTime = {
       id: 1,
       organizationId: 1,
       startTime: "02:00", // 2 am
@@ -145,7 +145,7 @@ describe("recurringBlackoutTimeToCalendarEvent", () => {
       roles: [],
       createdAt: new Date("2023-01-02T03:00:00Z"),
       updatedAt: new Date("2023-01-02T03:00:00Z"),
-    };
+    } as unknown as RecurringBlackoutTime;
 
     const event = recurringBlackoutTimeToCalendarEvents(
       blackoutTime,
@@ -172,7 +172,7 @@ describe("recurringBlackoutTimeToCalendarEvent", () => {
   });
 
   it("convert BlackoutTime to CalendarEvent over many days", () => {
-    const blackoutTime: RecurringBlackoutTime = {
+    const blackoutTime = {
       id: 1,
       organizationId: 1,
       startTime: "02:00", // 2 am
@@ -190,7 +190,7 @@ describe("recurringBlackoutTimeToCalendarEvent", () => {
       roles: [],
       createdAt: new Date("2023-01-02T03:00:00Z"),
       updatedAt: new Date("2023-01-02T03:00:00Z"),
-    };
+    } as unknown as RecurringBlackoutTime;
 
     const event = recurringBlackoutTimeToCalendarEvents(
       blackoutTime,

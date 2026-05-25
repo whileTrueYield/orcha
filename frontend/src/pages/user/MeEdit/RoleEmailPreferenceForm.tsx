@@ -10,7 +10,7 @@ import { MailIcon } from "@heroicons/react/outline";
 import { PopoverTips } from "components/help/HelpBlock";
 
 interface Props {
-  role: Role & { roleEmail: RoleEmail };
+  role: Role;
 }
 
 export const RoleEmailPreferenceForm: FCWithFragments<Props> = (props) => {
@@ -48,11 +48,11 @@ export const RoleEmailPreferenceForm: FCWithFragments<Props> = (props) => {
             </p>
             <p>This feature is active by default.</p>
           </PopoverTips>
-          {role.roleEmail.nextWorkDayNotificationDate && !isOptOut ? (
+          {role.roleEmail?.nextWorkDayNotificationDate && !isOptOut ? (
             <div className="text-sm font-normal leading-6 text-gray-500">
               <span className="mr-1 hidden sm:inline">Next digest on</span>
               {format(
-                new Date(role.roleEmail.nextWorkDayNotificationDate),
+                new Date(role.roleEmail!.nextWorkDayNotificationDate),
                 "PPPPp"
               )}
             </div>

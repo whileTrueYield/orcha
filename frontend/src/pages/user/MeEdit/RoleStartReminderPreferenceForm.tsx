@@ -14,7 +14,7 @@ import { BellIcon } from "@heroicons/react/outline";
 import { PopoverTips } from "components/help/HelpBlock";
 
 interface Props {
-  role: Role & { roleStartReminder: RoleStartReminder };
+  role: Role;
 }
 
 export const RoleStartReminderPreferenceForm: FCWithFragments<Props> = (
@@ -43,7 +43,7 @@ export const RoleStartReminderPreferenceForm: FCWithFragments<Props> = (
     <div className="text-sm font-normal leading-6 text-gray-500">
       <span className="mr-1 hidden sm:inline">Next reminder on</span>
       {format(
-        new Date(role.roleStartReminder.nextStartNotificationDate),
+        new Date(role.roleStartReminder!.nextStartNotificationDate),
         "PPPPp"
       )}
     </div>
@@ -56,7 +56,7 @@ export const RoleStartReminderPreferenceForm: FCWithFragments<Props> = (
   );
 
   const renderInformations = () => {
-    if (!role.roleStartReminder.nextStartNotificationDate || isOptOut) {
+    if (!role.roleStartReminder?.nextStartNotificationDate || isOptOut) {
       return null;
     }
     if (hasNotifications) {

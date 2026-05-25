@@ -1,5 +1,10 @@
-export type Maybe<T> = T | undefined;
-export type InputMaybe<T> = T | undefined;
+export type Maybe<T> = T | null;
+export type InputMaybe<T> = T | null;
+export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
+export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: Maybe<T[SubKey]> };
+export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
+export type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };
+export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
   ID: { input: string; output: string; }
@@ -8,7 +13,7 @@ export type Scalars = {
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
   /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar. */
-  DateTime: { input: unknown; output: unknown; }
+  DateTime: { input: any; output: any; }
 };
 
 export type AcceptRoleInput = {
@@ -42,22 +47,22 @@ export enum BatchUpdateTicketAction {
 export type BatchUpdateTicketsInput = {
   action: BatchUpdateTicketAction;
   actionMessage: Scalars['String']['input'];
-  ownerId: InputMaybe<Scalars['Int']['input']>;
-  projectId: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: InputMaybe<Scalars['Int']['input']>;
+  projectId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type BlackoutTime = {
   __typename?: 'BlackoutTime';
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  disabled: Maybe<Scalars['Boolean']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  roles: Maybe<Array<Role>>;
-  startAt: Maybe<Scalars['DateTime']['output']>;
-  stopAt: Maybe<Scalars['DateTime']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  disabled: Scalars['Boolean']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  roles: Array<Role>;
+  startAt: Scalars['DateTime']['output'];
+  stopAt: Scalars['DateTime']['output'];
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type ChangeEmailInput = {
@@ -71,63 +76,63 @@ export type ChangePasswordInput = {
 };
 
 export type ChangeTicketWorkflowStateInput = {
-  fractionable: InputMaybe<Scalars['Boolean']['input']>;
-  maximum: InputMaybe<Scalars['Int']['input']>;
-  minimum: InputMaybe<Scalars['Int']['input']>;
-  mostLikely: InputMaybe<Scalars['Int']['input']>;
+  fractionable?: InputMaybe<Scalars['Boolean']['input']>;
+  maximum?: InputMaybe<Scalars['Int']['input']>;
+  minimum?: InputMaybe<Scalars['Int']['input']>;
+  mostLikely?: InputMaybe<Scalars['Int']['input']>;
   roleId: Scalars['Int']['input'];
   ticketWorkflowStateId: Scalars['Int']['input'];
 };
 
 export type ChecklistItem = {
   __typename?: 'ChecklistItem';
-  checked: Maybe<Scalars['Boolean']['output']>;
-  label: Maybe<Scalars['String']['output']>;
+  checked?: Maybe<Scalars['Boolean']['output']>;
+  label: Scalars['String']['output'];
 };
 
 export type ClientUpdateIssueInput = {
   hash: Scalars['String']['input'];
-  imageUrl: InputMaybe<Scalars['String']['input']>;
-  message: InputMaybe<Scalars['String']['input']>;
+  imageUrl?: InputMaybe<Scalars['String']['input']>;
+  message?: InputMaybe<Scalars['String']['input']>;
   proof: Scalars['String']['input'];
-  status: InputMaybe<IssueStatus>;
+  status?: InputMaybe<IssueStatus>;
 };
 
 export type CloseScheduleItemInput = {
-  done: InputMaybe<Scalars['Boolean']['input']>;
-  nextTicketWorkflowStateId: InputMaybe<Scalars['Int']['input']>;
-  note: InputMaybe<Scalars['String']['input']>;
-  stoppedAt: InputMaybe<Scalars['String']['input']>;
+  done?: InputMaybe<Scalars['Boolean']['input']>;
+  nextTicketWorkflowStateId?: InputMaybe<Scalars['Int']['input']>;
+  note?: InputMaybe<Scalars['String']['input']>;
+  stoppedAt?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type Comment = {
   __typename?: 'Comment';
-  acceptedReply: Maybe<CommentReply>;
-  acceptedReplyId: Maybe<Scalars['Int']['output']>;
-  author: Maybe<Role>;
-  authorId: Maybe<Scalars['Int']['output']>;
-  body: Maybe<Scalars['String']['output']>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  replies: Maybe<Array<CommentReply>>;
-  replyCount: Maybe<Scalars['Int']['output']>;
-  ticket: Maybe<Ticket>;
-  ticketId: Maybe<Scalars['Int']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  acceptedReply?: Maybe<CommentReply>;
+  acceptedReplyId?: Maybe<Scalars['Int']['output']>;
+  author: Role;
+  authorId: Scalars['Int']['output'];
+  body: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['Int']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  replies: Array<CommentReply>;
+  replyCount: Scalars['Int']['output'];
+  ticket: Ticket;
+  ticketId: Scalars['Int']['output'];
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type CommentReply = {
   __typename?: 'CommentReply';
-  author: Maybe<Role>;
-  authorId: Maybe<Scalars['Int']['output']>;
-  body: Maybe<Scalars['String']['output']>;
-  commentId: Maybe<Scalars['Int']['output']>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  author: Role;
+  authorId: Scalars['Int']['output'];
+  body: Scalars['String']['output'];
+  commentId: Scalars['Int']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['Int']['output'];
+  organizationId?: Maybe<Scalars['Int']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type CreateBlackoutTimeInput = {
@@ -138,11 +143,11 @@ export type CreateBlackoutTimeInput = {
 };
 
 export type CreateCommentInput = {
-  body: InputMaybe<Scalars['String']['input']>;
+  body?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type CreateDocumentationInput = {
-  description: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
   name: Scalars['String']['input'];
 };
 
@@ -152,17 +157,17 @@ export type CreateDocumentationPageInput = {
 };
 
 export type CreateDrawingInput = {
-  data: InputMaybe<Scalars['String']['input']>;
+  data?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type CreateFeatureGroupInput = {
-  description: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
   name: Scalars['String']['input'];
   productId: Scalars['Int']['input'];
 };
 
 export type CreateNoteInput = {
-  body: InputMaybe<Scalars['String']['input']>;
+  body?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type CreateOrganizationInput = {
@@ -177,27 +182,27 @@ export type CreatePersonalTagInput = {
 
 export type CreateProductInput = {
   code: Scalars['String']['input'];
-  description: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
   name: Scalars['String']['input'];
 };
 
 export type CreateProjectInput = {
   name: Scalars['String']['input'];
-  parentId: InputMaybe<Scalars['Int']['input']>;
+  parentId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type CreateRecurringBlackoutTimeInput = {
-  friday: InputMaybe<Scalars['Boolean']['input']>;
-  monday: InputMaybe<Scalars['Boolean']['input']>;
+  friday?: InputMaybe<Scalars['Boolean']['input']>;
+  monday?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
   roleIds: Array<Scalars['Int']['input']>;
-  saturday: InputMaybe<Scalars['Boolean']['input']>;
+  saturday?: InputMaybe<Scalars['Boolean']['input']>;
   startTime: Scalars['String']['input'];
   stopTime: Scalars['String']['input'];
-  sunday: InputMaybe<Scalars['Boolean']['input']>;
-  thursday: InputMaybe<Scalars['Boolean']['input']>;
-  tuesday: InputMaybe<Scalars['Boolean']['input']>;
-  wednesday: InputMaybe<Scalars['Boolean']['input']>;
+  sunday?: InputMaybe<Scalars['Boolean']['input']>;
+  thursday?: InputMaybe<Scalars['Boolean']['input']>;
+  tuesday?: InputMaybe<Scalars['Boolean']['input']>;
+  wednesday?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type CreateReportInput = {
@@ -206,57 +211,57 @@ export type CreateReportInput = {
 
 export type CreateReportQueryInput = {
   aggregateField: ReportAggregateField;
-  assigneeIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  authorIds: InputMaybe<Array<Scalars['Int']['input']>>;
+  assigneeIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  authorIds?: InputMaybe<Array<Scalars['Int']['input']>>;
   chartBy: ReportGroupBy;
-  chartByLabel: InputMaybe<Scalars['String']['input']>;
-  cummulative: InputMaybe<Scalars['Boolean']['input']>;
-  fromDate: InputMaybe<Scalars['String']['input']>;
-  granularity: InputMaybe<ReportDateGranularity>;
-  groupBy: InputMaybe<ReportGroupBy>;
-  groupByLabel: InputMaybe<Scalars['String']['input']>;
-  isTicketActive: InputMaybe<Scalars['Boolean']['input']>;
-  isTicketCancelled: InputMaybe<Scalars['Boolean']['input']>;
-  isTicketDone: InputMaybe<Scalars['Boolean']['input']>;
-  isTicketNotStarted: InputMaybe<Scalars['Boolean']['input']>;
-  isTicketStarted: InputMaybe<Scalars['Boolean']['input']>;
-  noUnknowns: InputMaybe<Scalars['Boolean']['input']>;
-  ownerIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  paths: InputMaybe<Array<Scalars['String']['input']>>;
-  productIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  sameAsPrimaryFilter: InputMaybe<Scalars['Boolean']['input']>;
-  secondaryAssigneeIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryAuthorIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryChartBy: InputMaybe<ReportGroupBy>;
-  secondaryChartByLabel: InputMaybe<Scalars['String']['input']>;
-  secondaryGroupBy: InputMaybe<ReportGroupBy>;
-  secondaryGroupByLabel: InputMaybe<Scalars['String']['input']>;
-  secondaryIsTicketActive: InputMaybe<Scalars['Boolean']['input']>;
-  secondaryIsTicketCancelled: InputMaybe<Scalars['Boolean']['input']>;
-  secondaryIsTicketDone: InputMaybe<Scalars['Boolean']['input']>;
-  secondaryIsTicketNotStarted: InputMaybe<Scalars['Boolean']['input']>;
-  secondaryIsTicketStarted: InputMaybe<Scalars['Boolean']['input']>;
-  secondaryOwnerIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryPaths: InputMaybe<Array<Scalars['String']['input']>>;
-  secondaryProductIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryTagIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryTicketIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryWorkflowIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryWorkflowStateAssigneeIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryWorkflowStateIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  tagIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  ticketIds: InputMaybe<Array<Scalars['Int']['input']>>;
+  chartByLabel?: InputMaybe<Scalars['String']['input']>;
+  cummulative?: InputMaybe<Scalars['Boolean']['input']>;
+  fromDate?: InputMaybe<Scalars['String']['input']>;
+  granularity?: InputMaybe<ReportDateGranularity>;
+  groupBy?: InputMaybe<ReportGroupBy>;
+  groupByLabel?: InputMaybe<Scalars['String']['input']>;
+  isTicketActive?: InputMaybe<Scalars['Boolean']['input']>;
+  isTicketCancelled?: InputMaybe<Scalars['Boolean']['input']>;
+  isTicketDone?: InputMaybe<Scalars['Boolean']['input']>;
+  isTicketNotStarted?: InputMaybe<Scalars['Boolean']['input']>;
+  isTicketStarted?: InputMaybe<Scalars['Boolean']['input']>;
+  noUnknowns?: InputMaybe<Scalars['Boolean']['input']>;
+  ownerIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  paths?: InputMaybe<Array<Scalars['String']['input']>>;
+  productIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  sameAsPrimaryFilter?: InputMaybe<Scalars['Boolean']['input']>;
+  secondaryAssigneeIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryAuthorIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryChartBy?: InputMaybe<ReportGroupBy>;
+  secondaryChartByLabel?: InputMaybe<Scalars['String']['input']>;
+  secondaryGroupBy?: InputMaybe<ReportGroupBy>;
+  secondaryGroupByLabel?: InputMaybe<Scalars['String']['input']>;
+  secondaryIsTicketActive?: InputMaybe<Scalars['Boolean']['input']>;
+  secondaryIsTicketCancelled?: InputMaybe<Scalars['Boolean']['input']>;
+  secondaryIsTicketDone?: InputMaybe<Scalars['Boolean']['input']>;
+  secondaryIsTicketNotStarted?: InputMaybe<Scalars['Boolean']['input']>;
+  secondaryIsTicketStarted?: InputMaybe<Scalars['Boolean']['input']>;
+  secondaryOwnerIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryPaths?: InputMaybe<Array<Scalars['String']['input']>>;
+  secondaryProductIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryTagIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryTicketIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryWorkflowIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryWorkflowStateAssigneeIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryWorkflowStateIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  tagIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  ticketIds?: InputMaybe<Array<Scalars['Int']['input']>>;
   title: Scalars['String']['input'];
-  untilDate: InputMaybe<Scalars['String']['input']>;
+  untilDate?: InputMaybe<Scalars['String']['input']>;
   widgetType: ReportWidgetType;
-  workflowIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  workflowStateAssigneeIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  workflowStateIds: InputMaybe<Array<Scalars['Int']['input']>>;
+  workflowIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  workflowStateAssigneeIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  workflowStateIds?: InputMaybe<Array<Scalars['Int']['input']>>;
 };
 
 export type CreateScheduleItemInput = {
-  startedAt: InputMaybe<Scalars['String']['input']>;
-  stoppedAt: InputMaybe<Scalars['String']['input']>;
+  startedAt?: InputMaybe<Scalars['String']['input']>;
+  stoppedAt?: InputMaybe<Scalars['String']['input']>;
   ticketId: Scalars['Int']['input'];
   ticketWorkflowStateId: Scalars['Int']['input'];
 };
@@ -268,17 +273,17 @@ export type CreateTagInput = {
 
 export type CreateTeamInput = {
   code: Scalars['String']['input'];
-  description: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
   name: Scalars['String']['input'];
 };
 
 export type CreateTicketInput = {
-  description: InputMaybe<Scalars['String']['input']>;
-  productId: InputMaybe<Scalars['Int']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  productId?: InputMaybe<Scalars['Int']['input']>;
   projectId: Scalars['Int']['input'];
-  stage: InputMaybe<ModelStage>;
+  stage?: InputMaybe<ModelStage>;
   title: Scalars['String']['input'];
-  workflowId: InputMaybe<Scalars['Int']['input']>;
+  workflowId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type CreateTicketPersonalTagInput = {
@@ -296,11 +301,11 @@ export type CreateTimeOffInput = {
 };
 
 export type CreateTodoInput = {
-  body: InputMaybe<Scalars['String']['input']>;
+  body?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type CreateWorkflowInput = {
-  description: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
   name: Scalars['String']['input'];
 };
 
@@ -310,20 +315,20 @@ export type CreateWorkflowStateInput = {
 
 export type Ds_Shadow = {
   __typename?: 'DS_Shadow';
-  client: Maybe<Scalars['Int']['output']>;
-  document: Maybe<Scalars['String']['output']>;
-  server: Maybe<Scalars['Int']['output']>;
+  client: Scalars['Int']['output'];
+  document: Scalars['String']['output'];
+  server: Scalars['Int']['output'];
 };
 
 export type DemoRequest = {
   __typename?: 'DemoRequest';
-  config: Maybe<Scalars['String']['output']>;
-  confirmed: Maybe<Scalars['Boolean']['output']>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  email: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['ID']['output']>;
-  ip_address: Maybe<Scalars['String']['output']>;
-  status: Maybe<DemoStatus>;
+  config: Scalars['String']['output'];
+  confirmed: Scalars['Boolean']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  email: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  ip_address: Scalars['String']['output'];
+  status: DemoStatus;
 };
 
 export enum DemoStatus {
@@ -335,56 +340,59 @@ export enum DemoStatus {
 
 export type DependencySet = {
   __typename?: 'DependencySet';
-  projects: Maybe<Array<ProjectDependency>>;
-  tickets: Maybe<Array<TicketDependency>>;
+  projects: Array<ProjectDependency>;
+  tickets: Array<TicketDependency>;
 };
 
 export type Documentation = {
   __typename?: 'Documentation';
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  description: Maybe<Scalars['String']['output']>;
-  documentationPages: Maybe<Array<DocumentationPage>>;
-  id: Maybe<Scalars['Int']['output']>;
-  lastPublishRequestAt: Maybe<Scalars['DateTime']['output']>;
-  lastPublishedAt: Maybe<Scalars['DateTime']['output']>;
-  logoUrl: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  stage: Maybe<ModelStage>;
-  titles: Maybe<Array<MiniDocumentationPage>>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  description?: Maybe<Scalars['String']['output']>;
+  documentationPages: Array<DocumentationPage>;
+  id: Scalars['Int']['output'];
+  lastPublishRequestAt?: Maybe<Scalars['DateTime']['output']>;
+  lastPublishedAt?: Maybe<Scalars['DateTime']['output']>;
+  logoUrl?: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  stage: ModelStage;
+  titles: Array<MiniDocumentationPage>;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type DocumentationPage = {
   __typename?: 'DocumentationPage';
-  body: Maybe<Scalars['String']['output']>;
-  children: Maybe<Array<DocumentationPage>>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  customId: Maybe<Scalars['String']['output']>;
-  documentation: Maybe<Documentation>;
-  documentationId: Maybe<Scalars['Int']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  parent: Maybe<DocumentationPage>;
-  parentId: Maybe<Scalars['Int']['output']>;
-  position: Maybe<Scalars['Int']['output']>;
-  title: Maybe<Scalars['String']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  body: Scalars['String']['output'];
+  children: Array<DocumentationPage>;
+  createdAt: Scalars['DateTime']['output'];
+  customId?: Maybe<Scalars['String']['output']>;
+  documentation: Documentation;
+  documentationId: Scalars['Int']['output'];
+  id: Scalars['Int']['output'];
+  indexableContent: Scalars['String']['output'];
+  keywords: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  parent?: Maybe<DocumentationPage>;
+  parentId?: Maybe<Scalars['Int']['output']>;
+  position: Scalars['Int']['output'];
+  title: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+  urls: Scalars['String']['output'];
 };
 
 export type Drawing = {
   __typename?: 'Drawing';
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  data: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  lockExpiration: Maybe<Scalars['DateTime']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  role: Maybe<Role>;
-  roleId: Maybe<Scalars['Int']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  data: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  lockExpiration?: Maybe<Scalars['DateTime']['output']>;
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  role?: Maybe<Role>;
+  roleId?: Maybe<Scalars['Int']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type DuplicateReportInput = {
@@ -393,36 +401,36 @@ export type DuplicateReportInput = {
 
 export type Estimate = {
   __typename?: 'Estimate';
-  assignee: Maybe<Role>;
-  assigneeId: Maybe<Scalars['Int']['output']>;
-  end: Maybe<Scalars['Int']['output']>;
-  end_max: Maybe<Scalars['Int']['output']>;
-  end_min: Maybe<Scalars['Int']['output']>;
-  end_p50: Maybe<Scalars['Int']['output']>;
-  end_p70: Maybe<Scalars['Int']['output']>;
-  end_p80: Maybe<Scalars['Int']['output']>;
-  end_p90: Maybe<Scalars['Int']['output']>;
-  end_p95: Maybe<Scalars['Int']['output']>;
-  epoch: Maybe<Scalars['Int']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  start: Maybe<Scalars['Int']['output']>;
-  start_max: Maybe<Scalars['Int']['output']>;
-  start_min: Maybe<Scalars['Int']['output']>;
-  start_p50: Maybe<Scalars['Int']['output']>;
-  start_p70: Maybe<Scalars['Int']['output']>;
-  start_p80: Maybe<Scalars['Int']['output']>;
-  start_p90: Maybe<Scalars['Int']['output']>;
-  start_p95: Maybe<Scalars['Int']['output']>;
-  type: Maybe<EstimateType>;
-  updatedEpoch: Maybe<Scalars['Int']['output']>;
+  assignee: Role;
+  assigneeId: Scalars['Int']['output'];
+  end: Scalars['Int']['output'];
+  end_max: Scalars['Int']['output'];
+  end_min: Scalars['Int']['output'];
+  end_p50: Scalars['Int']['output'];
+  end_p70: Scalars['Int']['output'];
+  end_p80: Scalars['Int']['output'];
+  end_p90: Scalars['Int']['output'];
+  end_p95: Scalars['Int']['output'];
+  epoch: Scalars['Int']['output'];
+  id: Scalars['Int']['output'];
+  organizationId: Scalars['Int']['output'];
+  start: Scalars['Int']['output'];
+  start_max: Scalars['Int']['output'];
+  start_min: Scalars['Int']['output'];
+  start_p50: Scalars['Int']['output'];
+  start_p70: Scalars['Int']['output'];
+  start_p80: Scalars['Int']['output'];
+  start_p90: Scalars['Int']['output'];
+  start_p95: Scalars['Int']['output'];
+  type: EstimateType;
+  updatedEpoch: Scalars['Int']['output'];
 };
 
 export type EstimateTicketWorkflowStateInput = {
-  fractionable: InputMaybe<Scalars['Boolean']['input']>;
-  maximum: InputMaybe<Scalars['Int']['input']>;
-  minimum: InputMaybe<Scalars['Int']['input']>;
-  mostLikely: InputMaybe<Scalars['Int']['input']>;
+  fractionable?: InputMaybe<Scalars['Boolean']['input']>;
+  maximum?: InputMaybe<Scalars['Int']['input']>;
+  minimum?: InputMaybe<Scalars['Int']['input']>;
+  mostLikely?: InputMaybe<Scalars['Int']['input']>;
   ticketWorkflowStateId: Scalars['Int']['input'];
 };
 
@@ -432,48 +440,56 @@ export enum EstimateType {
 
 export type Feature = {
   __typename?: 'Feature';
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  featureGroup: Maybe<FeatureGroup>;
-  featureGroupId: Maybe<Scalars['Int']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  scheduleConfigs: Maybe<Array<ScheduleConfig>>;
-  skills: Maybe<Array<Skill>>;
-  tickets: Maybe<Array<Ticket>>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  featureGroup: FeatureGroup;
+  featureGroupId: Scalars['Int']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  scheduleConfigs: Array<ScheduleConfig>;
+  skills: Array<Skill>;
+  tickets: Array<Ticket>;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type FeatureDistribution = {
   __typename?: 'FeatureDistribution';
-  feature: Maybe<Feature>;
-  featureGroup: Maybe<FeatureGroup>;
-  hours: Maybe<Scalars['Float']['output']>;
+  feature: Feature;
+  featureGroup: FeatureGroup;
+  hours: Scalars['Float']['output'];
 };
 
 export type FeatureFlag = {
   __typename?: 'FeatureFlag';
-  documentation: Maybe<Scalars['Boolean']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  report: Maybe<Scalars['Boolean']['output']>;
-  support: Maybe<Scalars['Boolean']['output']>;
+  documentation: Scalars['Boolean']['output'];
+  id: Scalars['Int']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  report: Scalars['Boolean']['output'];
+  support: Scalars['Boolean']['output'];
 };
 
 export type FeatureGroup = {
   __typename?: 'FeatureGroup';
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  description: Maybe<Scalars['String']['output']>;
-  features: Maybe<Array<Feature>>;
-  id: Maybe<Scalars['Int']['output']>;
-  isActive: Maybe<Scalars['Boolean']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  product: Maybe<Product>;
-  productId: Maybe<Scalars['Int']['output']>;
-  status: Maybe<FeatureGroupStatus>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  description?: Maybe<Scalars['String']['output']>;
+  features: PaginatedFeatures;
+  id: Scalars['Int']['output'];
+  isActive: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  product: Product;
+  productId: Scalars['Int']['output'];
+  status: FeatureGroupStatus;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+
+export type FeatureGroupFeaturesArgs = {
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 export enum FeatureGroupStatus {
@@ -483,83 +499,83 @@ export enum FeatureGroupStatus {
 
 export type FilterElement = {
   __typename?: 'FilterElement';
-  id: Maybe<Scalars['ID']['output']>;
-  label: Maybe<Scalars['String']['output']>;
-  recordId: Maybe<Scalars['Int']['output']>;
+  id: Scalars['ID']['output'];
+  label: Scalars['String']['output'];
+  recordId: Scalars['Int']['output'];
 };
 
 export type HabitProductWorkflow = {
   __typename?: 'HabitProductWorkflow';
-  product: Maybe<Product>;
-  workflow: Maybe<Workflow>;
+  product: Product;
+  workflow: Workflow;
 };
 
 export type ImportTicketsInput = {
-  productId: InputMaybe<Scalars['Int']['input']>;
+  productId?: InputMaybe<Scalars['Int']['input']>;
   projectId: Scalars['Int']['input'];
   tickets: Array<ImportTicketsInputDetail>;
-  workflowId: InputMaybe<Scalars['Int']['input']>;
+  workflowId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type ImportTicketsInputDetail = {
-  ancestorIds: InputMaybe<Scalars['String']['input']>;
-  authorEmail: InputMaybe<Scalars['String']['input']>;
-  description: InputMaybe<Scalars['String']['input']>;
-  id: InputMaybe<Scalars['String']['input']>;
-  ownerEmail: InputMaybe<Scalars['String']['input']>;
-  successorIds: InputMaybe<Scalars['String']['input']>;
-  tags: InputMaybe<Scalars['String']['input']>;
+  ancestorIds?: InputMaybe<Scalars['String']['input']>;
+  authorEmail?: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  ownerEmail?: InputMaybe<Scalars['String']['input']>;
+  successorIds?: InputMaybe<Scalars['String']['input']>;
+  tags?: InputMaybe<Scalars['String']['input']>;
   title: Scalars['String']['input'];
 };
 
 export type InviteInput = {
-  roleType: InputMaybe<RoleType>;
+  roleType?: InputMaybe<RoleType>;
   userEmail: Scalars['String']['input'];
-  userName: InputMaybe<Scalars['String']['input']>;
+  userName?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type Issue = {
   __typename?: 'Issue';
-  archived: Maybe<Scalars['Boolean']['output']>;
-  assignee: Maybe<Role>;
-  assigneeId: Maybe<Scalars['Int']['output']>;
-  context: Maybe<IssueContext>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  description: Maybe<Scalars['String']['output']>;
-  email: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  issueActions: Maybe<Array<IssueAction>>;
-  localId: Maybe<Scalars['Int']['output']>;
-  metaData: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  product: Maybe<Product>;
-  productId: Maybe<Scalars['Int']['output']>;
-  resolveAfterDate: Maybe<Scalars['DateTime']['output']>;
-  status: Maybe<IssueStatus>;
-  ticket: Maybe<Ticket>;
-  ticketId: Maybe<Scalars['Int']['output']>;
-  token: Maybe<Scalars['String']['output']>;
-  unread: Maybe<Scalars['Boolean']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
-  url: Maybe<Scalars['String']['output']>;
-  userAgent: Maybe<Scalars['String']['output']>;
+  archived: Scalars['Boolean']['output'];
+  assignee?: Maybe<Role>;
+  assigneeId?: Maybe<Scalars['Int']['output']>;
+  context: IssueContext;
+  createdAt: Scalars['DateTime']['output'];
+  description: Scalars['String']['output'];
+  email: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  issueActions: Array<IssueAction>;
+  localId: Scalars['Int']['output'];
+  metaData: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  product: Product;
+  productId: Scalars['Int']['output'];
+  resolveAfterDate?: Maybe<Scalars['DateTime']['output']>;
+  status: IssueStatus;
+  ticket?: Maybe<Ticket>;
+  ticketId?: Maybe<Scalars['Int']['output']>;
+  token: Scalars['String']['output'];
+  unread: Scalars['Boolean']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+  url: Scalars['String']['output'];
+  userAgent: Scalars['String']['output'];
 };
 
 export type IssueAction = {
   __typename?: 'IssueAction';
-  author: Maybe<Role>;
-  authorId: Maybe<Scalars['Int']['output']>;
-  body: Maybe<Scalars['String']['output']>;
-  category: Maybe<IssueActionCategory>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  issue: Maybe<Issue>;
-  issueId: Maybe<Scalars['Int']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  title: Maybe<Scalars['String']['output']>;
+  author?: Maybe<Role>;
+  authorId?: Maybe<Scalars['Int']['output']>;
+  body?: Maybe<Scalars['String']['output']>;
+  category: IssueActionCategory;
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['Int']['output'];
+  issue: Issue;
+  issueId: Scalars['Int']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  title: Scalars['String']['output'];
 };
 
 export enum IssueActionCategory {
@@ -580,17 +596,17 @@ export type IssueAddNoteInput = {
 
 export type IssueContext = {
   __typename?: 'IssueContext';
-  browser: Maybe<Scalars['String']['output']>;
-  deviceName: Maybe<Scalars['String']['output']>;
-  deviceType: Maybe<Scalars['String']['output']>;
-  engine: Maybe<Scalars['String']['output']>;
-  os: Maybe<Scalars['String']['output']>;
-  osVersion: Maybe<Scalars['String']['output']>;
+  browser?: Maybe<Scalars['String']['output']>;
+  deviceName?: Maybe<Scalars['String']['output']>;
+  deviceType?: Maybe<Scalars['String']['output']>;
+  engine?: Maybe<Scalars['String']['output']>;
+  os?: Maybe<Scalars['String']['output']>;
+  osVersion?: Maybe<Scalars['String']['output']>;
 };
 
 export type IssueSendMessageInput = {
-  imageUrl: InputMaybe<Scalars['String']['input']>;
-  message: InputMaybe<Scalars['String']['input']>;
+  imageUrl?: InputMaybe<Scalars['String']['input']>;
+  message?: InputMaybe<Scalars['String']['input']>;
 };
 
 export enum IssueStatus {
@@ -612,65 +628,65 @@ export type LoginInput = {
 
 export type Me = {
   __typename?: 'Me';
-  organization: Maybe<Organization>;
-  role: Maybe<Role>;
-  status: Maybe<AuthStatus>;
-  user: Maybe<User>;
+  organization?: Maybe<Organization>;
+  role?: Maybe<Role>;
+  status: AuthStatus;
+  user?: Maybe<User>;
 };
 
 export type MiniDocumentationPage = {
   __typename?: 'MiniDocumentationPage';
-  id: Maybe<Scalars['Int']['output']>;
-  parentId: Maybe<Scalars['Int']['output']>;
-  position: Maybe<Scalars['Int']['output']>;
-  title: Maybe<Scalars['String']['output']>;
+  id: Scalars['Int']['output'];
+  parentId?: Maybe<Scalars['Int']['output']>;
+  position: Scalars['Int']['output'];
+  title: Scalars['String']['output'];
 };
 
 export type MiniFeature = {
   __typename?: 'MiniFeature';
-  featureGroupName: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  productCode: Maybe<Scalars['String']['output']>;
-  productName: Maybe<Scalars['String']['output']>;
+  featureGroupName: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  productCode: Scalars['String']['output'];
+  productName: Scalars['String']['output'];
 };
 
 export type MiniProduct = {
   __typename?: 'MiniProduct';
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  stage: Maybe<ModelStage>;
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  stage: ModelStage;
 };
 
 export type MiniProject = {
   __typename?: 'MiniProject';
-  ancestorIsArchived: Maybe<Scalars['Boolean']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  parentId: Maybe<Scalars['Int']['output']>;
-  stage: Maybe<ModelStage>;
+  ancestorIsArchived: Scalars['Boolean']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  parentId?: Maybe<Scalars['Int']['output']>;
+  stage: ModelStage;
 };
 
 export type MiniRole = {
   __typename?: 'MiniRole';
-  avatarUrl: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  title: Maybe<Scalars['String']['output']>;
+  avatarUrl?: Maybe<Scalars['String']['output']>;
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  title?: Maybe<Scalars['String']['output']>;
 };
 
 export type MiniTag = {
   __typename?: 'MiniTag';
-  color: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
+  color: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
 };
 
 export type MiniWorkflow = {
   __typename?: 'MiniWorkflow';
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  stage: Maybe<ModelStage>;
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  stage: ModelStage;
 };
 
 export enum ModelStage {
@@ -682,190 +698,190 @@ export enum ModelStage {
 
 export type Mutation = {
   __typename?: 'Mutation';
-  acceptReply: Maybe<Comment>;
-  acceptRole: Maybe<Role>;
-  addChildToDocumentationPage: Maybe<DocumentationPage>;
-  addFeature: Maybe<FeatureGroup>;
-  addFeatureGroup: Maybe<Product>;
-  addMembers: Maybe<Team>;
-  addReply: Maybe<CommentReply>;
-  addTicketAncestor: Maybe<Ticket>;
-  addTicketFeatures: Maybe<Ticket>;
-  addTicketPersonalTags: Maybe<Ticket>;
-  addTicketTags: Maybe<Ticket>;
+  acceptReply: Comment;
+  acceptRole: Role;
+  addChildToDocumentationPage: DocumentationPage;
+  addFeature: FeatureGroup;
+  addFeatureGroup: Product;
+  addMembers: Team;
+  addReply: CommentReply;
+  addTicketAncestor: Ticket;
+  addTicketFeatures: Ticket;
+  addTicketPersonalTags: Ticket;
+  addTicketTags: Ticket;
   /** @deprecated We store and display recently visited project and ticket instead */
-  addToRecentSearchHit: Maybe<Role>;
-  addWorkflowState: Maybe<Workflow>;
-  addWorkflows: Maybe<Product>;
-  archiveProject: Maybe<Project>;
-  batchUpdateTicketTags: Maybe<Array<Ticket>>;
-  batchUpdateTickets: Maybe<TicketBatchPayload>;
-  blockTicket: Maybe<Ticket>;
-  changeEmail: Maybe<User>;
-  changePassword: Maybe<User>;
-  changeTicketWorkflowStateAssignee: Maybe<Ticket>;
-  checkTodo: Maybe<Todo>;
+  addToRecentSearchHit: Role;
+  addWorkflowState: Workflow;
+  addWorkflows: Product;
+  archiveProject: Project;
+  batchUpdateTicketTags: Array<Ticket>;
+  batchUpdateTickets: TicketBatchPayload;
+  blockTicket: Ticket;
+  changeEmail: User;
+  changePassword: User;
+  changeTicketWorkflowStateAssignee: Ticket;
+  checkTodo: Todo;
   /** Close (or update an already closed) last known ticket workflow state */
-  closeLastScheduleItem: Maybe<ScheduleItem>;
+  closeLastScheduleItem: ScheduleItem;
   /** Close an active workflow state */
-  closeScheduleItem: Maybe<ScheduleItem>;
-  commitScheduleChanges: Maybe<Scalars['Boolean']['output']>;
-  createBlackoutTime: Maybe<BlackoutTime>;
-  createComment: Maybe<Ticket>;
-  createDocumentation: Maybe<Documentation>;
-  createDocumentationPage: Maybe<DocumentationPage>;
-  createDrawing: Maybe<Drawing>;
-  createFeatureGroup: Maybe<FeatureGroup>;
-  createNote: Maybe<Note>;
-  createOrganization: Maybe<NewOrganization>;
-  createPersonalTag: Maybe<PersonalTag>;
-  createProduct: Maybe<Product>;
-  createProject: Maybe<Project>;
-  createRecurringBlackoutTime: Maybe<RecurringBlackoutTime>;
-  createReport: Maybe<Report>;
-  createReportQuery: Maybe<ReportQuery>;
-  createScheduleItem: Maybe<ScheduleItem>;
-  createTag: Maybe<Tag>;
-  createTeam: Maybe<Team>;
-  createTicket: Maybe<Ticket>;
-  createTicketPersonalTag: Maybe<Ticket>;
-  createTicketTag: Maybe<Ticket>;
-  createTimeOff: Maybe<TimeOff>;
-  createTodo: Maybe<Todo>;
-  createWorkflow: Maybe<Workflow>;
-  deleteBlackoutTime: Maybe<Scalars['Int']['output']>;
-  deleteComment: Maybe<Scalars['Boolean']['output']>;
-  deleteDocumentation: Maybe<Documentation>;
-  deleteDocumentationPage: Maybe<DocumentationPage>;
-  deleteDocumentationPageFromDoc: Maybe<Documentation>;
-  deleteDrawing: Maybe<Drawing>;
-  deleteFeature: Maybe<FeatureGroup>;
-  deleteFeatureGroup: Maybe<Product>;
-  deleteIssue: Maybe<Issue>;
-  deleteNote: Maybe<Note>;
-  deleteNotification: Maybe<Notification>;
-  deletePersonalTag: Maybe<Scalars['Boolean']['output']>;
+  closeScheduleItem: ScheduleItem;
+  commitScheduleChanges: Scalars['Boolean']['output'];
+  createBlackoutTime: BlackoutTime;
+  createComment: Ticket;
+  createDocumentation: Documentation;
+  createDocumentationPage: DocumentationPage;
+  createDrawing: Drawing;
+  createFeatureGroup: FeatureGroup;
+  createNote: Note;
+  createOrganization: NewOrganization;
+  createPersonalTag: PersonalTag;
+  createProduct: Product;
+  createProject: Project;
+  createRecurringBlackoutTime: RecurringBlackoutTime;
+  createReport: Report;
+  createReportQuery: ReportQuery;
+  createScheduleItem: ScheduleItem;
+  createTag: Tag;
+  createTeam: Team;
+  createTicket: Ticket;
+  createTicketPersonalTag: Ticket;
+  createTicketTag: Ticket;
+  createTimeOff: TimeOff;
+  createTodo: Todo;
+  createWorkflow: Workflow;
+  deleteBlackoutTime: Scalars['Int']['output'];
+  deleteComment: Scalars['Boolean']['output'];
+  deleteDocumentation: Documentation;
+  deleteDocumentationPage: DocumentationPage;
+  deleteDocumentationPageFromDoc: Documentation;
+  deleteDrawing: Drawing;
+  deleteFeature: FeatureGroup;
+  deleteFeatureGroup: Product;
+  deleteIssue: Issue;
+  deleteNote: Note;
+  deleteNotification: Notification;
+  deletePersonalTag: Scalars['Boolean']['output'];
   /** @deprecated Archive product instead of deleting it */
-  deleteProduct: Maybe<Product>;
-  deleteProject: Maybe<Scalars['Boolean']['output']>;
-  deleteRecurringBlackoutTime: Maybe<Scalars['Int']['output']>;
-  deleteReply: Maybe<Scalars['Int']['output']>;
-  deleteReport: Maybe<Report>;
-  deleteReportQuery: Maybe<Report>;
-  deleteRole: Maybe<Role>;
-  deleteScheduleItem: Maybe<Scalars['Boolean']['output']>;
-  deleteTag: Maybe<Scalars['Boolean']['output']>;
-  deleteTeam: Maybe<Scalars['Boolean']['output']>;
-  deleteTimeOff: Maybe<TimeOff>;
-  deleteTodo: Maybe<Todo>;
+  deleteProduct: Product;
+  deleteProject: Scalars['Boolean']['output'];
+  deleteRecurringBlackoutTime: Scalars['Int']['output'];
+  deleteReply: Scalars['Int']['output'];
+  deleteReport: Report;
+  deleteReportQuery: Report;
+  deleteRole: Role;
+  deleteScheduleItem: Scalars['Boolean']['output'];
+  deleteTag: Scalars['Boolean']['output'];
+  deleteTeam: Scalars['Boolean']['output'];
+  deleteTimeOff: TimeOff;
+  deleteTodo: Todo;
   /** @deprecated Archive workflow instead of deleting it */
-  deleteWorkflow: Maybe<Workflow>;
-  deleteWorkflowState: Maybe<Workflow>;
-  duplicateReport: Maybe<Report>;
-  estimateTicketWorkflowState: Maybe<TicketWorkflowState>;
-  getDrawingLock: Maybe<Drawing>;
-  importTickets: Maybe<Array<Ticket>>;
-  invite: Maybe<Role>;
-  issueAddNote: Maybe<Issue>;
-  issueDeleteNote: Maybe<Issue>;
-  issueRemoveAutoResolve: Maybe<Issue>;
-  issueSendMessage: Maybe<Issue>;
-  issueSetAutoResolve: Maybe<Issue>;
-  issueUpdateNote: Maybe<IssueAction>;
-  login: Maybe<Me>;
-  logout: Maybe<Scalars['Boolean']['output']>;
-  markTicketNotDone: Maybe<Ticket>;
-  moveAfterDocumentationPage: Maybe<DocumentationPage>;
-  moveBeforeDocumentationPage: Maybe<DocumentationPage>;
-  moveIntoProject: Maybe<Scalars['Boolean']['output']>;
-  moveProjectToRoot: Maybe<Project>;
-  moveWorkflowState: Maybe<Workflow>;
-  passwordLost: Maybe<Scalars['Boolean']['output']>;
-  passwordReset: Maybe<Me>;
-  pinProject: Maybe<Role>;
-  publishDocumentation: Maybe<Documentation>;
-  publishProject: Maybe<Project>;
-  reactivateRole: Maybe<Role>;
-  readNotification: Maybe<Notification>;
-  register: Maybe<Me>;
-  registerFromInvite: Maybe<Me>;
-  rejectRole: Maybe<Role>;
-  releaseDrawingLock: Maybe<Drawing>;
-  removeMembers: Maybe<Team>;
-  removeTicketAncestor: Maybe<Ticket>;
-  removeTicketFeatures: Maybe<Ticket>;
-  removeTicketPersonalTags: Maybe<Ticket>;
-  removeTicketTags: Maybe<Ticket>;
-  removeWorkflows: Maybe<Product>;
-  renameProject: Maybe<Project>;
-  requestDemo: Maybe<DemoRequest>;
-  resendInvite: Maybe<Role>;
-  resumeLastScheduleItem: Maybe<ScheduleItem>;
-  scheduleTicket: Maybe<Ticket>;
-  sendConfirmationEmail: Maybe<Scalars['Boolean']['output']>;
-  setChecklist: Maybe<TicketWorkflowState>;
-  setProjectChecklist: Maybe<Project>;
-  skipTicketWorkflowState: Maybe<TicketWorkflowState>;
-  toggleOnboarding: Maybe<Organization>;
-  unarchiveProject: Maybe<Project>;
-  unblockTicket: Maybe<Ticket>;
-  unpinProject: Maybe<Role>;
-  unpublishDocumentation: Maybe<Documentation>;
-  unreadNotification: Maybe<Notification>;
-  unwatchTicket: Maybe<Ticket>;
-  updateBlackoutTime: Maybe<BlackoutTime>;
-  updateComment: Maybe<Comment>;
-  updateDocumentation: Maybe<Documentation>;
-  updateDocumentationPage: Maybe<DocumentationPage>;
-  updateDocumentationPageConfig: Maybe<DocumentationPage>;
-  updateDocumentationStage: Maybe<Documentation>;
-  updateDrawing: Maybe<Drawing>;
-  updateFeature: Maybe<Feature>;
-  updateFeatureGroup: Maybe<FeatureGroup>;
-  updateIssue: Maybe<Issue>;
-  updateIssueByToken: Maybe<Issue>;
-  updateMyRole: Maybe<Role>;
-  updateMyScheduleItem: Maybe<ScheduleItem>;
-  updateNote: Maybe<Note>;
-  updateNoteColor: Maybe<Note>;
-  updateOrganization: Maybe<Organization>;
-  updateOrganizationPreferences: Maybe<Organization>;
-  updatePersonalTag: Maybe<PersonalTag>;
-  updateProduct: Maybe<Product>;
-  updateProductStage: Maybe<Product>;
-  updateProductUseGlobalWorkflow: Maybe<Product>;
+  deleteWorkflow: Workflow;
+  deleteWorkflowState: Workflow;
+  duplicateReport: Report;
+  estimateTicketWorkflowState: TicketWorkflowState;
+  getDrawingLock: Drawing;
+  importTickets: Array<Ticket>;
+  invite: Role;
+  issueAddNote: Issue;
+  issueDeleteNote: Issue;
+  issueRemoveAutoResolve: Issue;
+  issueSendMessage: Issue;
+  issueSetAutoResolve: Issue;
+  issueUpdateNote: IssueAction;
+  login: Me;
+  logout: Scalars['Boolean']['output'];
+  markTicketNotDone: Ticket;
+  moveAfterDocumentationPage: DocumentationPage;
+  moveBeforeDocumentationPage: DocumentationPage;
+  moveIntoProject: Scalars['Boolean']['output'];
+  moveProjectToRoot: Project;
+  moveWorkflowState: Workflow;
+  passwordLost: Scalars['Boolean']['output'];
+  passwordReset: Me;
+  pinProject: Role;
+  publishDocumentation: Documentation;
+  publishProject: Project;
+  reactivateRole: Role;
+  readNotification: Notification;
+  register: Me;
+  registerFromInvite: Me;
+  rejectRole: Role;
+  releaseDrawingLock: Drawing;
+  removeMembers: Team;
+  removeTicketAncestor: Ticket;
+  removeTicketFeatures: Ticket;
+  removeTicketPersonalTags: Ticket;
+  removeTicketTags: Ticket;
+  removeWorkflows: Product;
+  renameProject: Project;
+  requestDemo: DemoRequest;
+  resendInvite: Role;
+  resumeLastScheduleItem: ScheduleItem;
+  scheduleTicket: Ticket;
+  sendConfirmationEmail: Scalars['Boolean']['output'];
+  setChecklist: TicketWorkflowState;
+  setProjectChecklist: Project;
+  skipTicketWorkflowState: TicketWorkflowState;
+  toggleOnboarding: Organization;
+  unarchiveProject: Project;
+  unblockTicket: Ticket;
+  unpinProject: Role;
+  unpublishDocumentation: Documentation;
+  unreadNotification: Notification;
+  unwatchTicket: Ticket;
+  updateBlackoutTime: BlackoutTime;
+  updateComment: Comment;
+  updateDocumentation: Documentation;
+  updateDocumentationPage: DocumentationPage;
+  updateDocumentationPageConfig: DocumentationPage;
+  updateDocumentationStage: Documentation;
+  updateDrawing: Drawing;
+  updateFeature: Feature;
+  updateFeatureGroup: FeatureGroup;
+  updateIssue: Issue;
+  updateIssueByToken: Issue;
+  updateMyRole: Role;
+  updateMyScheduleItem: ScheduleItem;
+  updateNote: Note;
+  updateNoteColor: Note;
+  updateOrganization: Organization;
+  updateOrganizationPreferences: Organization;
+  updatePersonalTag: PersonalTag;
+  updateProduct: Product;
+  updateProductStage: Product;
+  updateProductUseGlobalWorkflow: Product;
   /** @deprecated Use renameProject instead */
-  updateProjectName: Maybe<Project>;
-  updateProjectOwner: Maybe<Project>;
-  updateRecurringBlackoutTime: Maybe<RecurringBlackoutTime>;
-  updateReply: Maybe<CommentReply>;
-  updateReportQuery: Maybe<ReportQuery>;
-  updateReportQueryPlacement: Maybe<Array<ReportQuery>>;
-  updateReportQuerySize: Maybe<ReportQuery>;
-  updateRole: Maybe<Role>;
-  updateRoleAutoResume: Maybe<RoleAutoResume>;
-  updateRoleEmail: Maybe<RoleEmail>;
-  updateRoleNoteColorPreferences: Maybe<Role>;
-  updateRolePreferences: Maybe<Role>;
-  updateRoleStartReminder: Maybe<RoleStartReminder>;
-  updateRoleWorkWeek: Maybe<Role>;
-  updateScheduleConfig: Maybe<Array<ScheduleConfig>>;
+  updateProjectName: Project;
+  updateProjectOwner: Project;
+  updateRecurringBlackoutTime: RecurringBlackoutTime;
+  updateReply: CommentReply;
+  updateReportQuery: ReportQuery;
+  updateReportQueryPlacement: Array<ReportQuery>;
+  updateReportQuerySize: ReportQuery;
+  updateRole: Role;
+  updateRoleAutoResume: RoleAutoResume;
+  updateRoleEmail: RoleEmail;
+  updateRoleNoteColorPreferences: Role;
+  updateRolePreferences: Role;
+  updateRoleStartReminder: RoleStartReminder;
+  updateRoleWorkWeek: Role;
+  updateScheduleConfig: Array<ScheduleConfig>;
   /** @deprecated this is a passthrough method */
-  updateScheduleItem: Maybe<ScheduleItem>;
-  updateSkill: Maybe<Skill>;
-  updateTag: Maybe<Tag>;
-  updateTeam: Maybe<Team>;
-  updateTicket: Maybe<Ticket>;
-  updateTicketStage: Maybe<Ticket>;
-  updateTicketStatus: Maybe<Ticket>;
-  updateTicketWorkflowStates: Maybe<Ticket>;
-  updateTimeOff: Maybe<TimeOff>;
-  updateTodo: Maybe<Todo>;
-  updateUserPreferences: Maybe<User>;
-  updateWorkflow: Maybe<Workflow>;
-  updateWorkflowStage: Maybe<Workflow>;
-  updateWorkflowState: Maybe<Workflow>;
-  watchTicket: Maybe<Ticket>;
+  updateScheduleItem: ScheduleItem;
+  updateSkill: Skill;
+  updateTag: Tag;
+  updateTeam: Team;
+  updateTicket: Ticket;
+  updateTicketStage: Ticket;
+  updateTicketStatus: Ticket;
+  updateTicketWorkflowStates: Ticket;
+  updateTimeOff: TimeOff;
+  updateTodo: Todo;
+  updateUserPreferences: User;
+  updateWorkflow: Workflow;
+  updateWorkflowStage: Workflow;
+  updateWorkflowState: Workflow;
+  watchTicket: Ticket;
 };
 
 
@@ -956,15 +972,15 @@ export type MutationArchiveProjectArgs = {
 
 
 export type MutationBatchUpdateTicketTagsArgs = {
-  addTagIds: Array<Scalars['Int']['input']>;
-  removeTagIds: Array<Scalars['Int']['input']>;
-  ticketIds: Array<Scalars['Int']['input']>;
+  addTagIds: Array<InputMaybe<Scalars['Int']['input']>>;
+  removeTagIds: Array<InputMaybe<Scalars['Int']['input']>>;
+  ticketIds: Array<InputMaybe<Scalars['Int']['input']>>;
 };
 
 
 export type MutationBatchUpdateTicketsArgs = {
   input: BatchUpdateTicketsInput;
-  ticketIds: Array<Scalars['Int']['input']>;
+  ticketIds: Array<InputMaybe<Scalars['Int']['input']>>;
 };
 
 
@@ -998,21 +1014,21 @@ export type MutationCheckTodoArgs = {
 
 
 export type MutationCloseLastScheduleItemArgs = {
-  input: InputMaybe<CloseScheduleItemInput>;
+  input?: InputMaybe<CloseScheduleItemInput>;
   ticketId: Scalars['Int']['input'];
 };
 
 
 export type MutationCloseScheduleItemArgs = {
-  input: InputMaybe<CloseScheduleItemInput>;
+  input?: InputMaybe<CloseScheduleItemInput>;
   scheduleItemId: Scalars['Int']['input'];
 };
 
 
 export type MutationCommitScheduleChangesArgs = {
-  addTicketIds: Array<Scalars['Int']['input']>;
-  removeTicketIds: Array<Scalars['Int']['input']>;
-  scheduleConfigs: Array<UpdateScheduleConfigInput>;
+  addTicketIds: Array<InputMaybe<Scalars['Int']['input']>>;
+  removeTicketIds: Array<InputMaybe<Scalars['Int']['input']>>;
+  scheduleConfigs: Array<InputMaybe<UpdateScheduleConfig>>;
 };
 
 
@@ -1485,7 +1501,7 @@ export type MutationSetChecklistArgs = {
 
 
 export type MutationSetProjectChecklistArgs = {
-  input: Array<UpdateProjectChecklistInput>;
+  input: Array<InputMaybe<UpdateProjectChecklistInput>>;
   projectId: Scalars['Int']['input'];
 };
 
@@ -1662,7 +1678,7 @@ export type MutationUpdateProjectNameArgs = {
 
 
 export type MutationUpdateProjectOwnerArgs = {
-  ownerId: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: InputMaybe<Scalars['Int']['input']>;
   projectId: Scalars['Int']['input'];
 };
 
@@ -1735,7 +1751,7 @@ export type MutationUpdateRoleWorkWeekArgs = {
 
 
 export type MutationUpdateScheduleConfigArgs = {
-  input: UpdateScheduleConfigsInput;
+  input: UpdateScheduleConfigs;
 };
 
 
@@ -1776,7 +1792,7 @@ export type MutationUpdateTicketStageArgs = {
 
 
 export type MutationUpdateTicketStatusArgs = {
-  note: InputMaybe<Scalars['String']['input']>;
+  note?: InputMaybe<Scalars['String']['input']>;
   status: TicketStatus;
   ticketId: Scalars['Int']['input'];
 };
@@ -1829,51 +1845,51 @@ export type MutationWatchTicketArgs = {
 
 export type MyPreviousAssignedTicket = {
   __typename?: 'MyPreviousAssignedTicket';
-  currentState: Maybe<TicketWorkflowState>;
-  isActive: Maybe<Scalars['Boolean']['output']>;
-  isDone: Maybe<Scalars['Boolean']['output']>;
-  isNext: Maybe<Scalars['Boolean']['output']>;
-  isPaused: Maybe<Scalars['Boolean']['output']>;
-  isStarted: Maybe<Scalars['Boolean']['output']>;
-  lastState: Maybe<TicketWorkflowState>;
-  ticket: Maybe<Ticket>;
+  currentState?: Maybe<TicketWorkflowState>;
+  isActive: Scalars['Boolean']['output'];
+  isDone: Scalars['Boolean']['output'];
+  isNext: Scalars['Boolean']['output'];
+  isPaused: Scalars['Boolean']['output'];
+  isStarted: Scalars['Boolean']['output'];
+  lastState?: Maybe<TicketWorkflowState>;
+  ticket: Ticket;
 };
 
 export type MyUpcomingAssignedTicket = {
   __typename?: 'MyUpcomingAssignedTicket';
-  currentState: Maybe<TicketWorkflowState>;
-  isActive: Maybe<Scalars['Boolean']['output']>;
-  isDone: Maybe<Scalars['Boolean']['output']>;
-  isNext: Maybe<Scalars['Boolean']['output']>;
-  isPaused: Maybe<Scalars['Boolean']['output']>;
-  isStarted: Maybe<Scalars['Boolean']['output']>;
-  lastState: Maybe<TicketWorkflowState>;
-  ticket: Maybe<Ticket>;
+  currentState: TicketWorkflowState;
+  isActive: Scalars['Boolean']['output'];
+  isDone: Scalars['Boolean']['output'];
+  isNext: Scalars['Boolean']['output'];
+  isPaused: Scalars['Boolean']['output'];
+  isStarted: Scalars['Boolean']['output'];
+  lastState?: Maybe<TicketWorkflowState>;
+  ticket: Ticket;
 };
 
 export type NewOrganization = {
   __typename?: 'NewOrganization';
-  organization: Maybe<Organization>;
-  project: Maybe<Project>;
+  organization: Organization;
+  project: Project;
 };
 
 export type NextTicket = {
   __typename?: 'NextTicket';
-  nextState: Maybe<TicketWorkflowState>;
-  ticket: Maybe<Ticket>;
+  nextState: TicketWorkflowState;
+  ticket: Ticket;
 };
 
 export type Note = {
   __typename?: 'Note';
-  body: Maybe<Scalars['String']['output']>;
-  color: Maybe<NoteColor>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  owner: Maybe<Role>;
-  ownerId: Maybe<Scalars['Int']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  body: Scalars['String']['output'];
+  color: NoteColor;
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['Int']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  owner: Role;
+  ownerId: Scalars['Int']['output'];
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export enum NoteColor {
@@ -1887,21 +1903,21 @@ export enum NoteColor {
 
 export type Notification = {
   __typename?: 'Notification';
-  actor: Maybe<Role>;
-  actorId: Maybe<Scalars['Int']['output']>;
-  ancestry: Maybe<Scalars['String']['output']>;
-  category: Maybe<NotificationCategory>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  description: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  isRead: Maybe<Scalars['Boolean']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  role: Maybe<Role>;
-  roleId: Maybe<Scalars['Int']['output']>;
-  target: Maybe<NotificationTarget>;
-  targetId: Maybe<Scalars['Int']['output']>;
-  title: Maybe<Scalars['String']['output']>;
+  actor: Role;
+  actorId: Scalars['Int']['output'];
+  ancestry?: Maybe<Scalars['String']['output']>;
+  category: NotificationCategory;
+  createdAt: Scalars['DateTime']['output'];
+  description?: Maybe<Scalars['String']['output']>;
+  id: Scalars['Int']['output'];
+  isRead: Scalars['Boolean']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  role: Role;
+  roleId: Scalars['Int']['output'];
+  target: NotificationTarget;
+  targetId: Scalars['Int']['output'];
+  title: Scalars['String']['output'];
 };
 
 export enum NotificationCategory {
@@ -1924,57 +1940,57 @@ export enum NotificationTarget {
 
 export type OnboardingStatus = {
   __typename?: 'OnboardingStatus';
-  invite: Maybe<Scalars['Boolean']['output']>;
-  product: Maybe<Scalars['Boolean']['output']>;
-  ticket: Maybe<Scalars['Boolean']['output']>;
+  invite: Scalars['Boolean']['output'];
+  product: Scalars['Boolean']['output'];
+  ticket: Scalars['Boolean']['output'];
 };
 
 export type OpenTicketsByWorkflow = {
   __typename?: 'OpenTicketsByWorkflow';
-  values: Maybe<Array<TicketOpenByWorkflowDatum>>;
-  workflow: Maybe<Workflow>;
+  values: Array<TicketOpenByWorkflowDatum>;
+  workflow: Workflow;
 };
 
 export type Organization = {
   __typename?: 'Organization';
-  about: Maybe<Scalars['String']['output']>;
-  billingAddress: Maybe<OrganizationAddress>;
-  billingAddressId: Maybe<Scalars['Int']['output']>;
-  coverUrl: Maybe<Scalars['String']['output']>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  estimatedAt: Maybe<Scalars['DateTime']['output']>;
-  featureFlag: Maybe<FeatureFlag>;
-  id: Maybe<Scalars['Int']['output']>;
-  mailingAddress: Maybe<OrganizationAddress>;
-  mailingAddressId: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  onboardingStatus: Maybe<OnboardingStatus>;
-  organizationPreferences: Maybe<OrganizationPreferences>;
-  products: Maybe<Array<Product>>;
-  roles: Maybe<Array<Role>>;
-  scheduleStatus: Maybe<ScheduleStatus>;
-  showOnboarding: Maybe<Scalars['Boolean']['output']>;
-  status: Maybe<OrganizationStatus>;
-  tags: Maybe<Array<Tag>>;
-  teams: Maybe<Array<Team>>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  about?: Maybe<Scalars['String']['output']>;
+  billingAddress?: Maybe<OrganizationAddress>;
+  billingAddressId?: Maybe<Scalars['Int']['output']>;
+  coverUrl?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  estimatedAt: Scalars['DateTime']['output'];
+  featureFlag?: Maybe<FeatureFlag>;
+  id: Scalars['Int']['output'];
+  mailingAddress?: Maybe<OrganizationAddress>;
+  mailingAddressId?: Maybe<Scalars['Int']['output']>;
+  name: Scalars['String']['output'];
+  onboardingStatus: OnboardingStatus;
+  preferences: OrganizationPreferences;
+  products: Array<Product>;
+  roles: Array<Role>;
+  scheduleStatus: ScheduleStatus;
+  showOnboarding: Scalars['Boolean']['output'];
+  status: OrganizationStatus;
+  tags: Array<Tag>;
+  teams: Array<Team>;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type OrganizationAddress = {
   __typename?: 'OrganizationAddress';
-  address1: Maybe<Scalars['String']['output']>;
-  address2: Maybe<Scalars['String']['output']>;
-  city: Maybe<Scalars['String']['output']>;
-  country: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  state: Maybe<Scalars['String']['output']>;
-  zipcode: Maybe<Scalars['String']['output']>;
+  address1: Scalars['String']['output'];
+  address2?: Maybe<Scalars['String']['output']>;
+  city: Scalars['String']['output'];
+  country: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  organizationId: Scalars['Int']['output'];
+  state?: Maybe<Scalars['String']['output']>;
+  zipcode: Scalars['String']['output'];
 };
 
 export type OrganizationPreferences = {
   __typename?: 'OrganizationPreferences';
-  showOnboarding: Maybe<Scalars['Boolean']['output']>;
+  showOnboarding: Scalars['Boolean']['output'];
 };
 
 export enum OrganizationStatus {
@@ -1985,187 +2001,187 @@ export enum OrganizationStatus {
 
 export type PageInfo = {
   __typename?: 'PageInfo';
-  endCursor: Maybe<Scalars['Int']['output']>;
-  hasNextPage: Maybe<Scalars['Boolean']['output']>;
-  hasPreviousPage: Maybe<Scalars['Boolean']['output']>;
-  pageCount: Maybe<Scalars['Int']['output']>;
-  pageNumber: Maybe<Scalars['Int']['output']>;
-  pageSize: Maybe<Scalars['Int']['output']>;
+  endCursor?: Maybe<Scalars['Int']['output']>;
+  hasNextPage: Scalars['Boolean']['output'];
+  hasPreviousPage: Scalars['Boolean']['output'];
+  pageCount: Scalars['Int']['output'];
+  pageNumber: Scalars['Int']['output'];
+  pageSize: Scalars['Int']['output'];
 };
 
 export type PaginatedBlackoutTimes = {
   __typename?: 'PaginatedBlackoutTimes';
   nodes: Array<BlackoutTime>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedCommentReply = {
   __typename?: 'PaginatedCommentReply';
   nodes: Array<CommentReply>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedComments = {
   __typename?: 'PaginatedComments';
   nodes: Array<Comment>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedDocumentations = {
   __typename?: 'PaginatedDocumentations';
   nodes: Array<Documentation>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedFeatureGroups = {
   __typename?: 'PaginatedFeatureGroups';
   nodes: Array<FeatureGroup>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedFeatures = {
   __typename?: 'PaginatedFeatures';
   nodes: Array<Feature>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedIssues = {
   __typename?: 'PaginatedIssues';
   nodes: Array<Issue>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedNotes = {
   __typename?: 'PaginatedNotes';
   nodes: Array<Note>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedNotifications = {
   __typename?: 'PaginatedNotifications';
   nodes: Array<Notification>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedOrganizations = {
   __typename?: 'PaginatedOrganizations';
   nodes: Array<Organization>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedPersonalTags = {
   __typename?: 'PaginatedPersonalTags';
   nodes: Array<PersonalTag>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedProducts = {
   __typename?: 'PaginatedProducts';
   nodes: Array<Product>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedProjects = {
   __typename?: 'PaginatedProjects';
   nodes: Array<Project>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedRecurringBlackoutTimes = {
   __typename?: 'PaginatedRecurringBlackoutTimes';
   nodes: Array<RecurringBlackoutTime>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedReports = {
   __typename?: 'PaginatedReports';
   nodes: Array<Report>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedRoles = {
   __typename?: 'PaginatedRoles';
   nodes: Array<Role>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedScheduleItems = {
   __typename?: 'PaginatedScheduleItems';
   nodes: Array<ScheduleItem>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedSkills = {
   __typename?: 'PaginatedSkills';
   nodes: Array<Skill>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedTags = {
   __typename?: 'PaginatedTags';
   nodes: Array<Tag>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedTeams = {
   __typename?: 'PaginatedTeams';
   nodes: Array<Team>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedTickets = {
   __typename?: 'PaginatedTickets';
   nodes: Array<Ticket>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedTodos = {
   __typename?: 'PaginatedTodos';
   nodes: Array<Todo>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedUsers = {
   __typename?: 'PaginatedUsers';
   nodes: Array<User>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedWorkflowStates = {
   __typename?: 'PaginatedWorkflowStates';
   nodes: Array<WorkflowState>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PaginatedWorkflows = {
   __typename?: 'PaginatedWorkflows';
   nodes: Array<Workflow>;
   pageInfo: PageInfo;
-  totalCount: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type PasswordLostInput = {
@@ -2184,151 +2200,171 @@ export type PasswordResetInput = {
 
 export type PersonalTag = {
   __typename?: 'PersonalTag';
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  owner: Maybe<Role>;
-  ownerId: Maybe<Scalars['Int']['output']>;
-  replacedBy: Maybe<PersonalTag>;
-  replacedByTagId: Maybe<Scalars['Int']['output']>;
-  replacesTags: Maybe<Array<PersonalTag>>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  owner: Role;
+  ownerId: Scalars['Int']['output'];
+  replacedBy?: Maybe<PersonalTag>;
+  replacedByTagId?: Maybe<Scalars['Int']['output']>;
+  replacesTags: Array<PersonalTag>;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type PlanningTicket = {
   __typename?: 'PlanningTicket';
-  eta: Maybe<Scalars['DateTime']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  localId: Maybe<Scalars['Int']['output']>;
-  milestone: Maybe<Scalars['Boolean']['output']>;
-  productCode: Maybe<Scalars['String']['output']>;
-  productName: Maybe<Scalars['String']['output']>;
-  projectName: Maybe<Scalars['String']['output']>;
-  status: Maybe<TicketStatus>;
-  title: Maybe<Scalars['String']['output']>;
-  workflowName: Maybe<Scalars['String']['output']>;
+  eta: Scalars['DateTime']['output'];
+  id: Scalars['Int']['output'];
+  localId: Scalars['Int']['output'];
+  milestone: Scalars['Boolean']['output'];
+  productCode: Scalars['String']['output'];
+  productName: Scalars['String']['output'];
+  projectName: Scalars['String']['output'];
+  status: TicketStatus;
+  title: Scalars['String']['output'];
+  workflowName: Scalars['String']['output'];
 };
 
 export type Product = {
   __typename?: 'Product';
-  code: Maybe<Scalars['String']['output']>;
-  coverUrl: Maybe<Scalars['String']['output']>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  description: Maybe<Scalars['String']['output']>;
-  featureGroups: Maybe<Array<FeatureGroup>>;
-  features: Maybe<PaginatedFeatures>;
-  id: Maybe<Scalars['Int']['output']>;
-  isSupportActive: Maybe<Scalars['Boolean']['output']>;
-  isUsingDefaultWorkflows: Maybe<Scalars['Boolean']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  stage: Maybe<ModelStage>;
-  tickets: Maybe<PaginatedTickets>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
-  workflowIds: Maybe<Array<Scalars['Int']['output']>>;
-  workflows: Maybe<Array<Workflow>>;
+  code: Scalars['String']['output'];
+  coverUrl?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  description?: Maybe<Scalars['String']['output']>;
+  featureGroups: PaginatedFeatureGroups;
+  features: PaginatedFeatures;
+  id: Scalars['Int']['output'];
+  isSupportActive: Scalars['Boolean']['output'];
+  isUsingDefaultWorkflows: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  stage: ModelStage;
+  tickets: PaginatedTickets;
+  updatedAt: Scalars['DateTime']['output'];
+  workflowIds: Array<Scalars['Int']['output']>;
+  workflows: PaginatedWorkflows;
+};
+
+
+export type ProductFeatureGroupsArgs = {
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type ProductFeaturesArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type ProductTicketsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type ProductWorkflowsArgs = {
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  stages?: InputMaybe<Array<ModelStage>>;
 };
 
 export type Project = {
   __typename?: 'Project';
-  ancestorIsArchived: Maybe<Scalars['Boolean']['output']>;
-  ancestors: Maybe<Array<Project>>;
-  author: Maybe<Role>;
-  authorId: Maybe<Scalars['Int']['output']>;
-  checklist: Maybe<Array<ChecklistItem>>;
-  children: Maybe<Array<Project>>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  duration: Maybe<Scalars['Int']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  owner: Maybe<Role>;
-  ownerId: Maybe<Scalars['Int']['output']>;
-  parent: Maybe<Project>;
-  parentId: Maybe<Scalars['Int']['output']>;
-  pinnedByRoles: Maybe<Array<Role>>;
-  scheduleConfigs: Maybe<Array<ScheduleConfig>>;
-  stage: Maybe<ModelStage>;
-  tickets: Maybe<Array<Ticket>>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  ancestorIsArchived: Scalars['Boolean']['output'];
+  ancestors: Array<Project>;
+  author?: Maybe<Role>;
+  authorId?: Maybe<Scalars['Int']['output']>;
+  checklist: Array<ChecklistItem>;
+  children: Array<Project>;
+  createdAt: Scalars['DateTime']['output'];
+  duration: Scalars['Int']['output'];
+  id: Scalars['Int']['output'];
+  indexableContent: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  owner?: Maybe<Role>;
+  ownerId?: Maybe<Scalars['Int']['output']>;
+  parent?: Maybe<Project>;
+  parentId?: Maybe<Scalars['Int']['output']>;
+  pinnedByRoles: Array<Role>;
+  scheduleConfigs: Array<ScheduleConfig>;
+  stage: ModelStage;
+  tickets: Array<Ticket>;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type ProjectAnalytics = {
   __typename?: 'ProjectAnalytics';
-  doneTicketCount: Maybe<Scalars['Int']['output']>;
-  draftTicketCount: Maybe<Scalars['Int']['output']>;
-  estimatedTicketCount: Maybe<Scalars['Int']['output']>;
-  inProgressTicketCount: Maybe<Scalars['Int']['output']>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  projectId: Maybe<Scalars['Int']['output']>;
-  scheduledTicketCount: Maybe<Scalars['Int']['output']>;
-  unassignedTicketCount: Maybe<Scalars['Int']['output']>;
-  unestimatedTicketCount: Maybe<Scalars['Int']['output']>;
+  doneTicketCount: Scalars['Int']['output'];
+  draftTicketCount: Scalars['Int']['output'];
+  estimatedTicketCount: Scalars['Int']['output'];
+  inProgressTicketCount: Scalars['Int']['output'];
+  organizationId: Scalars['Int']['output'];
+  projectId: Scalars['Int']['output'];
+  scheduledTicketCount: Scalars['Int']['output'];
+  unassignedTicketCount: Scalars['Int']['output'];
+  unestimatedTicketCount: Scalars['Int']['output'];
 };
 
 export type ProjectDependency = {
   __typename?: 'ProjectDependency';
-  ancestors: Maybe<Array<Scalars['Int']['output']>>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  parentId: Maybe<Scalars['Int']['output']>;
-  successors: Maybe<Array<Scalars['Int']['output']>>;
+  ancestors: Array<Scalars['Int']['output']>;
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  parentId?: Maybe<Scalars['Int']['output']>;
+  successors: Array<Scalars['Int']['output']>;
 };
 
 export type ProjectGoalProgress = {
   __typename?: 'ProjectGoalProgress';
-  accomplished: Maybe<Scalars['Float']['output']>;
-  eta: Maybe<Scalars['DateTime']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  parentId: Maybe<Scalars['Int']['output']>;
-  progress: Maybe<Scalars['Float']['output']>;
-  total: Maybe<Scalars['Float']['output']>;
+  accomplished: Scalars['Float']['output'];
+  eta: Scalars['DateTime']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  parentId?: Maybe<Scalars['Int']['output']>;
+  progress: Scalars['Float']['output'];
+  total: Scalars['Float']['output'];
 };
 
 export type ProjectGoalStats = {
   __typename?: 'ProjectGoalStats';
-  cancelled: Maybe<Scalars['Int']['output']>;
-  done: Maybe<Scalars['Int']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  parentId: Maybe<Scalars['Int']['output']>;
-  scheduled: Maybe<Scalars['Int']['output']>;
-  total: Maybe<Scalars['Int']['output']>;
-  unScheduled: Maybe<Scalars['Int']['output']>;
+  cancelled: Scalars['Int']['output'];
+  done: Scalars['Int']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  parentId?: Maybe<Scalars['Int']['output']>;
+  scheduled: Scalars['Int']['output'];
+  total: Scalars['Int']['output'];
+  unScheduled: Scalars['Int']['output'];
 };
 
 export type ProjectTicket = {
   __typename?: 'ProjectTicket';
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  localId: Maybe<Scalars['Int']['output']>;
-  productCode: Maybe<Scalars['String']['output']>;
-  stage: Maybe<ModelStage>;
-  status: Maybe<TicketStatus>;
-  title: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['Int']['output'];
+  localId?: Maybe<Scalars['Int']['output']>;
+  productCode?: Maybe<Scalars['String']['output']>;
+  stage: ModelStage;
+  status: TicketStatus;
+  title: Scalars['String']['output'];
 };
 
 export enum ProjectTicketQueryCategory {
@@ -2343,161 +2379,161 @@ export enum ProjectTicketQueryCategory {
 
 export type Query = {
   __typename?: 'Query';
-  activeScheduleItems: Maybe<Array<ScheduleItem>>;
-  batchGetTicketTags: Maybe<Array<Ticket>>;
-  batchGetTickets: Maybe<Array<Ticket>>;
-  blackoutTime: Maybe<BlackoutTime>;
-  blackoutTimes: Maybe<Array<BlackoutTime>>;
-  blockingTickets: Maybe<Array<TicketWorkflowState>>;
-  comment: Maybe<Comment>;
-  commentReply: Maybe<CommentReply>;
-  comments: Maybe<PaginatedComments>;
-  deliveredTicketForPeriod: Maybe<Array<Ticket>>;
-  dependencies: Maybe<DependencySet>;
-  documentation: Maybe<Documentation>;
-  documentationPage: Maybe<DocumentationPage>;
-  documentationPageAccessToken: Maybe<Scalars['String']['output']>;
-  documentations: Maybe<PaginatedDocumentations>;
-  drawing: Maybe<Drawing>;
-  exportTickets: Maybe<Array<TicketExport>>;
-  featureFlag: Maybe<FeatureFlag>;
-  featureGroup: Maybe<FeatureGroup>;
-  featureGroups: Maybe<PaginatedFeatureGroups>;
-  features: Maybe<PaginatedFeatures>;
-  getAllAwaitingEstimateTasks: Maybe<Array<Ticket>>;
-  getAllEstimates: Maybe<Array<Estimate>>;
-  getAllRoles: Maybe<Array<Role>>;
-  getAllScheduledTasks: Maybe<Array<Ticket>>;
-  getAllUnscheduledDependencies: Maybe<Array<Ticket>>;
-  getDemo: Maybe<DemoRequest>;
-  getEstimates: Maybe<Array<ScheduleEstimate>>;
-  getGanttProjects: Maybe<Array<Project>>;
-  getScheduleRoles: Maybe<Array<ScheduleRole>>;
-  getScheduledTickets: Maybe<Array<Ticket>>;
-  getUnscheduledDependencies: Maybe<Array<Ticket>>;
-  getUnscheduledTickets: Maybe<PaginatedTickets>;
-  habits: Maybe<RoleHabit>;
-  issue: Maybe<Issue>;
-  issueByToken: Maybe<Issue>;
-  issues: Maybe<PaginatedIssues>;
-  lastNote: Maybe<Note>;
-  lastNotification: Maybe<Notification>;
-  lastScheduleItem: Maybe<ScheduleItem>;
-  lastTicketWorkflowStateNote: Maybe<TicketWorkflowStateNote>;
-  lastTodo: Maybe<Todo>;
-  me: Maybe<Me>;
-  miniFeatures: Maybe<Array<MiniFeature>>;
-  miniProducts: Maybe<Array<MiniProduct>>;
-  miniProjects: Maybe<Array<MiniProject>>;
-  miniRoles: Maybe<Array<MiniRole>>;
-  miniTags: Maybe<Array<MiniTag>>;
-  miniWorkflows: Maybe<Array<MiniWorkflow>>;
-  moreTickets: Maybe<PaginatedTickets>;
-  moreTicketsForProject: Maybe<PaginatedTickets>;
-  myEstimatedTickets: Maybe<Array<Ticket>>;
-  myLastProject: Maybe<Project>;
-  myMiniProjects: Maybe<Array<MiniProject>>;
-  myNextTickets: Maybe<Array<NextTicket>>;
-  myNotScheduledTickets: Maybe<PaginatedTickets>;
-  myNotifications: Maybe<PaginatedNotifications>;
-  myOpenScheduleItems: Maybe<Array<ScheduleItem>>;
-  myPreviousTickets: Maybe<Array<MyPreviousAssignedTicket>>;
+  activeScheduleItems: Array<ScheduleItem>;
+  batchGetTicketTags: Array<Ticket>;
+  batchGetTickets: Array<Ticket>;
+  blackoutTime: BlackoutTime;
+  blackoutTimes: Array<BlackoutTime>;
+  blockingTickets: Array<TicketWorkflowState>;
+  comment: Comment;
+  commentReply: CommentReply;
+  comments: PaginatedComments;
+  deliveredTicketForPeriod: Array<Ticket>;
+  dependencies: DependencySet;
+  documentation: Documentation;
+  documentationPage: DocumentationPage;
+  documentationPageAccessToken?: Maybe<Scalars['String']['output']>;
+  documentations: PaginatedDocumentations;
+  drawing: Drawing;
+  exportTickets: Array<TicketExport>;
+  featureFlag: FeatureFlag;
+  featureGroup: FeatureGroup;
+  featureGroups: PaginatedFeatureGroups;
+  features: PaginatedFeatures;
+  getAllAwaitingEstimateTasks: Array<Ticket>;
+  getAllEstimates: Array<Estimate>;
+  getAllRoles: Array<Role>;
+  getAllScheduledTasks: Array<Ticket>;
+  getAllUnscheduledDependencies: Array<Ticket>;
+  getDemo: DemoRequest;
+  getEstimates: Array<ScheduleEstimate>;
+  getGanttProjects: Array<Project>;
+  getScheduleRoles: Array<ScheduleRole>;
+  getScheduledTickets: Array<Ticket>;
+  getUnscheduledDependencies: Array<Ticket>;
+  getUnscheduledTickets: PaginatedTickets;
+  habits: RoleHabit;
+  issue: Issue;
+  issueByToken: Issue;
+  issues: PaginatedIssues;
+  lastNote?: Maybe<Note>;
+  lastNotification?: Maybe<Notification>;
+  lastScheduleItem: ScheduleItem;
+  lastTicketWorkflowStateNote?: Maybe<TicketWorkflowStateNote>;
+  lastTodo?: Maybe<Todo>;
+  me: Me;
+  miniFeatures: Array<MiniFeature>;
+  miniProducts: Array<MiniProduct>;
+  miniProjects: Array<MiniProject>;
+  miniRoles: Array<MiniRole>;
+  miniTags: Array<MiniTag>;
+  miniWorkflows: Array<MiniWorkflow>;
+  moreTickets: PaginatedTickets;
+  moreTicketsForProject: PaginatedTickets;
+  myEstimatedTickets: Array<Ticket>;
+  myLastProject?: Maybe<Project>;
+  myMiniProjects: Array<MiniProject>;
+  myNextTickets: Array<NextTicket>;
+  myNotScheduledTickets: PaginatedTickets;
+  myNotifications: PaginatedNotifications;
+  myOpenScheduleItems: Array<ScheduleItem>;
+  myPreviousTickets: Array<MyPreviousAssignedTicket>;
   /** The user's own projects and drafts */
-  myProjects: Maybe<Array<Project>>;
-  myRecentlyCreatedTickets: Maybe<PaginatedTickets>;
-  myRole: Maybe<Role>;
-  myRoles: Maybe<Array<Role>>;
-  myScheduleItemPeriod: Maybe<Array<ScheduleItem>>;
-  myTickets: Maybe<Array<Ticket>>;
-  myTicketsToEstimate: Maybe<Array<Ticket>>;
-  myUnestimatedTickets: Maybe<Array<Ticket>>;
-  myUnfinishedScheduleItems: Maybe<Array<ScheduleItem>>;
-  myUpcomingTickets: Maybe<Array<MyUpcomingAssignedTicket>>;
-  myWatchedTickets: Maybe<Array<Ticket>>;
-  note: Maybe<Note>;
-  notes: Maybe<PaginatedNotes>;
-  notification: Maybe<Notification>;
-  organization: Maybe<Organization>;
-  organizations: Maybe<PaginatedOrganizations>;
-  paginatedBlackoutTimes: Maybe<PaginatedBlackoutTimes>;
-  paginatedRecurringBlackoutTimes: Maybe<PaginatedRecurringBlackoutTimes>;
-  pastGoalProgress: Maybe<Array<ProjectGoalProgress>>;
-  pastWorkflowDistribution: Maybe<Array<WorkflowDistribution>>;
-  personalTag: Maybe<PersonalTag>;
-  personalTags: Maybe<PaginatedPersonalTags>;
-  planningDeliveredTickets: Maybe<Array<PlanningTicket>>;
-  planningProjection: Maybe<Array<PlanningTicket>>;
-  planningTickets: Maybe<Array<PlanningTicket>>;
-  pof: Maybe<Scalars['String']['output']>;
-  product: Maybe<Product>;
-  productByCode: Maybe<Product>;
-  products: Maybe<PaginatedProducts>;
-  project: Maybe<Project>;
-  projectAccessToken: Maybe<Scalars['String']['output']>;
-  projectAnalytics: Maybe<ProjectAnalytics>;
-  projectGoalStats: Maybe<Array<ProjectGoalStats>>;
-  projectTextAccessToken: Maybe<Scalars['String']['output']>;
-  projectTickets: Maybe<Array<ProjectTicket>>;
-  projectTicketsForCategory: Maybe<PaginatedTickets>;
-  projectedGoalProgress: Maybe<Array<ProjectGoalProgress>>;
-  projectedWorkflowDistribution: Maybe<Array<WorkflowDistribution>>;
+  myProjects: Array<Project>;
+  myRecentlyCreatedTickets: PaginatedTickets;
+  myRole: Role;
+  myRoles: Array<Role>;
+  myScheduleItemPeriod: Array<ScheduleItem>;
+  myTickets: Array<Ticket>;
+  myTicketsToEstimate: Array<Ticket>;
+  myUnestimatedTickets: Array<Ticket>;
+  myUnfinishedScheduleItems: Array<ScheduleItem>;
+  myUpcomingTickets: Array<MyUpcomingAssignedTicket>;
+  myWatchedTickets: Array<Ticket>;
+  note: Note;
+  notes: PaginatedNotes;
+  notification: Notification;
+  organization: Organization;
+  organizations: PaginatedOrganizations;
+  paginatedBlackoutTimes: PaginatedBlackoutTimes;
+  paginatedRecurringBlackoutTimes: PaginatedRecurringBlackoutTimes;
+  pastGoalProgress: Array<ProjectGoalProgress>;
+  pastWorkflowDistribution: Array<WorkflowDistribution>;
+  personalTag: PersonalTag;
+  personalTags: PaginatedPersonalTags;
+  planningDeliveredTickets: Array<PlanningTicket>;
+  planningProjection: Array<PlanningTicket>;
+  planningTickets: Array<PlanningTicket>;
+  pof: Scalars['String']['output'];
+  product: Product;
+  productByCode: Product;
+  products: PaginatedProducts;
+  project: Project;
+  projectAccessToken?: Maybe<Scalars['String']['output']>;
+  projectAnalytics?: Maybe<ProjectAnalytics>;
+  projectGoalStats: Array<ProjectGoalStats>;
+  projectTextAccessToken?: Maybe<Scalars['String']['output']>;
+  projectTickets: Array<ProjectTicket>;
+  projectTicketsForCategory: PaginatedTickets;
+  projectedGoalProgress: Array<ProjectGoalProgress>;
+  projectedWorkflowDistribution: Array<WorkflowDistribution>;
   /** @deprecated Not useful */
-  projectedWorkload: Maybe<Array<RoleWorkload>>;
-  projects: Maybe<PaginatedProjects>;
-  recurringBlackoutTime: Maybe<RecurringBlackoutTime>;
-  recurringBlackoutTimes: Maybe<Array<RecurringBlackoutTime>>;
-  replies: Maybe<Array<CommentReply>>;
-  report: Maybe<Report>;
-  reportQuery: Maybe<ReportQuery>;
-  reports: Maybe<PaginatedReports>;
-  role: Maybe<Role>;
-  roles: Maybe<PaginatedRoles>;
-  scheduleConfig: Maybe<ScheduleConfig>;
-  scheduleConfigs: Maybe<Array<ScheduleConfig>>;
-  scheduleItem: Maybe<ScheduleItem>;
-  scheduleItemPeriod: Maybe<Array<ScheduleItem>>;
-  scheduleItemUpdateBoundaries: Maybe<ScheduleItemUpdateBoundaries>;
-  scheduleItems: Maybe<PaginatedScheduleItems>;
-  scheduledTicketToBeClosing: Maybe<Array<Ticket>>;
-  scheduledTicketToBeWorked: Maybe<Array<Ticket>>;
-  search: Maybe<Array<SearchResult>>;
-  searchRole: Maybe<Array<Role>>;
-  searchTicket: Maybe<Array<SearchResult>>;
-  tag: Maybe<Tag>;
-  tags: Maybe<PaginatedTags>;
-  team: Maybe<Team>;
-  teamByCode: Maybe<Team>;
-  teams: Maybe<PaginatedTeams>;
-  ticket: Maybe<Ticket>;
-  ticketNotes: Maybe<Array<TicketWorkflowStateNote>>;
-  ticketStatusHistogram: Maybe<Array<OpenTicketsByWorkflow>>;
-  ticketTextAccessToken: Maybe<Scalars['String']['output']>;
-  ticketWorkflowState: Maybe<TicketWorkflowState>;
-  ticketWorkflowStateNote: Maybe<TicketWorkflowStateNote>;
-  tickets: Maybe<PaginatedTickets>;
-  ticketsCount: Maybe<Scalars['Int']['output']>;
-  ticketsForMyCalendar: Maybe<Array<Ticket>>;
-  timeOffs: Maybe<Array<TimeOff>>;
-  todo: Maybe<Todo>;
-  todos: Maybe<PaginatedTodos>;
-  useRole: Maybe<Me>;
-  user: Maybe<User>;
-  users: Maybe<PaginatedUsers>;
-  version: Maybe<Scalars['String']['output']>;
-  workedTicketForPeriod: Maybe<Array<Ticket>>;
-  workflow: Maybe<Workflow>;
-  workflowState: Maybe<WorkflowState>;
-  workflows: Maybe<PaginatedWorkflows>;
+  projectedWorkload: Array<RoleWorkload>;
+  projects: PaginatedProjects;
+  recurringBlackoutTime: RecurringBlackoutTime;
+  recurringBlackoutTimes: Array<RecurringBlackoutTime>;
+  replies: Array<CommentReply>;
+  report: Report;
+  reportQuery: ReportQuery;
+  reports: PaginatedReports;
+  role: Role;
+  roles: PaginatedRoles;
+  scheduleConfig: ScheduleConfig;
+  scheduleConfigs: Array<ScheduleConfig>;
+  scheduleItem: ScheduleItem;
+  scheduleItemPeriod: Array<ScheduleItem>;
+  scheduleItemUpdateBoundaries: ScheduleItemUpdateBoundaries;
+  scheduleItems: PaginatedScheduleItems;
+  scheduledTicketToBeClosing: Array<Ticket>;
+  scheduledTicketToBeWorked: Array<Ticket>;
+  search: Array<SearchResult>;
+  searchRole: Array<Role>;
+  searchTicket: Array<SearchResult>;
+  tag: Tag;
+  tags: PaginatedTags;
+  team: Team;
+  teamByCode: Team;
+  teams: PaginatedTeams;
+  ticket: Ticket;
+  ticketNotes: Array<TicketWorkflowStateNote>;
+  ticketStatusHistogram: Array<OpenTicketsByWorkflow>;
+  ticketTextAccessToken?: Maybe<Scalars['String']['output']>;
+  ticketWorkflowState: TicketWorkflowState;
+  ticketWorkflowStateNote: TicketWorkflowStateNote;
+  tickets: PaginatedTickets;
+  ticketsCount: Scalars['Int']['output'];
+  ticketsForMyCalendar: Array<Ticket>;
+  timeOffs: Array<TimeOff>;
+  todo: Todo;
+  todos: PaginatedTodos;
+  useRole: Me;
+  user: User;
+  users: PaginatedUsers;
+  version: Scalars['String']['output'];
+  workedTicketForPeriod: Array<Ticket>;
+  workflow: Workflow;
+  workflowState: WorkflowState;
+  workflows: PaginatedWorkflows;
 };
 
 
 export type QueryBatchGetTicketTagsArgs = {
-  ticketIds: Array<Scalars['Int']['input']>;
+  ticketIds: Array<InputMaybe<Scalars['Int']['input']>>;
 };
 
 
 export type QueryBatchGetTicketsArgs = {
-  ticketIds: Array<Scalars['Int']['input']>;
+  ticketIds: Array<InputMaybe<Scalars['Int']['input']>>;
 };
 
 
@@ -2517,13 +2553,13 @@ export type QueryCommentReplyArgs = {
 
 
 export type QueryCommentsArgs = {
-  commentId: InputMaybe<Scalars['Int']['input']>;
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  replyId: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  commentId?: InputMaybe<Scalars['Int']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  replyId?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
   ticketId: Scalars['Int']['input'];
 };
 
@@ -2536,7 +2572,7 @@ export type QueryDeliveredTicketForPeriodArgs = {
 
 
 export type QueryDependenciesArgs = {
-  projectId: InputMaybe<Scalars['Int']['input']>;
+  projectId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2556,12 +2592,12 @@ export type QueryDocumentationPageAccessTokenArgs = {
 
 
 export type QueryDocumentationsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
-  stages: InputMaybe<Array<ModelStage>>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  stages?: InputMaybe<Array<ModelStage>>;
 };
 
 
@@ -2581,22 +2617,22 @@ export type QueryFeatureGroupArgs = {
 
 
 export type QueryFeatureGroupsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  productId: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  productId?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryFeaturesArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  productId: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  productId?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2627,16 +2663,16 @@ export type QueryGetUnscheduledDependenciesArgs = {
 
 
 export type QueryGetUnscheduledTicketsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  isReadyToSchedule: InputMaybe<Scalars['Boolean']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  productId: InputMaybe<Scalars['Int']['input']>;
-  projectId: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
-  tagId: InputMaybe<Scalars['Int']['input']>;
-  workflowId: InputMaybe<Scalars['Int']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  isReadyToSchedule?: InputMaybe<Scalars['Boolean']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  productId?: InputMaybe<Scalars['Int']['input']>;
+  projectId?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  tagId?: InputMaybe<Scalars['Int']['input']>;
+  workflowId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2651,16 +2687,16 @@ export type QueryIssueByTokenArgs = {
 
 
 export type QueryIssuesArgs = {
-  assigneeId: InputMaybe<Scalars['Int']['input']>;
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  productId: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
-  statuses: InputMaybe<Array<IssueStatus>>;
-  unassigned: InputMaybe<Scalars['Boolean']['input']>;
-  unread: InputMaybe<Scalars['Boolean']['input']>;
+  assigneeId?: InputMaybe<Scalars['Int']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  productId?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  statuses?: InputMaybe<Array<IssueStatus>>;
+  unassigned?: InputMaybe<Scalars['Boolean']['input']>;
+  unread?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 
@@ -2670,87 +2706,87 @@ export type QueryLastTicketWorkflowStateNoteArgs = {
 
 
 export type QueryMiniFeaturesArgs = {
-  productId: InputMaybe<Scalars['Int']['input']>;
+  productId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
 export type QueryMiniWorkflowsArgs = {
-  productId: InputMaybe<Scalars['Int']['input']>;
+  productId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
 export type QueryMoreTicketsArgs = {
-  allUntagged: InputMaybe<Scalars['Boolean']['input']>;
-  assigneeIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  atRisk: InputMaybe<Scalars['Boolean']['input']>;
-  authorIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  closedAtFilter: InputMaybe<Scalars['String']['input']>;
-  createdAtFilter: InputMaybe<Scalars['String']['input']>;
-  cursor: InputMaybe<Scalars['Int']['input']>;
-  etaFilter: InputMaybe<Scalars['String']['input']>;
-  featureIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  first: InputMaybe<Scalars['Int']['input']>;
-  hideCompleted: InputMaybe<Scalars['Boolean']['input']>;
-  intersectTagIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  isActive: InputMaybe<Scalars['Boolean']['input']>;
-  isReadyToSchedule: InputMaybe<Scalars['Boolean']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  ownerIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  productId: InputMaybe<Scalars['Int']['input']>;
-  productIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  projectId: InputMaybe<Scalars['Int']['input']>;
-  recursive: InputMaybe<Scalars['Boolean']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
-  stages: InputMaybe<Array<ModelStage>>;
-  statuses: InputMaybe<Array<TicketStatus>>;
-  tagIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  unassigned: InputMaybe<Scalars['Boolean']['input']>;
-  unestimated: InputMaybe<Scalars['Boolean']['input']>;
-  untagged: InputMaybe<Scalars['Boolean']['input']>;
-  workflowIds: InputMaybe<Array<Scalars['Int']['input']>>;
+  allUntagged?: InputMaybe<Scalars['Boolean']['input']>;
+  assigneeIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  atRisk?: InputMaybe<Scalars['Boolean']['input']>;
+  authorIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  closedAtFilter?: InputMaybe<Scalars['String']['input']>;
+  createdAtFilter?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  etaFilter?: InputMaybe<Scalars['String']['input']>;
+  featureIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  hideCompleted?: InputMaybe<Scalars['Boolean']['input']>;
+  intersectTagIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
+  isReadyToSchedule?: InputMaybe<Scalars['Boolean']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  ownerIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  productId?: InputMaybe<Scalars['Int']['input']>;
+  productIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  projectId?: InputMaybe<Scalars['Int']['input']>;
+  recursive?: InputMaybe<Scalars['Boolean']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  stages?: InputMaybe<Array<ModelStage>>;
+  statuses?: InputMaybe<Array<TicketStatus>>;
+  tagIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  unassigned?: InputMaybe<Scalars['Boolean']['input']>;
+  unestimated?: InputMaybe<Scalars['Boolean']['input']>;
+  untagged?: InputMaybe<Scalars['Boolean']['input']>;
+  workflowIds?: InputMaybe<Array<Scalars['Int']['input']>>;
 };
 
 
 export type QueryMoreTicketsForProjectArgs = {
-  cursor: InputMaybe<Scalars['Int']['input']>;
-  first: InputMaybe<Scalars['Int']['input']>;
-  hideCompleted: InputMaybe<Scalars['Boolean']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  hideCompleted?: InputMaybe<Scalars['Boolean']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
   projectId: Scalars['Int']['input'];
-  sort: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryMyMiniProjectsArgs = {
-  includeArchived: InputMaybe<Scalars['Boolean']['input']>;
+  includeArchived?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 
 export type QueryMyNotScheduledTicketsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryMyNotificationsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
-  unread: InputMaybe<Scalars['Boolean']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  unread?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 
 export type QueryMyRecentlyCreatedTicketsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  projectId: InputMaybe<Scalars['Int']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  projectId?: InputMaybe<Scalars['Int']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2766,12 +2802,12 @@ export type QueryNoteArgs = {
 
 
 export type QueryNotesArgs = {
-  colors: InputMaybe<Array<NoteColor>>;
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  colors?: InputMaybe<Array<NoteColor>>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2781,31 +2817,31 @@ export type QueryNotificationArgs = {
 
 
 export type QueryOrganizationsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryPaginatedBlackoutTimesArgs = {
-  disabled: InputMaybe<Scalars['Boolean']['input']>;
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  disabled?: InputMaybe<Scalars['Boolean']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryPaginatedRecurringBlackoutTimesArgs = {
-  disabled: InputMaybe<Scalars['Boolean']['input']>;
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  disabled?: InputMaybe<Scalars['Boolean']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2829,11 +2865,11 @@ export type QueryPersonalTagArgs = {
 
 
 export type QueryPersonalTagsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2844,7 +2880,7 @@ export type QueryPlanningDeliveredTicketsArgs = {
 
 
 export type QueryPlanningProjectionArgs = {
-  scheduleConfigs: Array<ScheduleConfigForEstimateInput>;
+  scheduleConfigs: Array<InputMaybe<ScheduleConfigForEstimateInput>>;
   ticketIds: Array<Scalars['Int']['input']>;
 };
 
@@ -2860,18 +2896,18 @@ export type QueryProductByCodeArgs = {
 
 
 export type QueryProductsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
-  stages: InputMaybe<Array<ModelStage>>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  stages?: InputMaybe<Array<ModelStage>>;
 };
 
 
 export type QueryProjectArgs = {
   id: Scalars['Int']['input'];
-  visited: InputMaybe<Scalars['Boolean']['input']>;
+  visited?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 
@@ -2896,20 +2932,20 @@ export type QueryProjectTextAccessTokenArgs = {
 
 
 export type QueryProjectTicketsArgs = {
-  myDraft: InputMaybe<Scalars['Boolean']['input']>;
+  myDraft?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
-  stages: InputMaybe<Array<ModelStage>>;
-  statuses: InputMaybe<Array<TicketStatus>>;
+  stages?: InputMaybe<Array<ModelStage>>;
+  statuses?: InputMaybe<Array<TicketStatus>>;
 };
 
 
 export type QueryProjectTicketsForCategoryArgs = {
   category: ProjectTicketQueryCategory;
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   projectId: Scalars['Int']['input'];
-  sort: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2935,12 +2971,12 @@ export type QueryProjectedWorkloadArgs = {
 
 
 export type QueryProjectsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  parentId: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  parentId?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2950,7 +2986,7 @@ export type QueryRecurringBlackoutTimeArgs = {
 
 
 export type QueryRecurringBlackoutTimesArgs = {
-  includeDisabled: InputMaybe<Scalars['Boolean']['input']>;
+  includeDisabled?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 
@@ -2970,12 +3006,12 @@ export type QueryReportQueryArgs = {
 
 
 export type QueryReportsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
-  stages: InputMaybe<Array<ModelStage>>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  stages?: InputMaybe<Array<ModelStage>>;
 };
 
 
@@ -2985,11 +3021,11 @@ export type QueryRoleArgs = {
 
 
 export type QueryRolesArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3005,8 +3041,8 @@ export type QueryScheduleItemArgs = {
 
 export type QueryScheduleItemPeriodArgs = {
   fromDate: Scalars['DateTime']['input'];
-  roleId: InputMaybe<Scalars['Int']['input']>;
-  toDate: InputMaybe<Scalars['DateTime']['input']>;
+  roleId?: InputMaybe<Scalars['Int']['input']>;
+  toDate?: InputMaybe<Scalars['DateTime']['input']>;
 };
 
 
@@ -3016,12 +3052,12 @@ export type QueryScheduleItemUpdateBoundariesArgs = {
 
 
 export type QueryScheduleItemsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  roleId: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  roleId?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3040,7 +3076,7 @@ export type QueryScheduledTicketToBeWorkedArgs = {
 
 
 export type QuerySearchArgs = {
-  includeClosed: InputMaybe<Scalars['Boolean']['input']>;
+  includeClosed?: InputMaybe<Scalars['Boolean']['input']>;
   query: Scalars['String']['input'];
 };
 
@@ -3051,7 +3087,7 @@ export type QuerySearchRoleArgs = {
 
 
 export type QuerySearchTicketArgs = {
-  includeClosed: InputMaybe<Scalars['Boolean']['input']>;
+  includeClosed?: InputMaybe<Scalars['Boolean']['input']>;
   query: Scalars['String']['input'];
 };
 
@@ -3062,11 +3098,11 @@ export type QueryTagArgs = {
 
 
 export type QueryTagsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3081,17 +3117,17 @@ export type QueryTeamByCodeArgs = {
 
 
 export type QueryTeamsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryTicketArgs = {
   id: Scalars['Int']['input'];
-  visited: InputMaybe<Scalars['Boolean']['input']>;
+  visited?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 
@@ -3123,43 +3159,43 @@ export type QueryTicketWorkflowStateNoteArgs = {
 
 
 export type QueryTicketsArgs = {
-  assigneeIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  authorIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  createdAtFilter: InputMaybe<Scalars['String']['input']>;
-  etaFilter: InputMaybe<Scalars['String']['input']>;
-  featureIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  first: InputMaybe<Scalars['Int']['input']>;
-  isActive: InputMaybe<Scalars['Boolean']['input']>;
-  isReadyToSchedule: InputMaybe<Scalars['Boolean']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  productId: InputMaybe<Scalars['Int']['input']>;
-  productIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  projectId: InputMaybe<Scalars['Int']['input']>;
-  recursive: InputMaybe<Scalars['Boolean']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
-  stages: InputMaybe<Array<ModelStage>>;
-  statuses: InputMaybe<Array<TicketStatus>>;
-  tagIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  unassigned: InputMaybe<Scalars['Boolean']['input']>;
-  unestimated: InputMaybe<Scalars['Boolean']['input']>;
-  unfinished: InputMaybe<Scalars['Boolean']['input']>;
-  untagged: InputMaybe<Scalars['Boolean']['input']>;
-  watched: InputMaybe<Scalars['Boolean']['input']>;
-  workflowIds: InputMaybe<Array<Scalars['Int']['input']>>;
+  assigneeIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  authorIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  createdAtFilter?: InputMaybe<Scalars['String']['input']>;
+  etaFilter?: InputMaybe<Scalars['String']['input']>;
+  featureIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
+  isReadyToSchedule?: InputMaybe<Scalars['Boolean']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  productId?: InputMaybe<Scalars['Int']['input']>;
+  productIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  projectId?: InputMaybe<Scalars['Int']['input']>;
+  recursive?: InputMaybe<Scalars['Boolean']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  stages?: InputMaybe<Array<ModelStage>>;
+  statuses?: InputMaybe<Array<TicketStatus>>;
+  tagIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  unassigned?: InputMaybe<Scalars['Boolean']['input']>;
+  unestimated?: InputMaybe<Scalars['Boolean']['input']>;
+  unfinished?: InputMaybe<Scalars['Boolean']['input']>;
+  untagged?: InputMaybe<Scalars['Boolean']['input']>;
+  watched?: InputMaybe<Scalars['Boolean']['input']>;
+  workflowIds?: InputMaybe<Array<Scalars['Int']['input']>>;
 };
 
 
 export type QueryTicketsCountArgs = {
-  addedTicketIds: Array<Scalars['Int']['input']>;
-  filter: UpdateScheduleConfigInput;
-  removedTicketIds: Array<Scalars['Int']['input']>;
+  addedTicketIds: Array<InputMaybe<Scalars['Int']['input']>>;
+  filter: UpdateScheduleConfig;
+  removedTicketIds: Array<InputMaybe<Scalars['Int']['input']>>;
 };
 
 
 export type QueryTicketsForMyCalendarArgs = {
-  search: InputMaybe<Scalars['String']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3175,12 +3211,12 @@ export type QueryTodoArgs = {
 
 
 export type QueryTodosArgs = {
-  dynamic: InputMaybe<Scalars['Boolean']['input']>;
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  dynamic?: InputMaybe<Scalars['Boolean']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3195,11 +3231,11 @@ export type QueryUserArgs = {
 
 
 export type QueryUsersArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3221,41 +3257,41 @@ export type QueryWorkflowStateArgs = {
 
 
 export type QueryWorkflowsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
-  stages: InputMaybe<Array<ModelStage>>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  stages?: InputMaybe<Array<ModelStage>>;
 };
 
 export type QueryAggregate = {
   __typename?: 'QueryAggregate';
-  main: Maybe<Scalars['String']['output']>;
-  secondary: Maybe<Scalars['String']['output']>;
-  value: Maybe<Scalars['Float']['output']>;
+  main?: Maybe<Scalars['String']['output']>;
+  secondary?: Maybe<Scalars['String']['output']>;
+  value: Scalars['Float']['output'];
 };
 
 export type RecurringBlackoutTime = {
   __typename?: 'RecurringBlackoutTime';
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  disabled: Maybe<Scalars['Boolean']['output']>;
-  friday: Maybe<Scalars['Boolean']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  monday: Maybe<Scalars['Boolean']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  roles: Maybe<Array<Role>>;
-  saturday: Maybe<Scalars['Boolean']['output']>;
-  startTime: Maybe<Scalars['String']['output']>;
-  stopTime: Maybe<Scalars['String']['output']>;
-  sunday: Maybe<Scalars['Boolean']['output']>;
-  thursday: Maybe<Scalars['Boolean']['output']>;
-  timeZone: Maybe<Scalars['String']['output']>;
-  tuesday: Maybe<Scalars['Boolean']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
-  wednesday: Maybe<Scalars['Boolean']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  disabled: Scalars['Boolean']['output'];
+  friday: Scalars['Boolean']['output'];
+  id: Scalars['Int']['output'];
+  monday: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  roles: Array<Role>;
+  saturday: Scalars['Boolean']['output'];
+  startTime: Scalars['String']['output'];
+  stopTime: Scalars['String']['output'];
+  sunday: Scalars['Boolean']['output'];
+  thursday: Scalars['Boolean']['output'];
+  timeZone: Scalars['String']['output'];
+  tuesday: Scalars['Boolean']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+  wednesday: Scalars['Boolean']['output'];
 };
 
 export type RegisterInput = {
@@ -3267,20 +3303,20 @@ export type RegisterInput = {
 
 export type Report = {
   __typename?: 'Report';
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  queries: Maybe<Array<ReportQuery>>;
-  stage: Maybe<ModelStage>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  queries: Array<ReportQuery>;
+  stage: ModelStage;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type ReportAggregate = {
   __typename?: 'ReportAggregate';
-  primary: Maybe<Array<QueryAggregate>>;
-  secondary: Maybe<Array<QueryAggregate>>;
+  primary: Array<QueryAggregate>;
+  secondary: Array<QueryAggregate>;
 };
 
 export enum ReportAggregateField {
@@ -3310,60 +3346,62 @@ export enum ReportGroupBy {
 
 export type ReportQuery = {
   __typename?: 'ReportQuery';
-  aggregateField: Maybe<ReportAggregateField>;
-  byAssignees: Maybe<Array<FilterElement>>;
-  byAuthors: Maybe<Array<FilterElement>>;
-  byOwners: Maybe<Array<FilterElement>>;
-  byProducts: Maybe<Array<FilterElement>>;
-  byTags: Maybe<Array<FilterElement>>;
-  byTickets: Maybe<Array<FilterElement>>;
-  byWorkflowStateAssignees: Maybe<Array<FilterElement>>;
-  byWorkflowStates: Maybe<Array<FilterElement>>;
-  byWorkflows: Maybe<Array<FilterElement>>;
-  chartBy: Maybe<ReportGroupBy>;
-  chartByLabel: Maybe<Scalars['String']['output']>;
-  cols: Maybe<Scalars['Int']['output']>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  cummulative: Maybe<Scalars['Boolean']['output']>;
-  fromDate: Maybe<Scalars['String']['output']>;
-  granularity: Maybe<ReportDateGranularity>;
-  groupBy: Maybe<ReportGroupBy>;
-  groupByLabel: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  isTicketActive: Maybe<Scalars['Boolean']['output']>;
-  isTicketDone: Maybe<Scalars['Boolean']['output']>;
-  isTicketNotStarted: Maybe<Scalars['Boolean']['output']>;
-  isTicketStarted: Maybe<Scalars['Boolean']['output']>;
-  noUnknowns: Maybe<Scalars['Boolean']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  position: Maybe<Scalars['Int']['output']>;
-  report: Maybe<Report>;
-  reportId: Maybe<Scalars['Int']['output']>;
-  rows: Maybe<Scalars['Int']['output']>;
-  sameAsPrimaryFilter: Maybe<Scalars['Boolean']['output']>;
-  secondaryByAssignees: Maybe<Array<FilterElement>>;
-  secondaryByAuthors: Maybe<Array<FilterElement>>;
-  secondaryByOwners: Maybe<Array<FilterElement>>;
-  secondaryByProducts: Maybe<Array<FilterElement>>;
-  secondaryByTags: Maybe<Array<FilterElement>>;
-  secondaryByTickets: Maybe<Array<FilterElement>>;
-  secondaryByWorkflowStateAssignees: Maybe<Array<FilterElement>>;
-  secondaryByWorkflowStates: Maybe<Array<FilterElement>>;
-  secondaryByWorkflows: Maybe<Array<FilterElement>>;
-  secondaryChartBy: Maybe<ReportGroupBy>;
-  secondaryChartByLabel: Maybe<Scalars['String']['output']>;
-  secondaryGroupBy: Maybe<ReportGroupBy>;
-  secondaryGroupByLabel: Maybe<Scalars['String']['output']>;
-  secondaryIsTicketActive: Maybe<Scalars['Boolean']['output']>;
-  secondaryIsTicketDone: Maybe<Scalars['Boolean']['output']>;
-  secondaryIsTicketNotStarted: Maybe<Scalars['Boolean']['output']>;
-  secondaryIsTicketStarted: Maybe<Scalars['Boolean']['output']>;
-  title: Maybe<Scalars['String']['output']>;
-  untilDate: Maybe<Scalars['String']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
-  values: Maybe<ReportAggregate>;
-  widgetType: Maybe<ReportWidgetType>;
+  aggregateField: ReportAggregateField;
+  byAssignees: Array<FilterElement>;
+  byAuthors: Array<FilterElement>;
+  byOwners: Array<FilterElement>;
+  byPaths: Scalars['String']['output'];
+  byProducts: Array<FilterElement>;
+  byTags: Array<FilterElement>;
+  byTickets: Array<FilterElement>;
+  byWorkflowStateAssignees: Array<FilterElement>;
+  byWorkflowStates: Array<FilterElement>;
+  byWorkflows: Array<FilterElement>;
+  chartBy: ReportGroupBy;
+  chartByLabel?: Maybe<Scalars['String']['output']>;
+  cols: Scalars['Int']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  cummulative: Scalars['Boolean']['output'];
+  fromDate?: Maybe<Scalars['String']['output']>;
+  granularity: ReportDateGranularity;
+  groupBy?: Maybe<ReportGroupBy>;
+  groupByLabel?: Maybe<Scalars['String']['output']>;
+  id: Scalars['Int']['output'];
+  isTicketActive?: Maybe<Scalars['Boolean']['output']>;
+  isTicketDone?: Maybe<Scalars['Boolean']['output']>;
+  isTicketNotStarted?: Maybe<Scalars['Boolean']['output']>;
+  isTicketStarted?: Maybe<Scalars['Boolean']['output']>;
+  noUnknowns: Scalars['Boolean']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  position: Scalars['Int']['output'];
+  report: Report;
+  reportId: Scalars['Int']['output'];
+  rows: Scalars['Int']['output'];
+  sameAsPrimaryFilter: Scalars['Boolean']['output'];
+  secondaryByAssignees: Array<FilterElement>;
+  secondaryByAuthors: Array<FilterElement>;
+  secondaryByOwners: Array<FilterElement>;
+  secondaryByPaths: Scalars['String']['output'];
+  secondaryByProducts: Array<FilterElement>;
+  secondaryByTags: Array<FilterElement>;
+  secondaryByTickets: Array<FilterElement>;
+  secondaryByWorkflowStateAssignees: Array<FilterElement>;
+  secondaryByWorkflowStates: Array<FilterElement>;
+  secondaryByWorkflows: Array<FilterElement>;
+  secondaryChartBy?: Maybe<ReportGroupBy>;
+  secondaryChartByLabel?: Maybe<Scalars['String']['output']>;
+  secondaryGroupBy?: Maybe<ReportGroupBy>;
+  secondaryGroupByLabel?: Maybe<Scalars['String']['output']>;
+  secondaryIsTicketActive?: Maybe<Scalars['Boolean']['output']>;
+  secondaryIsTicketDone?: Maybe<Scalars['Boolean']['output']>;
+  secondaryIsTicketNotStarted?: Maybe<Scalars['Boolean']['output']>;
+  secondaryIsTicketStarted?: Maybe<Scalars['Boolean']['output']>;
+  title: Scalars['String']['output'];
+  untilDate?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
+  values: ReportAggregate;
+  widgetType: ReportWidgetType;
 };
 
 export enum ReportWidgetType {
@@ -3383,85 +3421,87 @@ export type RequestDemoInput = {
 
 export type Role = {
   __typename?: 'Role';
-  assignments: Maybe<Array<TicketWorkflowState>>;
-  avatarUrl: Maybe<Scalars['String']['output']>;
-  checklists: Maybe<Array<Todo>>;
-  coverUrl: Maybe<Scalars['String']['output']>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  description: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  notes: Maybe<Array<Note>>;
-  notifications: Maybe<Array<Notification>>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  pinnedProjects: Maybe<Array<Project>>;
-  roleAutoResume: Maybe<RoleAutoResume>;
-  roleEmail: Maybe<RoleEmail>;
-  roleStartReminder: Maybe<RoleStartReminder>;
-  skills: Maybe<Array<Skill>>;
-  status: Maybe<RoleStatus>;
-  teams: Maybe<Array<Team>>;
-  ticketsAuthored: Maybe<Array<Ticket>>;
-  ticketsOwned: Maybe<Array<Ticket>>;
-  ticketsWatched: Maybe<Array<Ticket>>;
-  timeZone: Maybe<Scalars['String']['output']>;
-  title: Maybe<Scalars['String']['output']>;
-  type: Maybe<RoleType>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
-  user: Maybe<User>;
-  userId: Maybe<Scalars['Int']['output']>;
+  assignments: Array<TicketWorkflowState>;
+  avatarUrl?: Maybe<Scalars['String']['output']>;
+  checklists: Array<Todo>;
+  coverUrl?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  description?: Maybe<Scalars['String']['output']>;
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  notes: Array<Note>;
+  notifications: Array<Notification>;
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  pinnedProjects: Array<Project>;
+  preferences: RolePreferences;
+  roleAutoResume?: Maybe<RoleAutoResume>;
+  roleEmail?: Maybe<RoleEmail>;
+  roleStartReminder?: Maybe<RoleStartReminder>;
+  skills: Array<Skill>;
+  status: RoleStatus;
+  teams: Array<Team>;
+  ticketsAuthored: Array<Ticket>;
+  ticketsOwned: Array<Ticket>;
+  ticketsWatched: Array<Ticket>;
+  timeZone: Scalars['String']['output'];
+  title?: Maybe<Scalars['String']['output']>;
+  type: RoleType;
+  updatedAt: Scalars['DateTime']['output'];
+  user: User;
+  userId: Scalars['Int']['output'];
+  workWeek: WorkWeekTime;
 };
 
 export type RoleAutoResume = {
   __typename?: 'RoleAutoResume';
-  id: Maybe<Scalars['Int']['output']>;
-  nextStartNotificationDate: Maybe<Scalars['DateTime']['output']>;
-  nextStartNotificationOptOut: Maybe<Scalars['Boolean']['output']>;
-  roleId: Maybe<Scalars['Int']['output']>;
+  id: Scalars['Int']['output'];
+  nextStartNotificationDate: Scalars['DateTime']['output'];
+  nextStartNotificationOptOut: Scalars['Boolean']['output'];
+  roleId: Scalars['Int']['output'];
 };
 
 export type RoleEmail = {
   __typename?: 'RoleEmail';
-  id: Maybe<Scalars['Int']['output']>;
-  nextWorkDayNotificationDate: Maybe<Scalars['DateTime']['output']>;
-  nextWorkDayNotificationOffset: Maybe<Scalars['Int']['output']>;
-  nextWorkDayNotificationOptOut: Maybe<Scalars['Boolean']['output']>;
-  roleId: Maybe<Scalars['Int']['output']>;
+  id: Scalars['Int']['output'];
+  nextWorkDayNotificationDate: Scalars['DateTime']['output'];
+  nextWorkDayNotificationOffset: Scalars['Int']['output'];
+  nextWorkDayNotificationOptOut: Scalars['Boolean']['output'];
+  roleId: Scalars['Int']['output'];
 };
 
 export type RoleHabit = {
   __typename?: 'RoleHabit';
-  productWorkflows: Maybe<Array<HabitProductWorkflow>>;
-  projects: Maybe<Array<Project>>;
+  productWorkflows: Array<HabitProductWorkflow>;
+  projects: Array<Project>;
 };
 
 export type RoleNoteColorPreferences = {
   __typename?: 'RoleNoteColorPreferences';
-  BLUE: Maybe<Scalars['String']['output']>;
-  GREEN: Maybe<Scalars['String']['output']>;
-  ORANGE: Maybe<Scalars['String']['output']>;
-  PINK: Maybe<Scalars['String']['output']>;
-  PURPLE: Maybe<Scalars['String']['output']>;
-  YELLOW: Maybe<Scalars['String']['output']>;
+  BLUE: Scalars['String']['output'];
+  GREEN: Scalars['String']['output'];
+  ORANGE: Scalars['String']['output'];
+  PINK: Scalars['String']['output'];
+  PURPLE: Scalars['String']['output'];
+  YELLOW: Scalars['String']['output'];
 };
 
 export type RolePreferences = {
   __typename?: 'RolePreferences';
-  lastProjectId: Maybe<Scalars['Int']['output']>;
-  noteColors: Maybe<RoleNoteColorPreferences>;
-  recentSearchHits: Maybe<Array<Scalars['String']['output']>>;
-  recentlyVisited: Maybe<Array<Scalars['String']['output']>>;
-  showOnboarding: Maybe<Scalars['Boolean']['output']>;
+  lastProjectId?: Maybe<Scalars['Int']['output']>;
+  noteColors: RoleNoteColorPreferences;
+  recentSearchHits: Array<Scalars['String']['output']>;
+  recentlyVisited: Array<Scalars['String']['output']>;
+  showOnboarding: Scalars['Boolean']['output'];
 };
 
 export type RoleStartReminder = {
   __typename?: 'RoleStartReminder';
-  id: Maybe<Scalars['Int']['output']>;
-  nextStartNotificationDate: Maybe<Scalars['DateTime']['output']>;
-  nextStartNotificationOffset: Maybe<Scalars['Int']['output']>;
-  nextStartNotificationOptOut: Maybe<Scalars['Boolean']['output']>;
-  roleId: Maybe<Scalars['Int']['output']>;
+  id: Scalars['Int']['output'];
+  nextStartNotificationDate: Scalars['DateTime']['output'];
+  nextStartNotificationOffset: Scalars['Int']['output'];
+  nextStartNotificationOptOut: Scalars['Boolean']['output'];
+  roleId: Scalars['Int']['output'];
 };
 
 export enum RoleStatus {
@@ -3480,30 +3520,30 @@ export enum RoleType {
 
 export type RoleWorkDay = {
   __typename?: 'RoleWorkDay';
-  startTime: Maybe<Scalars['String']['output']>;
-  stopTime: Maybe<Scalars['String']['output']>;
+  startTime: Scalars['String']['output'];
+  stopTime: Scalars['String']['output'];
 };
 
 export type RoleWorkload = {
   __typename?: 'RoleWorkload';
-  hours: Maybe<Scalars['Float']['output']>;
-  role: Maybe<Role>;
+  hours: Scalars['Float']['output'];
+  role: Role;
 };
 
 export type ScheduleConfig = {
   __typename?: 'ScheduleConfig';
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  features: Maybe<Array<Feature>>;
-  id: Maybe<Scalars['Int']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  priority: Maybe<Scalars['Int']['output']>;
-  products: Maybe<Array<Product>>;
-  projects: Maybe<Array<Project>>;
-  tags: Maybe<Array<Tag>>;
-  tickets: Maybe<Array<Ticket>>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
-  workflows: Maybe<Array<Workflow>>;
+  createdAt: Scalars['DateTime']['output'];
+  features: Array<Feature>;
+  id: Scalars['Int']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  priority: Scalars['Int']['output'];
+  products: Array<Product>;
+  projects: Array<Project>;
+  tags: Array<Tag>;
+  tickets: Array<Ticket>;
+  updatedAt: Scalars['DateTime']['output'];
+  workflows: Array<Workflow>;
 };
 
 export type ScheduleConfigForEstimateInput = {
@@ -3518,40 +3558,40 @@ export type ScheduleConfigForEstimateInput = {
 
 export type ScheduleEstimate = {
   __typename?: 'ScheduleEstimate';
-  duration: Maybe<Scalars['Int']['output']>;
-  roleId: Maybe<Scalars['Int']['output']>;
-  startEpoch: Maybe<Scalars['Int']['output']>;
-  start_min: Maybe<Scalars['Int']['output']>;
-  stopEpoch: Maybe<Scalars['Int']['output']>;
-  ticketId: Maybe<Scalars['Int']['output']>;
-  ticketLocalId: Maybe<Scalars['Int']['output']>;
-  ticketProductCode: Maybe<Scalars['String']['output']>;
-  ticketTitle: Maybe<Scalars['String']['output']>;
-  ticketWorkflowStateId: Maybe<Scalars['Int']['output']>;
-  ticketWorkflowStateName: Maybe<Scalars['String']['output']>;
+  duration: Scalars['Int']['output'];
+  roleId: Scalars['Int']['output'];
+  startEpoch: Scalars['Int']['output'];
+  start_min: Scalars['Int']['output'];
+  stopEpoch: Scalars['Int']['output'];
+  ticketId: Scalars['Int']['output'];
+  ticketLocalId: Scalars['Int']['output'];
+  ticketProductCode: Scalars['String']['output'];
+  ticketTitle: Scalars['String']['output'];
+  ticketWorkflowStateId: Scalars['Int']['output'];
+  ticketWorkflowStateName: Scalars['String']['output'];
 };
 
 export type ScheduleItem = {
   __typename?: 'ScheduleItem';
-  autoStarted: Maybe<Scalars['Boolean']['output']>;
-  autoStopped: Maybe<Scalars['Boolean']['output']>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  done: Maybe<Scalars['Boolean']['output']>;
-  extendedAt: Maybe<Scalars['DateTime']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  nextTicketWorkflowState: Maybe<TicketWorkflowState>;
-  nextTicketWorkflowStateId: Maybe<Scalars['Int']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  role: Maybe<Role>;
-  roleId: Maybe<Scalars['Int']['output']>;
-  startedAt: Maybe<Scalars['DateTime']['output']>;
-  stoppedAt: Maybe<Scalars['DateTime']['output']>;
-  ticket: Maybe<Ticket>;
-  ticketId: Maybe<Scalars['Int']['output']>;
-  ticketWorkflowState: Maybe<TicketWorkflowState>;
-  ticketWorkflowStateId: Maybe<Scalars['Int']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  autoStarted: Scalars['Boolean']['output'];
+  autoStopped: Scalars['Boolean']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  done: Scalars['Boolean']['output'];
+  extendedAt?: Maybe<Scalars['DateTime']['output']>;
+  id: Scalars['Int']['output'];
+  nextTicketWorkflowState?: Maybe<TicketWorkflowState>;
+  nextTicketWorkflowStateId?: Maybe<Scalars['Int']['output']>;
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  role: Role;
+  roleId: Scalars['Int']['output'];
+  startedAt: Scalars['DateTime']['output'];
+  stoppedAt?: Maybe<Scalars['DateTime']['output']>;
+  ticket: Ticket;
+  ticketId: Scalars['Int']['output'];
+  ticketWorkflowState: TicketWorkflowState;
+  ticketWorkflowStateId: Scalars['Int']['output'];
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type ScheduleItemForEstimateObjInput = {
@@ -3560,18 +3600,18 @@ export type ScheduleItemForEstimateObjInput = {
 
 export type ScheduleItemUpdateBoundaries = {
   __typename?: 'ScheduleItemUpdateBoundaries';
-  maxDate: Maybe<Scalars['DateTime']['output']>;
-  minDate: Maybe<Scalars['DateTime']['output']>;
+  maxDate?: Maybe<Scalars['DateTime']['output']>;
+  minDate?: Maybe<Scalars['DateTime']['output']>;
 };
 
 export type ScheduleRole = {
   __typename?: 'ScheduleRole';
-  avatarUrl: Maybe<Scalars['String']['output']>;
-  futureCapacity: Maybe<Scalars['Float']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  pastCapacity: Maybe<Scalars['Float']['output']>;
-  title: Maybe<Scalars['String']['output']>;
+  avatarUrl?: Maybe<Scalars['String']['output']>;
+  futureCapacity: Scalars['Float']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  pastCapacity: Scalars['Float']['output'];
+  title?: Maybe<Scalars['String']['output']>;
 };
 
 export enum ScheduleStatus {
@@ -3582,165 +3622,166 @@ export enum ScheduleStatus {
 
 export type SearchResult = {
   __typename?: 'SearchResult';
-  description: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['ID']['output']>;
-  meta: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
+  description: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  meta: Scalars['String']['output'];
+  name: Scalars['String']['output'];
 };
 
 export type Skill = {
   __typename?: 'Skill';
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  feature: Maybe<Feature>;
-  featureId: Maybe<Scalars['Int']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  role: Maybe<Role>;
-  roleId: Maybe<Scalars['Int']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
-  value: Maybe<Scalars['Float']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  feature: Feature;
+  featureId: Scalars['Int']['output'];
+  id: Scalars['Int']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  role: Role;
+  roleId: Scalars['Int']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+  value: Scalars['Float']['output'];
 };
 
 export type Tag = {
   __typename?: 'Tag';
-  author: Maybe<Role>;
-  authorId: Maybe<Scalars['Int']['output']>;
-  color: Maybe<Scalars['String']['output']>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  replacedBy: Maybe<Tag>;
-  replacedByTagId: Maybe<Scalars['Int']['output']>;
-  replacesTags: Maybe<Array<Tag>>;
-  ticketCount: Maybe<Scalars['Int']['output']>;
-  tickets: Maybe<PaginatedTickets>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  author?: Maybe<Role>;
+  authorId?: Maybe<Scalars['Int']['output']>;
+  color: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  replacedBy?: Maybe<Tag>;
+  replacedByTagId?: Maybe<Scalars['Int']['output']>;
+  replacesTags: Array<Tag>;
+  ticketCount: Scalars['Int']['output'];
+  tickets: PaginatedTickets;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 
 export type TagTicketsArgs = {
-  first: InputMaybe<Scalars['Int']['input']>;
-  last: InputMaybe<Scalars['Int']['input']>;
-  offset: InputMaybe<Scalars['Int']['input']>;
-  search: InputMaybe<Scalars['String']['input']>;
-  sort: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type Team = {
   __typename?: 'Team';
-  code: Maybe<Scalars['String']['output']>;
-  coverUrl: Maybe<Scalars['String']['output']>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  description: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  memberIds: Maybe<Array<Scalars['Int']['output']>>;
-  members: Maybe<Array<Role>>;
-  name: Maybe<Scalars['String']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  code: Scalars['String']['output'];
+  coverUrl?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  description?: Maybe<Scalars['String']['output']>;
+  id: Scalars['Int']['output'];
+  memberIds: Array<Scalars['Int']['output']>;
+  members: Array<Role>;
+  name: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type Ticket = {
   __typename?: 'Ticket';
-  ancestors: Maybe<Array<Ticket>>;
-  archivedAt: Maybe<Scalars['DateTime']['output']>;
-  author: Maybe<Role>;
-  authorId: Maybe<Scalars['Int']['output']>;
-  cases: Maybe<Array<Issue>>;
-  closedAt: Maybe<Scalars['DateTime']['output']>;
-  closingNote: Maybe<Scalars['String']['output']>;
-  comments: Maybe<Array<Comment>>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  deletedAt: Maybe<Scalars['DateTime']['output']>;
-  description: Maybe<Scalars['String']['output']>;
-  difficulty: Maybe<Scalars['Int']['output']>;
-  estimate: Maybe<Scalars['Int']['output']>;
-  estimating: Maybe<Scalars['Boolean']['output']>;
-  eta: Maybe<Scalars['DateTime']['output']>;
-  features: Maybe<Array<Feature>>;
-  folderId: Maybe<Scalars['Int']['output']>;
-  foreignId: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  isWatching: Maybe<Scalars['Boolean']['output']>;
-  issues: Maybe<Array<Issue>>;
-  lastScheduleItem: Maybe<ScheduleItem>;
-  localId: Maybe<Scalars['Int']['output']>;
-  milestone: Maybe<Scalars['Boolean']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  owner: Maybe<Role>;
-  ownerId: Maybe<Scalars['Int']['output']>;
-  personalTags: Maybe<Array<PersonalTag>>;
-  product: Maybe<Product>;
-  productId: Maybe<Scalars['Int']['output']>;
-  progress: Maybe<Scalars['Float']['output']>;
-  project: Maybe<Project>;
-  projectId: Maybe<Scalars['Int']['output']>;
-  scheduleItems: Maybe<Array<ScheduleItem>>;
-  scheduledAt: Maybe<Scalars['DateTime']['output']>;
-  stage: Maybe<ModelStage>;
-  state: Maybe<TicketWorkflowState>;
-  status: Maybe<TicketStatus>;
-  successors: Maybe<Array<Ticket>>;
-  tags: Maybe<Array<Tag>>;
-  ticketWorkflowStates: Maybe<Array<TicketWorkflowState>>;
-  title: Maybe<Scalars['String']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
-  watchers: Maybe<Array<Role>>;
-  workflow: Maybe<Workflow>;
-  workflowId: Maybe<Scalars['Int']['output']>;
+  ancestors: Array<Ticket>;
+  archivedAt?: Maybe<Scalars['DateTime']['output']>;
+  author?: Maybe<Role>;
+  authorId?: Maybe<Scalars['Int']['output']>;
+  cases: Array<Issue>;
+  closedAt?: Maybe<Scalars['DateTime']['output']>;
+  closingNote?: Maybe<Scalars['String']['output']>;
+  comments: Array<Comment>;
+  createdAt: Scalars['DateTime']['output'];
+  deletedAt?: Maybe<Scalars['DateTime']['output']>;
+  description?: Maybe<Scalars['String']['output']>;
+  difficulty?: Maybe<Scalars['Int']['output']>;
+  estimate: Scalars['Int']['output'];
+  estimating: Scalars['Boolean']['output'];
+  eta?: Maybe<Scalars['DateTime']['output']>;
+  features: Array<Feature>;
+  folderId?: Maybe<Scalars['Int']['output']>;
+  foreignId?: Maybe<Scalars['String']['output']>;
+  id: Scalars['Int']['output'];
+  indexableContent: Scalars['String']['output'];
+  isWatching: Scalars['Boolean']['output'];
+  issues: Array<Issue>;
+  lastScheduleItem?: Maybe<ScheduleItem>;
+  localId?: Maybe<Scalars['Int']['output']>;
+  milestone: Scalars['Boolean']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  owner?: Maybe<Role>;
+  ownerId?: Maybe<Scalars['Int']['output']>;
+  personalTags: Array<PersonalTag>;
+  product?: Maybe<Product>;
+  productId?: Maybe<Scalars['Int']['output']>;
+  progress: Scalars['Float']['output'];
+  project: Project;
+  projectId: Scalars['Int']['output'];
+  scheduleItems: Array<ScheduleItem>;
+  scheduledAt?: Maybe<Scalars['DateTime']['output']>;
+  stage: ModelStage;
+  state?: Maybe<TicketWorkflowState>;
+  status: TicketStatus;
+  successors: Array<Ticket>;
+  tags: Array<Tag>;
+  ticketWorkflowStates: Array<TicketWorkflowState>;
+  title: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+  watchers: Array<Role>;
+  workflow?: Maybe<Workflow>;
+  workflowId?: Maybe<Scalars['Int']['output']>;
 };
 
 export type TicketBatchPayload = {
   __typename?: 'TicketBatchPayload';
-  count: Maybe<Scalars['Int']['output']>;
+  count: Scalars['Int']['output'];
 };
 
 export type TicketDependency = {
   __typename?: 'TicketDependency';
-  ancestors: Maybe<Array<Scalars['Int']['output']>>;
-  id: Maybe<Scalars['Int']['output']>;
-  localId: Maybe<Scalars['Int']['output']>;
-  milestone: Maybe<Scalars['Boolean']['output']>;
-  productCode: Maybe<Scalars['String']['output']>;
-  projectId: Maybe<Scalars['Int']['output']>;
-  status: Maybe<TicketStatus>;
-  successors: Maybe<Array<Scalars['Int']['output']>>;
-  title: Maybe<Scalars['String']['output']>;
+  ancestors: Array<Scalars['Int']['output']>;
+  id: Scalars['Int']['output'];
+  localId?: Maybe<Scalars['Int']['output']>;
+  milestone: Scalars['Boolean']['output'];
+  productCode?: Maybe<Scalars['String']['output']>;
+  projectId?: Maybe<Scalars['Int']['output']>;
+  status: TicketStatus;
+  successors: Array<Scalars['Int']['output']>;
+  title: Scalars['String']['output'];
 };
 
 export type TicketExport = {
   __typename?: 'TicketExport';
-  ancestor_tickets: Maybe<Scalars['String']['output']>;
-  author_email: Maybe<Scalars['String']['output']>;
-  author_name: Maybe<Scalars['String']['output']>;
-  closed_at: Maybe<Scalars['String']['output']>;
-  created_at: Maybe<Scalars['String']['output']>;
-  description: Maybe<Scalars['String']['output']>;
-  eta: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  local_id: Maybe<Scalars['String']['output']>;
-  owner_email: Maybe<Scalars['String']['output']>;
-  owner_name: Maybe<Scalars['String']['output']>;
-  product: Maybe<Scalars['String']['output']>;
-  project: Maybe<Scalars['String']['output']>;
-  scheduled_at: Maybe<Scalars['String']['output']>;
-  stage: Maybe<ModelStage>;
-  status: Maybe<TicketStatus>;
-  successor_tickets: Maybe<Scalars['String']['output']>;
-  tags: Maybe<Scalars['String']['output']>;
-  title: Maybe<Scalars['String']['output']>;
-  workflow: Maybe<Scalars['String']['output']>;
+  ancestor_tickets: Scalars['String']['output'];
+  author_email: Scalars['String']['output'];
+  author_name: Scalars['String']['output'];
+  closed_at: Scalars['String']['output'];
+  created_at: Scalars['String']['output'];
+  description: Scalars['String']['output'];
+  eta: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  local_id: Scalars['String']['output'];
+  owner_email: Scalars['String']['output'];
+  owner_name: Scalars['String']['output'];
+  product: Scalars['String']['output'];
+  project: Scalars['String']['output'];
+  scheduled_at: Scalars['String']['output'];
+  stage: ModelStage;
+  status: TicketStatus;
+  successor_tickets: Scalars['String']['output'];
+  tags: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+  workflow: Scalars['String']['output'];
 };
 
 export type TicketOpenByWorkflowDatum = {
   __typename?: 'TicketOpenByWorkflowDatum';
-  date: Maybe<Scalars['DateTime']['output']>;
-  value: Maybe<Scalars['Int']['output']>;
+  date: Scalars['DateTime']['output'];
+  value: Scalars['Int']['output'];
 };
 
 export enum TicketStatus {
@@ -3752,51 +3793,51 @@ export enum TicketStatus {
 
 export type TicketWorkflowState = {
   __typename?: 'TicketWorkflowState';
-  assignee: Maybe<Role>;
-  assigneeId: Maybe<Scalars['Int']['output']>;
-  checklist: Maybe<Array<ChecklistItem>>;
-  complete: Maybe<Scalars['Int']['output']>;
-  estimate: Maybe<Scalars['DateTime']['output']>;
-  estimateMaximum: Maybe<Scalars['Int']['output']>;
-  estimateMinimum: Maybe<Scalars['Int']['output']>;
-  estimateMostLikely: Maybe<Scalars['Int']['output']>;
-  estimateSet: Maybe<Estimate>;
-  fractionable: Maybe<Scalars['Boolean']['output']>;
-  fromTicketWorkflowStateNotes: Maybe<Array<TicketWorkflowStateNote>>;
-  id: Maybe<Scalars['Int']['output']>;
-  isActive: Maybe<Scalars['Boolean']['output']>;
-  isBlocked: Maybe<Scalars['Boolean']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  nextScheduleItems: Maybe<Array<ScheduleItem>>;
-  position: Maybe<Scalars['Int']['output']>;
-  scheduleItems: Maybe<Array<ScheduleItem>>;
-  ticket: Maybe<Ticket>;
-  ticketId: Maybe<Scalars['Int']['output']>;
-  ticketWorkflowStateNotes: Maybe<Array<TicketWorkflowStateNote>>;
-  todo: Maybe<Scalars['Int']['output']>;
-  workflowState: Maybe<WorkflowState>;
-  workflowStateId: Maybe<Scalars['Int']['output']>;
+  assignee?: Maybe<Role>;
+  assigneeId?: Maybe<Scalars['Int']['output']>;
+  checklist: Array<ChecklistItem>;
+  complete: Scalars['Int']['output'];
+  estimate?: Maybe<Scalars['DateTime']['output']>;
+  estimateMaximum?: Maybe<Scalars['Int']['output']>;
+  estimateMinimum?: Maybe<Scalars['Int']['output']>;
+  estimateMostLikely?: Maybe<Scalars['Int']['output']>;
+  estimateSet?: Maybe<Estimate>;
+  fractionable: Scalars['Boolean']['output'];
+  fromTicketWorkflowStateNotes: Array<TicketWorkflowStateNote>;
+  id: Scalars['Int']['output'];
+  isActive: Scalars['Boolean']['output'];
+  isBlocked: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  nextScheduleItems: Array<ScheduleItem>;
+  position: Scalars['Int']['output'];
+  scheduleItems: Array<ScheduleItem>;
+  ticket: Ticket;
+  ticketId: Scalars['Int']['output'];
+  ticketWorkflowStateNotes: Array<TicketWorkflowStateNote>;
+  todo: Scalars['Int']['output'];
+  workflowState?: Maybe<WorkflowState>;
+  workflowStateId?: Maybe<Scalars['Int']['output']>;
 };
 
 export type TicketWorkflowStateInput = {
-  assigneeId: InputMaybe<Scalars['Int']['input']>;
-  isActive: InputMaybe<Scalars['Boolean']['input']>;
+  assigneeId?: InputMaybe<Scalars['Int']['input']>;
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
   ticketWorkflowStateId: Scalars['Int']['input'];
 };
 
 export type TicketWorkflowStateNote = {
   __typename?: 'TicketWorkflowStateNote';
-  author: Maybe<Role>;
-  authorId: Maybe<Scalars['Int']['output']>;
-  body: Maybe<Scalars['String']['output']>;
-  category: Maybe<TicketWorkflowStateNoteCategory>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  fromTicketWorkflowState: Maybe<TicketWorkflowState>;
-  fromTicketWorkflowStateId: Maybe<Scalars['Int']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  ticketWorkflowState: Maybe<TicketWorkflowState>;
-  ticketWorkflowStateId: Maybe<Scalars['Int']['output']>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  author: Role;
+  authorId: Scalars['Int']['output'];
+  body: Scalars['String']['output'];
+  category: TicketWorkflowStateNoteCategory;
+  createdAt: Scalars['DateTime']['output'];
+  fromTicketWorkflowState: TicketWorkflowState;
+  fromTicketWorkflowStateId: Scalars['Int']['output'];
+  id: Scalars['Int']['output'];
+  ticketWorkflowState: TicketWorkflowState;
+  ticketWorkflowStateId: Scalars['Int']['output'];
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export enum TicketWorkflowStateNoteCategory {
@@ -3808,31 +3849,31 @@ export enum TicketWorkflowStateNoteCategory {
 
 export type TimeOff = {
   __typename?: 'TimeOff';
-  id: Maybe<Scalars['Int']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  role: Maybe<Role>;
-  roleId: Maybe<Scalars['Int']['output']>;
-  startAt: Maybe<Scalars['DateTime']['output']>;
-  stopAt: Maybe<Scalars['DateTime']['output']>;
+  id: Scalars['Int']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  role: Role;
+  roleId: Scalars['Int']['output'];
+  startAt: Scalars['DateTime']['output'];
+  stopAt: Scalars['DateTime']['output'];
 };
 
 export type Todo = {
   __typename?: 'Todo';
-  body: Maybe<Scalars['String']['output']>;
-  checked: Maybe<Scalars['Boolean']['output']>;
-  checkedAt: Maybe<Scalars['DateTime']['output']>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  dueDate: Maybe<Scalars['DateTime']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  owner: Maybe<Role>;
-  ownerId: Maybe<Scalars['Int']['output']>;
+  body: Scalars['String']['output'];
+  checked: Scalars['Boolean']['output'];
+  checkedAt?: Maybe<Scalars['DateTime']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  dueDate?: Maybe<Scalars['DateTime']['output']>;
+  id: Scalars['Int']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  owner: Role;
+  ownerId: Scalars['Int']['output'];
 };
 
 export type UpdateBlackoutTimeInput = {
-  disabled: InputMaybe<Scalars['Boolean']['input']>;
+  disabled?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
   roleIds: Array<Scalars['Int']['input']>;
   startAt: Scalars['String']['input'];
@@ -3840,7 +3881,7 @@ export type UpdateBlackoutTimeInput = {
 };
 
 export type UpdateChecklistInput = {
-  checked: InputMaybe<Scalars['Boolean']['input']>;
+  checked?: InputMaybe<Scalars['Boolean']['input']>;
   label: Scalars['String']['input'];
 };
 
@@ -3849,13 +3890,13 @@ export type UpdateCommentInput = {
 };
 
 export type UpdateDocumentationInput = {
-  description: InputMaybe<Scalars['String']['input']>;
-  logoUrl: InputMaybe<Scalars['String']['input']>;
-  name: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  logoUrl?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateDocumentationPageConfigInput = {
-  customId: InputMaybe<Scalars['String']['input']>;
+  customId?: InputMaybe<Scalars['String']['input']>;
   keywords: Array<Scalars['String']['input']>;
   title: Scalars['String']['input'];
   urls: Array<Scalars['String']['input']>;
@@ -3867,13 +3908,13 @@ export type UpdateDocumentationPageInput = {
 
 export type UpdateDrawingInput = {
   data: Scalars['String']['input'];
-  renewLock: InputMaybe<Scalars['Boolean']['input']>;
+  renewLock?: InputMaybe<Scalars['Boolean']['input']>;
   updatedAt: Scalars['DateTime']['input'];
 };
 
 export type UpdateFeatureGroupInput = {
-  description: InputMaybe<Scalars['String']['input']>;
-  name: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateFeatureInput = {
@@ -3881,28 +3922,28 @@ export type UpdateFeatureInput = {
 };
 
 export type UpdateIssueInput = {
-  archived: InputMaybe<Scalars['Boolean']['input']>;
-  assigneeId: InputMaybe<Scalars['Int']['input']>;
-  status: InputMaybe<IssueStatus>;
-  ticketId: InputMaybe<Scalars['Int']['input']>;
-  unread: InputMaybe<Scalars['Boolean']['input']>;
+  archived?: InputMaybe<Scalars['Boolean']['input']>;
+  assigneeId?: InputMaybe<Scalars['Int']['input']>;
+  status?: InputMaybe<IssueStatus>;
+  ticketId?: InputMaybe<Scalars['Int']['input']>;
+  unread?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type UpdateMyRoleInput = {
-  avatarUrl: InputMaybe<Scalars['String']['input']>;
-  coverUrl: InputMaybe<Scalars['String']['input']>;
-  description: InputMaybe<Scalars['String']['input']>;
-  name: InputMaybe<Scalars['String']['input']>;
-  timeZone: InputMaybe<Scalars['String']['input']>;
+  avatarUrl?: InputMaybe<Scalars['String']['input']>;
+  coverUrl?: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  timeZone?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateNoteInput = {
-  body: InputMaybe<Scalars['String']['input']>;
+  body?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateOrganizationAddressInput = {
   address1: Scalars['String']['input'];
-  address2: InputMaybe<Scalars['String']['input']>;
+  address2?: InputMaybe<Scalars['String']['input']>;
   city: Scalars['String']['input'];
   country: Scalars['String']['input'];
   state: Scalars['String']['input'];
@@ -3910,9 +3951,9 @@ export type UpdateOrganizationAddressInput = {
 };
 
 export type UpdateOrganizationInput = {
-  billingAddress: InputMaybe<UpdateOrganizationAddressInput>;
-  coverUrl: InputMaybe<Scalars['String']['input']>;
-  name: InputMaybe<Scalars['String']['input']>;
+  billingAddress?: InputMaybe<UpdateOrganizationAddressInput>;
+  coverUrl?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateOrganizationPreferencesInput = {
@@ -3920,36 +3961,36 @@ export type UpdateOrganizationPreferencesInput = {
 };
 
 export type UpdatePersonalTagInput = {
-  name: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateProductInput = {
-  code: InputMaybe<Scalars['String']['input']>;
-  coverUrl: InputMaybe<Scalars['String']['input']>;
-  description: InputMaybe<Scalars['String']['input']>;
-  isSupportActive: InputMaybe<Scalars['Boolean']['input']>;
-  name: InputMaybe<Scalars['String']['input']>;
+  code?: InputMaybe<Scalars['String']['input']>;
+  coverUrl?: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  isSupportActive?: InputMaybe<Scalars['Boolean']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateProjectChecklistInput = {
-  checked: InputMaybe<Scalars['Boolean']['input']>;
+  checked?: InputMaybe<Scalars['Boolean']['input']>;
   label: Scalars['String']['input'];
 };
 
 export type UpdateRecurringBlackoutTimeInput = {
-  disabled: InputMaybe<Scalars['Boolean']['input']>;
-  friday: InputMaybe<Scalars['Boolean']['input']>;
-  monday: InputMaybe<Scalars['Boolean']['input']>;
+  disabled?: InputMaybe<Scalars['Boolean']['input']>;
+  friday?: InputMaybe<Scalars['Boolean']['input']>;
+  monday?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
   roleIds: Array<Scalars['Int']['input']>;
-  saturday: InputMaybe<Scalars['Boolean']['input']>;
+  saturday?: InputMaybe<Scalars['Boolean']['input']>;
   startTime: Scalars['String']['input'];
   stopTime: Scalars['String']['input'];
-  sunday: InputMaybe<Scalars['Boolean']['input']>;
-  thursday: InputMaybe<Scalars['Boolean']['input']>;
+  sunday?: InputMaybe<Scalars['Boolean']['input']>;
+  thursday?: InputMaybe<Scalars['Boolean']['input']>;
   timeZone: Scalars['String']['input'];
-  tuesday: InputMaybe<Scalars['Boolean']['input']>;
-  wednesday: InputMaybe<Scalars['Boolean']['input']>;
+  tuesday?: InputMaybe<Scalars['Boolean']['input']>;
+  wednesday?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type UpdateReplyInput = {
@@ -3958,51 +3999,51 @@ export type UpdateReplyInput = {
 
 export type UpdateReportQueryInput = {
   aggregateField: ReportAggregateField;
-  assigneeIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  authorIds: InputMaybe<Array<Scalars['Int']['input']>>;
+  assigneeIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  authorIds?: InputMaybe<Array<Scalars['Int']['input']>>;
   chartBy: ReportGroupBy;
-  chartByLabel: InputMaybe<Scalars['String']['input']>;
-  cummulative: InputMaybe<Scalars['Boolean']['input']>;
-  fromDate: InputMaybe<Scalars['String']['input']>;
-  granularity: InputMaybe<ReportDateGranularity>;
-  groupBy: InputMaybe<ReportGroupBy>;
-  groupByLabel: InputMaybe<Scalars['String']['input']>;
-  isTicketActive: InputMaybe<Scalars['Boolean']['input']>;
-  isTicketCancelled: InputMaybe<Scalars['Boolean']['input']>;
-  isTicketDone: InputMaybe<Scalars['Boolean']['input']>;
-  isTicketNotStarted: InputMaybe<Scalars['Boolean']['input']>;
-  isTicketStarted: InputMaybe<Scalars['Boolean']['input']>;
-  noUnknowns: InputMaybe<Scalars['Boolean']['input']>;
-  ownerIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  paths: InputMaybe<Array<Scalars['String']['input']>>;
-  productIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  sameAsPrimaryFilter: InputMaybe<Scalars['Boolean']['input']>;
-  secondaryAssigneeIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryAuthorIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryChartBy: InputMaybe<ReportGroupBy>;
-  secondaryChartByLabel: InputMaybe<Scalars['String']['input']>;
-  secondaryGroupBy: InputMaybe<ReportGroupBy>;
-  secondaryGroupByLabel: InputMaybe<Scalars['String']['input']>;
-  secondaryIsTicketActive: InputMaybe<Scalars['Boolean']['input']>;
-  secondaryIsTicketCancelled: InputMaybe<Scalars['Boolean']['input']>;
-  secondaryIsTicketDone: InputMaybe<Scalars['Boolean']['input']>;
-  secondaryIsTicketNotStarted: InputMaybe<Scalars['Boolean']['input']>;
-  secondaryIsTicketStarted: InputMaybe<Scalars['Boolean']['input']>;
-  secondaryOwnerIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryPaths: InputMaybe<Array<Scalars['String']['input']>>;
-  secondaryProductIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryTagIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryTicketIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryWorkflowIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryWorkflowStateAssigneeIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  secondaryWorkflowStateIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  tagIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  ticketIds: InputMaybe<Array<Scalars['Int']['input']>>;
+  chartByLabel?: InputMaybe<Scalars['String']['input']>;
+  cummulative?: InputMaybe<Scalars['Boolean']['input']>;
+  fromDate?: InputMaybe<Scalars['String']['input']>;
+  granularity?: InputMaybe<ReportDateGranularity>;
+  groupBy?: InputMaybe<ReportGroupBy>;
+  groupByLabel?: InputMaybe<Scalars['String']['input']>;
+  isTicketActive?: InputMaybe<Scalars['Boolean']['input']>;
+  isTicketCancelled?: InputMaybe<Scalars['Boolean']['input']>;
+  isTicketDone?: InputMaybe<Scalars['Boolean']['input']>;
+  isTicketNotStarted?: InputMaybe<Scalars['Boolean']['input']>;
+  isTicketStarted?: InputMaybe<Scalars['Boolean']['input']>;
+  noUnknowns?: InputMaybe<Scalars['Boolean']['input']>;
+  ownerIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  paths?: InputMaybe<Array<Scalars['String']['input']>>;
+  productIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  sameAsPrimaryFilter?: InputMaybe<Scalars['Boolean']['input']>;
+  secondaryAssigneeIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryAuthorIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryChartBy?: InputMaybe<ReportGroupBy>;
+  secondaryChartByLabel?: InputMaybe<Scalars['String']['input']>;
+  secondaryGroupBy?: InputMaybe<ReportGroupBy>;
+  secondaryGroupByLabel?: InputMaybe<Scalars['String']['input']>;
+  secondaryIsTicketActive?: InputMaybe<Scalars['Boolean']['input']>;
+  secondaryIsTicketCancelled?: InputMaybe<Scalars['Boolean']['input']>;
+  secondaryIsTicketDone?: InputMaybe<Scalars['Boolean']['input']>;
+  secondaryIsTicketNotStarted?: InputMaybe<Scalars['Boolean']['input']>;
+  secondaryIsTicketStarted?: InputMaybe<Scalars['Boolean']['input']>;
+  secondaryOwnerIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryPaths?: InputMaybe<Array<Scalars['String']['input']>>;
+  secondaryProductIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryTagIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryTicketIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryWorkflowIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryWorkflowStateAssigneeIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  secondaryWorkflowStateIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  tagIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  ticketIds?: InputMaybe<Array<Scalars['Int']['input']>>;
   title: Scalars['String']['input'];
-  untilDate: InputMaybe<Scalars['String']['input']>;
-  workflowIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  workflowStateAssigneeIds: InputMaybe<Array<Scalars['Int']['input']>>;
-  workflowStateIds: InputMaybe<Array<Scalars['Int']['input']>>;
+  untilDate?: InputMaybe<Scalars['String']['input']>;
+  workflowIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  workflowStateAssigneeIds?: InputMaybe<Array<Scalars['Int']['input']>>;
+  workflowStateIds?: InputMaybe<Array<Scalars['Int']['input']>>;
 };
 
 export type UpdateReportQueryPlacementInput = {
@@ -4023,8 +4064,8 @@ export type UpdateRoleEmailInput = {
 };
 
 export type UpdateRoleInput = {
-  title: InputMaybe<Scalars['String']['input']>;
-  type: InputMaybe<RoleType>;
+  title?: InputMaybe<Scalars['String']['input']>;
+  type?: InputMaybe<RoleType>;
 };
 
 export type UpdateRoleNoteColorsInput = {
@@ -4041,16 +4082,16 @@ export type UpdateRoleStartReminderInput = {
 };
 
 export type UpdateRoleWorkWeekInput = {
-  friday: Array<WorkDayTimeInput>;
-  monday: Array<WorkDayTimeInput>;
-  saturday: Array<WorkDayTimeInput>;
-  sunday: Array<WorkDayTimeInput>;
-  thursday: Array<WorkDayTimeInput>;
-  tuesday: Array<WorkDayTimeInput>;
-  wednesday: Array<WorkDayTimeInput>;
+  friday: Array<InputMaybe<WorkDayTimeInput>>;
+  monday: Array<InputMaybe<WorkDayTimeInput>>;
+  saturday: Array<InputMaybe<WorkDayTimeInput>>;
+  sunday: Array<InputMaybe<WorkDayTimeInput>>;
+  thursday: Array<InputMaybe<WorkDayTimeInput>>;
+  tuesday: Array<InputMaybe<WorkDayTimeInput>>;
+  wednesday: Array<InputMaybe<WorkDayTimeInput>>;
 };
 
-export type UpdateScheduleConfigInput = {
+export type UpdateScheduleConfig = {
   priority: Scalars['Int']['input'];
   productIds: Array<Scalars['Int']['input']>;
   projectIds: Array<Scalars['Int']['input']>;
@@ -4059,13 +4100,13 @@ export type UpdateScheduleConfigInput = {
   workflowIds: Array<Scalars['Int']['input']>;
 };
 
-export type UpdateScheduleConfigsInput = {
-  configs: Array<UpdateScheduleConfigInput>;
+export type UpdateScheduleConfigs = {
+  configs: Array<UpdateScheduleConfig>;
 };
 
 export type UpdateScheduleItemInput = {
   startedAt: Scalars['String']['input'];
-  stoppedAt: InputMaybe<Scalars['String']['input']>;
+  stoppedAt?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateSkillInput = {
@@ -4074,25 +4115,25 @@ export type UpdateSkillInput = {
 
 export type UpdateTagInput = {
   color: Scalars['String']['input'];
-  name: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateTeamInput = {
-  code: InputMaybe<Scalars['String']['input']>;
-  coverUrl: InputMaybe<Scalars['String']['input']>;
-  description: InputMaybe<Scalars['String']['input']>;
-  name: InputMaybe<Scalars['String']['input']>;
+  code?: InputMaybe<Scalars['String']['input']>;
+  coverUrl?: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateTicketInput = {
-  difficulty: InputMaybe<Scalars['Int']['input']>;
-  estimating: InputMaybe<Scalars['Boolean']['input']>;
-  milestone: InputMaybe<Scalars['Boolean']['input']>;
-  ownerId: InputMaybe<Scalars['Int']['input']>;
-  productId: InputMaybe<Scalars['Int']['input']>;
-  projectId: InputMaybe<Scalars['Int']['input']>;
-  title: InputMaybe<Scalars['String']['input']>;
-  workflowId: InputMaybe<Scalars['Int']['input']>;
+  difficulty?: InputMaybe<Scalars['Int']['input']>;
+  estimating?: InputMaybe<Scalars['Boolean']['input']>;
+  milestone?: InputMaybe<Scalars['Boolean']['input']>;
+  ownerId?: InputMaybe<Scalars['Int']['input']>;
+  productId?: InputMaybe<Scalars['Int']['input']>;
+  projectId?: InputMaybe<Scalars['Int']['input']>;
+  title?: InputMaybe<Scalars['String']['input']>;
+  workflowId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type UpdateTicketWorkflowStateInput = {
@@ -4105,44 +4146,44 @@ export type UpdateTimeOffInput = {
 };
 
 export type UpdateTodoInput = {
-  body: InputMaybe<Scalars['String']['input']>;
+  body?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateUserPreferencesInput = {
   favoriteOrganizations: Array<Scalars['Int']['input']>;
-  lastOrganizationId: InputMaybe<Scalars['Int']['input']>;
+  lastOrganizationId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type UpdateWorkflowInput = {
   color: Scalars['String']['input'];
-  description: InputMaybe<Scalars['String']['input']>;
-  isDefaultWorkflow: InputMaybe<Scalars['Boolean']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  isDefaultWorkflow?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
 };
 
 export type UpdateWorkflowStateInput = {
-  backupTeamIds: InputMaybe<Array<Scalars['Int']['input']>>;
+  backupTeamIds?: InputMaybe<Array<Scalars['Int']['input']>>;
   name: Scalars['String']['input'];
-  teamIds: InputMaybe<Array<Scalars['Int']['input']>>;
+  teamIds?: InputMaybe<Array<Scalars['Int']['input']>>;
 };
 
 export type User = {
   __typename?: 'User';
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  email: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  isStaff: Maybe<Scalars['Boolean']['output']>;
-  preferences: Maybe<UserPreferences>;
-  role: Maybe<Role>;
-  roles: Maybe<Array<Role>>;
-  status: Maybe<UserStatus>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  email: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  isStaff: Scalars['Boolean']['output'];
+  preferences: UserPreferences;
+  role: Role;
+  roles: Array<Role>;
+  status: UserStatus;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type UserPreferences = {
   __typename?: 'UserPreferences';
-  favoriteOrganizations: Maybe<Array<Scalars['Int']['output']>>;
-  lastOrganizationId: Maybe<Scalars['Int']['output']>;
+  favoriteOrganizations: Array<Scalars['Int']['output']>;
+  lastOrganizationId?: Maybe<Scalars['Int']['output']>;
 };
 
 export enum UserStatus {
@@ -4160,53 +4201,53 @@ export type WorkDayTimeInput = {
 
 export type WorkWeekTime = {
   __typename?: 'WorkWeekTime';
-  friday: Maybe<Array<RoleWorkDay>>;
-  monday: Maybe<Array<RoleWorkDay>>;
-  saturday: Maybe<Array<RoleWorkDay>>;
-  sunday: Maybe<Array<RoleWorkDay>>;
-  thursday: Maybe<Array<RoleWorkDay>>;
-  tuesday: Maybe<Array<RoleWorkDay>>;
-  wednesday: Maybe<Array<RoleWorkDay>>;
+  friday: Array<RoleWorkDay>;
+  monday: Array<RoleWorkDay>;
+  saturday: Array<RoleWorkDay>;
+  sunday: Array<RoleWorkDay>;
+  thursday: Array<RoleWorkDay>;
+  tuesday: Array<RoleWorkDay>;
+  wednesday: Array<RoleWorkDay>;
 };
 
 export type Workflow = {
   __typename?: 'Workflow';
-  color: Maybe<Scalars['String']['output']>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  description: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  isDefaultWorkflow: Maybe<Scalars['Boolean']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  products: Maybe<Array<Product>>;
-  scheduleConfigs: Maybe<Array<ScheduleConfig>>;
-  stage: Maybe<ModelStage>;
-  states: Maybe<Array<WorkflowState>>;
-  tickets: Maybe<Array<Ticket>>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
+  color: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  description?: Maybe<Scalars['String']['output']>;
+  id: Scalars['Int']['output'];
+  isDefaultWorkflow: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  products: Array<Product>;
+  scheduleConfigs: Array<ScheduleConfig>;
+  stage: ModelStage;
+  states: Array<WorkflowState>;
+  tickets: Array<Ticket>;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type WorkflowDistribution = {
   __typename?: 'WorkflowDistribution';
-  hours: Maybe<Scalars['Float']['output']>;
-  workflow: Maybe<Workflow>;
+  hours: Scalars['Float']['output'];
+  workflow: Workflow;
 };
 
 export type WorkflowState = {
   __typename?: 'WorkflowState';
-  TicketWorkflowState: Maybe<Array<TicketWorkflowState>>;
-  backupTeams: Maybe<Array<Team>>;
-  createdAt: Maybe<Scalars['DateTime']['output']>;
-  id: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  organization: Maybe<Organization>;
-  organizationId: Maybe<Scalars['Int']['output']>;
-  position: Maybe<Scalars['Int']['output']>;
-  teams: Maybe<Array<Team>>;
-  updatedAt: Maybe<Scalars['DateTime']['output']>;
-  workflow: Maybe<Workflow>;
-  workflowId: Maybe<Scalars['Int']['output']>;
+  TicketWorkflowState: Array<TicketWorkflowState>;
+  backupTeams: Array<Team>;
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  organization: Organization;
+  organizationId: Scalars['Int']['output'];
+  position: Scalars['Int']['output'];
+  teams: Array<Team>;
+  updatedAt: Scalars['DateTime']['output'];
+  workflow: Workflow;
+  workflowId: Scalars['Int']['output'];
 };
 
 /** Used to move a state amongst a workflow */

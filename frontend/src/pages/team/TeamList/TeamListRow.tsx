@@ -19,12 +19,12 @@ export const TeamListRow: React.FC<Props> = (props) => {
   });
 
   const renderMemberAvatars = () => {
-    const totalCount = props.team.members.totalCount;
+    const totalCount = props.team.members.length;
     const hasMore = totalCount > 3;
 
     const members = hasMore
-      ? props.team.members.nodes.slice(0, 2)
-      : props.team.members.nodes;
+      ? props.team.members.slice(0, 2)
+      : props.team.members;
 
     const showMore = () => (
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-200 text-lg font-bold text-gray-400 ring-2 ring-white">

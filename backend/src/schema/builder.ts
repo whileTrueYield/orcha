@@ -50,6 +50,7 @@ const builder = new SchemaBuilder<{
     DateTime: { Input: Date; Output: Date };
   };
 }>({
+  defaultFieldNullability: false,
   plugins: [ScopeAuthPlugin, PrismaPlugin, SimpleObjectsPlugin],
 
   prisma: {

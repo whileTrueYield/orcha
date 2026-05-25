@@ -1,9 +1,5 @@
 import React from "react";
-import {
-  MutationUpdateRoleAutoResumeArgs,
-  Role,
-  RoleAutoResume,
-} from "types/graphql";
+import { MutationUpdateRoleAutoResumeArgs, Role } from "types/graphql";
 import { useBlockingMutation } from "utils/graphql";
 import { gql } from "@apollo/client";
 import { onGraphQLError, onMutationComplete } from "utils/GQLClient";
@@ -15,7 +11,7 @@ import { MutationReturnValue } from "types/queryTypes";
 import { PopoverTips } from "components/help/HelpBlock";
 
 interface Props {
-  role: Role & { roleAutoResume: RoleAutoResume };
+  role: Role;
 }
 
 export const RoleAutoResumePreferenceForm: FCWithFragments<Props> = (props) => {
@@ -38,12 +34,12 @@ export const RoleAutoResumePreferenceForm: FCWithFragments<Props> = (props) => {
   const renderNextAttempt = () => (
     <div className="text-sm font-normal leading-6 text-gray-500">
       <span className="mr-1 hidden sm:inline">Next attempt</span>
-      {format(new Date(role.roleAutoResume.nextStartNotificationDate), "PPPPp")}
+      {format(new Date(role.roleAutoResume!.nextStartNotificationDate), "PPPPp")}
     </div>
   );
 
   const renderInformations = () => {
-    if (!role.roleAutoResume.nextStartNotificationDate || isOptOut) {
+    if (!role.roleAutoResume?.nextStartNotificationDate || isOptOut) {
       return null;
     }
     return renderNextAttempt();

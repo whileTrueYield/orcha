@@ -23,6 +23,17 @@ import { FCWithFragments } from "types";
 import { Tag } from "components/tags/Tag";
 import { without } from "lodash";
 
+// urls/keywords are stored as JSON-encoded string arrays in the DB.
+// This helper recovers the array, falling back to empty on malformed input.
+const parseJsonArray = (raw: string): string[] => {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
 const schema = yup
   .object()
   .noUnknown()
@@ -43,10 +54,14 @@ export const DocumentationPageConfigModal: FCWithFragments<Props> = (props) => {
   const { documentationPage } = props;
   const urlInput = useRef<HTMLInputElement>(null);
   const keywordInput = useRef<HTMLInputElement>(null);
-  const [urls, setUrls] = useState<string[]>(documentationPage.urls);
+  // urls/keywords are stored as JSON-encoded strings in the DB and
+  // exposed as String scalars — parse them to recover the array shape.
+  const [urls, setUrls] = useState<string[]>(
+    parseJsonArray(documentationPage.urls)
+  );
   const [url, setUrl] = useState<string>("");
   const [keywords, setKeywords] = useState<string[]>(
-    documentationPage.keywords
+    parseJsonArray(documentationPage.keywords)
   );
   const [keyword, setKeyword] = useState<string>("");
 
@@ -65,8 +80,8 @@ export const DocumentationPageConfigModal: FCWithFragments<Props> = (props) => {
       customId: documentationPage.customId,
       title: documentationPage.title,
     });
-    setUrls(documentationPage.urls);
-    setKeywords(documentationPage.keywords);
+    setUrls(parseJsonArray(documentationPage.urls));
+    setKeywords(parseJsonArray(documentationPage.keywords));
   }, [reset, documentationPage, setUrls, setKeywords]);
 
   const [updateDocumentationPageConfig] = useBlockingMutation<
