@@ -56,8 +56,17 @@ export const RoleRef = builder.prismaObject("Role", {
     roleEmail: t.relation("roleEmail", { nullable: true }),
     roleStartReminder: t.relation("roleStartReminder", { nullable: true }),
     roleAutoResume: t.relation("roleAutoResume", { nullable: true }),
-    preferences: t.exposeString("preferences"),
-    workWeek: t.exposeString("workWeek"),
+    preferences: t.field({
+      type: RolePreferencesRef,
+      resolve: (role) => getRolePreferences(role),
+    }),
+    workWeek: t.field({
+      type: WorkWeekTimeRef,
+      resolve: (role) =>
+        role.workWeek
+          ? { ...EMPTY_WORK_WEEK, ...JSON.parse(role.workWeek) }
+          : EMPTY_WORK_WEEK,
+    }),
   }),
 });
 
