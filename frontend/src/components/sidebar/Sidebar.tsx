@@ -100,7 +100,7 @@ export const Sidebar: React.FC<Props> = ({ children }) => {
       title: "Logout Success",
       subTitle: "You have been logged out.",
       callback: async () => {
-        GQLClient.resetStore();
+        GQLClient.clearStore();
         dispatch({ type: "LOGOUT_SUCCESS" });
         history.replace(urlResolver.auth.login());
       },

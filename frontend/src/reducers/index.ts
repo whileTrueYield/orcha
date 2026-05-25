@@ -31,10 +31,11 @@ const rootReducer: typeof allReducers = (state, action) => {
     state = undefined as any;
   }
   if (action.type === "LOGIN_SUCCESS") {
-    // Defer resetStore to avoid "Store reset while query was in flight"
-    // — the LOGIN_SUCCESS dispatch happens inside Apollo's onCompleted
-    // callback before the link chain has fully settled.
-    setTimeout(() => GQLClient.resetStore(), 0);
+    // clearStore wipes the cache without refetching watched queries.
+    // resetStore would refetch, but the new route's components fire
+    // their own queries on mount — racing with resetStore's refetch
+    // causes "Store reset while query was in flight".
+    GQLClient.clearStore();
   }
 
   return allReducers(state, action);

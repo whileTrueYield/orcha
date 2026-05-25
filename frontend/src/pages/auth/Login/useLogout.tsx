@@ -11,7 +11,7 @@ export const useLogout = () => {
   return useMutation(LOGOUT, {
     onError: onGraphQLError({ title: "Could not log you out" }),
     onCompleted: () => {
-      GQLClient.resetStore();
+      GQLClient.clearStore();
       dispatch({ type: "LOGOUT_SUCCESS" });
       history.replace(urlResolver.auth.login());
     },
