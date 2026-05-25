@@ -56,7 +56,7 @@ export const FeatureGroupRef = builder.prismaObject("FeatureGroup", {
     productId: t.exposeInt("productId"),
     organization: t.relation("organization"),
     product: t.relation("product"),
-    features: t.relation("features"),
+    // features is a paginated computed field — see featureGroup.resolver.ts
   }),
 });
 

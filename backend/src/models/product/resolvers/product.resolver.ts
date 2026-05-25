@@ -15,9 +15,9 @@ import { FeatureGroupStatus } from "@prisma/client";
 import { trim } from "lodash";
 import builder from "../../../schema/builder";
 import { ProductRef } from "../entity";
-import { PaginatedFeatures } from "../../feature/entity";
+import { PaginatedFeatures, PaginatedFeatureGroups } from "../../feature/entity";
 import { PaginatedTickets } from "../../ticket/entity";
-import { getPaginatedFeatures } from "../../feature/helper";
+import { getPaginatedFeatures, getPaginatedFeatureGroups } from "../../feature/helper";
 import { getPaginatedTickets } from "../../ticket/helper";
 import { AuthRoleContext } from "../../../types";
 
@@ -186,6 +186,34 @@ builder.prismaObjectField("Product", "features", (t) =>
     },
     resolve: (product, args, ctx) =>
       getPaginatedFeatures({
+        productId: product.id,
+        organizationId: (ctx.me as AuthRoleContext).organizationId,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: args.sort as any,
+        search: args.search ?? undefined,
+      }),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Computed field: featureGroups — paginated feature groups for this product
+// ---------------------------------------------------------------------------
+
+builder.prismaObjectField("Product", "featureGroups", (t) =>
+  t.field({
+    type: PaginatedFeatureGroups,
+    authScopes: { hasRole: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+    },
+    resolve: (product, args, ctx) =>
+      getPaginatedFeatureGroups({
         productId: product.id,
         organizationId: (ctx.me as AuthRoleContext).organizationId,
         first: args.first ?? undefined,

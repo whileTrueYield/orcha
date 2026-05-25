@@ -37,7 +37,7 @@ export const ProductRef = builder.prismaObject("Product", {
     updatedAt: t.expose("updatedAt", { type: "DateTime" }),
     organizationId: t.exposeInt("organizationId"),
     organization: t.relation("organization"),
-    featureGroups: t.relation("featureGroups"),
+    // featureGroups is a paginated computed field — see product.resolver.ts
     workflows: t.relation("workflows"),
 
     workflowIds: t.intList({

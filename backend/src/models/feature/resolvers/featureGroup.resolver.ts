@@ -8,6 +8,8 @@
 import builder from "../../../schema/builder";
 import { trim } from "lodash";
 import { AuthRoleContext } from "../../../types";
+import { PaginatedFeatures } from "../entity";
+import { getPaginatedFeatures } from "../helper";
 
 // ---------------------------------------------------------------------------
 // Query: featureGroup
@@ -27,6 +29,32 @@ builder.queryField("featureGroup", (t) =>
           id: args.id,
           organizationId: (ctx.me as AuthRoleContext).organizationId,
         },
+      }),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Computed field: features — paginated features in this group
+// ---------------------------------------------------------------------------
+
+builder.prismaObjectField("FeatureGroup", "features", (t) =>
+  t.field({
+    type: PaginatedFeatures,
+    authScopes: { hasRole: true },
+    args: {
+      first: t.arg.int({ required: false }),
+      last: t.arg.int({ required: false }),
+      offset: t.arg.int({ required: false }),
+      sort: t.arg.string({ required: false }),
+    },
+    resolve: (featureGroup, args, ctx) =>
+      getPaginatedFeatures({
+        featureGroupId: featureGroup.id,
+        organizationId: (ctx.me as AuthRoleContext).organizationId,
+        first: args.first ?? undefined,
+        last: args.last ?? undefined,
+        offset: args.offset ?? undefined,
+        sort: args.sort as any,
       }),
   }),
 );
