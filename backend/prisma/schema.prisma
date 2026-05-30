@@ -766,6 +766,7 @@ model Organization {
   blackoutTimes          BlackoutTime[]
   recurringBlackoutTimes RecurringBlackoutTime[]
   drawings               Drawing[]
+  personalAccessTokens   PersonalAccessToken[]
 
   // settings
   showOnboarding Boolean @default(true)
@@ -811,6 +812,44 @@ model PasswordLost {
   // indices, table map and constraints
   @@index([email])
   @@map("password_lost")
+}
+
+// A Personal Access Token (PAT) is a long-lived credential bound to a single
+// Role — a User's membership in one Organization. Because it resolves to one
+// Role, it carries both identity and tenant scope, so the existing
+// organizationId tenant middleware enforces isolation with no extra logic.
+//
+// Only the SHA-256 hash and a short display prefix are stored; the plaintext
+// is shown once at creation and is never recoverable afterward. A token may be
+// read-only, may expire, and may be revoked.
+model PersonalAccessToken {
+  // required fields
+  id          Int     @id @default(autoincrement())
+  name        String  @db.VarChar
+  tokenHash   String  @unique @db.VarChar
+  tokenPrefix String  @db.VarChar
+  readOnly    Boolean @default(false)
+
+  // optional fields
+  lastUsedAt DateTime? @db.Timestamptz(6)
+  expiresAt  DateTime? @db.Timestamptz(6)
+  revokedAt  DateTime? @db.Timestamptz(6)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  roleId         Int
+  role           Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([tokenHash])
+  @@index([roleId])
+  @@index([organizationId])
+  @@map("personal_access_token")
 }
 
 model PersonalTag {
@@ -1314,6 +1353,7 @@ model Role {
   blackoutTime                                  BlackoutTime[]
   TimeOffs                                      TimeOff[]
   drawingLocks                                  Drawing[]
+  personalAccessTokens                          PersonalAccessToken[]
 
   // indices, table map and constraints
   @@unique([organizationId, userId], map: "one_role_per_user_and_organization")

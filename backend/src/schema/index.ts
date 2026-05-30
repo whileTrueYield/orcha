@@ -47,6 +47,10 @@ builder.mutationType({});
 // with just the resolver import. All others import entity first.
 // ---------------------------------------------------------------------------
 
+// apiToken
+import "../models/apiToken/entity";
+import "../models/apiToken/resolvers";
+
 // auth — resolvers/index.ts imports ../entity internally
 import "../models/auth/resolvers";
 
