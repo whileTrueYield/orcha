@@ -56,8 +56,7 @@ make ssh-ai        # Shell into AI container
 
 ## Branching
 
-- `main` — active development, DO deploys from here
-- `launch` — stable base branch, PRs target this
+- `main` — active development, DO deploys from here. PRs target `main`.
 
 ## Agent skills
 
