@@ -2,7 +2,7 @@ import prisma from "../../prisma";
 import { clamp, trim, without } from "lodash";
 import { Project } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { Prisma, ModelStage, TicketStatus } from ".prisma/client";
+import { Prisma, ModelStage, TicketStatus } from "@prisma/client";
 
 /**
  * DEPRECATED

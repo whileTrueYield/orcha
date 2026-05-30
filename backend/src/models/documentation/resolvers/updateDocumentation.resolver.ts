@@ -113,13 +113,18 @@ builder.mutationField("updateDocumentation", (t) =>
           },
         });
 
+      // An omitted field arrives as `undefined` (Prisma skips it); an
+      // explicit `null` must clear the column. Collapsing both to `undefined`
+      // (the old `?? undefined`) silently dropped clears, so the values are
+      // passed through unchanged. `name` is non-nullable, so a `null` there is
+      // coerced to "skip" rather than a write that Prisma would reject.
       return ctx.prisma.documentation.update({
         ...query,
         where: { id: documentation.id },
         data: {
           name: args.input.name ?? undefined,
-          description: args.input.description ?? undefined,
-          logoUrl: args.input.logoUrl ?? undefined,
+          description: args.input.description,
+          logoUrl: args.input.logoUrl,
         },
       });
     },

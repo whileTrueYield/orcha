@@ -2,7 +2,7 @@ import prisma from "../../prisma";
 import { clamp, trim } from "lodash";
 import { FeatureGroup, Feature } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { Prisma } from ".prisma/client";
+import { Prisma } from "@prisma/client";
 
 interface GetFeatureGroupPageArgs extends GetPageArgsFor<FeatureGroup> {
   productId?: number;

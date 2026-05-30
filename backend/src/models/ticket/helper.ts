@@ -25,7 +25,7 @@ import {
   MyUpcomingAssignedTicketShape,
   NextTicketShape,
 } from "./entity";
-import { Prisma, ScheduleItem, TicketWorkflowState } from ".prisma/client";
+import { Prisma, ScheduleItem, TicketWorkflowState } from "@prisma/client";
 import { getProjectDescendantIds } from "../project/helper";
 import { subDays } from "date-fns";
 import { encodeStateAsUpdate } from "yjs";

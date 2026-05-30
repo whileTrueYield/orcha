@@ -1,7 +1,7 @@
 import { clamp, trim } from "lodash";
 import { BlackoutTime, RecurringBlackoutTime } from "@prisma/client";
 import prisma from "../../prisma";
-import { Prisma } from ".prisma/client";
+import { Prisma } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
 
 interface GetBlackoutTimesArgs extends GetPageArgsFor<BlackoutTime> {

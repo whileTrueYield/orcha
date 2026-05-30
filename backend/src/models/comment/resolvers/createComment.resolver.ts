@@ -16,6 +16,7 @@ import { AuthRoleContext } from "../../../types";
 import { getMentions } from "../../../utils/tiptap";
 import { logger } from "../../../logger";
 import { createNotificationsForTarget } from "../../notification/createNotification";
+import { assertLength } from "../../../utils/validation";
 
 // ---------------------------------------------------------------------------
 // Input type
@@ -41,6 +42,12 @@ builder.mutationField("createComment", (t) =>
     },
     resolve: async (query, _root, args, ctx) => {
       const me = ctx.me as AuthRoleContext;
+
+      // Legacy contract: a comment body, when provided, must be 1–2048 chars
+      // (an empty string is rejected). Mirrors the old @Length(1, 2048).
+      if (args.input.body !== null && args.input.body !== undefined) {
+        assertLength(args.input.body, 1, 2048, "body");
+      }
 
       const ticket = await ctx.prisma.ticket.findFirstOrThrow({
         where: {
