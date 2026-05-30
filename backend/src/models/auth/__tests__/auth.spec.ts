@@ -10,7 +10,7 @@ import {
 } from "../../../utils/testing";
 import { faker } from "@faker-js/faker";
 import { AuthStatus } from "../../../types";
-import { RoleType, UserStatus } from "@generated/type-graphql";
+import { RoleType, UserStatus } from "@prisma/client";
 import prisma from "../../../prisma";
 import { get } from "lodash";
 import { URLSearchParams } from "url";

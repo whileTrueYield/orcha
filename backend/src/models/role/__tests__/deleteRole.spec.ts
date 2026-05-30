@@ -3,7 +3,7 @@ import {
   createRandomUser,
   getTestSessionWithRole,
 } from "../../../utils/testing";
-import { RoleStatus, RoleType } from "@generated/type-graphql";
+import { RoleStatus, RoleType } from "@prisma/client";
 import prisma from "../../../prisma";
 import { get } from "lodash";
 import expect from "expect";

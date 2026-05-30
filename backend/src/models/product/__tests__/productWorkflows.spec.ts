@@ -4,7 +4,7 @@ import {
   createRandomProduct,
   createRandomWorkflow,
 } from "../../../utils/testing";
-import { RoleType } from "@generated/type-graphql";
+import { RoleType } from "@prisma/client";
 import prisma from "../../../prisma";
 import { map, sortBy, take } from "lodash";
 import { ModelStage } from "@prisma/client";

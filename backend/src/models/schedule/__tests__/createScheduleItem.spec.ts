@@ -4,7 +4,7 @@ import {
   createRandomTicket,
   createScheduleItem,
 } from "../../../utils/testing";
-import { RoleType } from "@generated/type-graphql";
+import { RoleType } from "@prisma/client";
 import prisma from "../../../prisma";
 import { get } from "lodash";
 import expect from "expect";

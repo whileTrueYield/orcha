@@ -9,6 +9,7 @@ import { AuthStatus } from "../../../types";
 import { faker } from "@faker-js/faker";
 import expect from "expect";
 import sinon from "sinon";
+import { get } from "lodash";
 import { redis } from "../../../redis";
 
 const changeEmailMutation = `
@@ -95,7 +96,10 @@ describe("updateMe", () => {
       },
     });
 
-    const loginResponse = await graphqlRequest({
+    // The old password must no longer work — changePassword actually rotates
+    // the credential (the legacy resolver had a bug where it re-hashed the
+    // current password and `newPassword` was ignored).
+    const oldPasswordLogin = await graphqlRequest({
       source: loginMutation,
       variableValues: {
         input: {
@@ -107,7 +111,25 @@ describe("updateMe", () => {
       },
     });
 
-    expect(loginResponse).toEqual({
+    expect(oldPasswordLogin.data).toBe(null);
+    expect(get(oldPasswordLogin, "errors.0.message")).toEqual(
+      "Bad password or email does not exist",
+    );
+
+    // The new password authenticates successfully.
+    const newPasswordLogin = await graphqlRequest({
+      source: loginMutation,
+      variableValues: {
+        input: {
+          email: user.email.toLowerCase(),
+          password: "new password",
+          proof: POW_PROOF,
+          hash: POW_HASH,
+        },
+      },
+    });
+
+    expect(newPasswordLogin).toEqual({
       data: {
         login: {
           status: AuthStatus.USER,

@@ -1,5 +1,5 @@
 import { graphqlRequest, getTestSessionWithRole } from "../../../utils/testing";
-import { RoleType } from "@generated/type-graphql";
+import { RoleType } from "@prisma/client";
 import prisma from "../../../prisma";
 import expect from "expect";
 import { map } from "lodash";

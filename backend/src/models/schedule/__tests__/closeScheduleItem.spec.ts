@@ -3,7 +3,7 @@ import {
   getTestSessionWithRole,
   createRandomTicket,
 } from "../../../utils/testing";
-import { RoleType } from "@generated/type-graphql";
+import { RoleType } from "@prisma/client";
 import prisma from "../../../prisma";
 import expect from "expect";
 import "mocha";

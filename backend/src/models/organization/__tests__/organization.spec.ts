@@ -3,7 +3,7 @@ import {
   getTestSessionWithRole,
   getTestSession,
 } from "../../../utils/testing";
-import { RoleType } from "@generated/type-graphql";
+import { RoleType } from "@prisma/client";
 import expect from "expect";
 
 const getOrganizationQuery = `
