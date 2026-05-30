@@ -67,7 +67,7 @@ describe("GET /v1/me", () => {
     expect(res.body.paths["/v1/me"].get).toBeDefined();
   });
 
-  it("uses bearer-only CORS, distinct from the credentialed GraphQL CORS", async () => {
+  it("emits no CORS headers, so browsers cannot read it cross-origin", async () => {
     const { plaintext } = await getTestApiToken();
 
     const res = await request(createExpressApp())
@@ -76,8 +76,11 @@ describe("GET /v1/me", () => {
       .set("Authorization", `Bearer ${plaintext}`)
       .expect(200);
 
-    // A public bearer API allows any origin and never reflects cookies.
-    expect(res.headers["access-control-allow-origin"]).toBe("*");
+    // This is a machine-to-machine API. We deliberately advertise no CORS, so
+    // a browser's same-origin policy blocks cross-origin JS from reading the
+    // response — a PAT has no business living in frontend code. M2M clients
+    // (curl, scripts, backends) ignore CORS entirely and are unaffected.
+    expect(res.headers["access-control-allow-origin"]).toBeUndefined();
     expect(res.headers["access-control-allow-credentials"]).toBeUndefined();
   });
 });
