@@ -8,7 +8,7 @@ import {
   createRandomProject,
 } from "../../../utils/testing";
 import { faker } from "@faker-js/faker";
-import { RoleType, TicketStatus } from "@generated/type-graphql";
+import { RoleType, TicketStatus } from "@prisma/client";
 import prisma from "../../../prisma";
 import { get } from "lodash";
 import { ModelStage } from "@prisma/client";
@@ -52,7 +52,7 @@ query getTicket($id: Int!) {
 `;
 
 const addTicketFeaturesMutation = `
-mutation AddTicketFeatures($ticketId: Int!, $featureIds: [Int]!) {
+mutation AddTicketFeatures($ticketId: Int!, $featureIds: [Int!]!) {
   addTicketFeatures(ticketId: $ticketId, featureIds: $featureIds) {
     id
     title
@@ -65,7 +65,7 @@ mutation AddTicketFeatures($ticketId: Int!, $featureIds: [Int]!) {
 `;
 
 const removeTicketFeaturesMutation = `
-mutation RemoveTicketFeatures($ticketId: Int!, $featureIds: [Int]!) {
+mutation RemoveTicketFeatures($ticketId: Int!, $featureIds: [Int!]!) {
   removeTicketFeatures(ticketId: $ticketId, featureIds: $featureIds) {
     id
     title

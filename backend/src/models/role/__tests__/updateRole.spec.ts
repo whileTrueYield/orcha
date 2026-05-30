@@ -7,7 +7,7 @@ import {
 } from "../../../utils/testing";
 import { faker } from "@faker-js/faker";
 import prisma from "../../../prisma";
-import { RoleStatus, RoleType } from "@generated/type-graphql";
+import { RoleStatus, RoleType } from "@prisma/client";
 import expect from "expect";
 
 const updateRoleMutation = `

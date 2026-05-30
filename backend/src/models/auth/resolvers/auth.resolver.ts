@@ -47,6 +47,7 @@ import {
 } from "../helper";
 import { getUserPreferences, updatePreferences } from "../../user/helper";
 import { MeRef, MeShape } from "../entity";
+import { assertEmail, assertLength } from "../../../utils/validation";
 
 // ---------------------------------------------------------------------------
 // Input types
@@ -378,6 +379,12 @@ builder.mutationField("register", (t) =>
       input: t.arg({ type: RegisterInput, required: true }),
     },
     resolve: async (_root, args, ctx) => {
+      // Legacy contract: register rejected malformed emails (@IsEmail) and
+      // passwords shorter than 8 chars (@MinLength) with a single
+      // "Argument Validation Error".
+      assertEmail(args.input.email, "email");
+      assertLength(args.input.password, 8, Infinity, "password");
+
       try {
         await assertProofOfWork(ctx.req.ip ?? "", args.input.hash, args.input.proof);
       } catch (error) {

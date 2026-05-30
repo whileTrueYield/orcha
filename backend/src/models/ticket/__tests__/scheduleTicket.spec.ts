@@ -7,7 +7,7 @@ import {
   getTestSessionWithRole,
   graphqlRequest,
 } from "../../../utils/testing";
-import { RoleType, TicketStatus } from ".prisma/client";
+import { RoleType, TicketStatus } from "@prisma/client";
 import { get, map } from "lodash";
 
 const getAllUnscheduledDependenciesQuery = `

@@ -21,6 +21,8 @@ import {
   TicketWorkflowStateNoteCategoryEnum,
 } from "../../schema/enums";
 import { createPaginatedType } from "../../schema/pagination";
+import { PaginatedComments } from "../comment/entity";
+import { getPaginatedComments } from "../comment/helper";
 
 export const ticketStatuses = Object.values(PrismaTicketStatus);
 
@@ -69,13 +71,53 @@ export const TicketRef = builder.prismaObject("Ticket", {
     ancestors: t.relation("ancestors"),
     successors: t.relation("successors"),
     // ticketText is internal (Yjs bytes) — description is a computed field in ticket.resolver.ts
-    comments: t.relation("comments"),
+    //
+    // `comments` is a *paginated* field (not a flat relation): the legacy
+    // schema exposed it as PaginatedComments with first/last/offset/search
+    // args, and the frontend queries it as `comments { nodes { … } }`.
+    // Resolving via the prisma relation directly would drop the connection
+    // wrapper and break those queries.
+    comments: t.field({
+      type: PaginatedComments,
+      args: {
+        first: t.arg.int({ required: false }),
+        last: t.arg.int({ required: false }),
+        offset: t.arg.int({ required: false }),
+        search: t.arg.string({ required: false }),
+      },
+      resolve: (ticket, args) =>
+        getPaginatedComments({
+          ticketId: ticket.id,
+          organizationId: ticket.organizationId,
+          first: args.first ?? undefined,
+          last: args.last ?? undefined,
+          offset: args.offset ?? undefined,
+          search: args.search ?? undefined,
+        }),
+    }),
     // questions are not exposed in the old schema
     tags: t.relation("tags"),
     watchers: t.relation("watchers"),
     personalTags: t.relation("personalTags"),
     features: t.relation("features"),
-    ticketWorkflowStates: t.relation("ticketWorkflowStates"),
+    // `ticketWorkflowStates` is *filtered*, not a raw relation: a scheduled
+    // ticket only exposes its active states, while an UNSCHEDULED ticket
+    // exposes every state so the UI can toggle them on/off. The Pothos
+    // migration had flattened this to `t.relation(...)`, which leaked
+    // deactivated states on scheduled tickets.
+    ticketWorkflowStates: t.field({
+      type: [TicketWorkflowStateRef],
+      resolve: (ticket, _args, ctx) =>
+        ctx.prisma.ticketWorkflowState.findMany({
+          where: {
+            ticketId: ticket.id,
+            isActive:
+              ticket.status === PrismaTicketStatus.UNSCHEDULED
+                ? undefined
+                : true,
+          },
+        }),
+    }),
     scheduleItems: t.relation("scheduleItems"),
     cases: t.relation("cases"),
     // issues is an alias for the `cases` relation — the old schema exposed it as `issues`

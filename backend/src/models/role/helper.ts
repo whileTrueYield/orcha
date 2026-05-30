@@ -2,7 +2,7 @@ import prisma from "../../prisma";
 import { clamp, trim, lowerCase } from "lodash";
 import { Role } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { Prisma } from ".prisma/client";
+import { Prisma } from "@prisma/client";
 
 interface GetPageArgs extends GetPageArgsFor<Role> {
   userId?: number;

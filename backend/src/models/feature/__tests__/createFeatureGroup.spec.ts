@@ -4,7 +4,7 @@ import {
   getTestSessionWithRole,
 } from "../../../utils/testing";
 import { faker } from "@faker-js/faker";
-import { RoleType, FeatureGroupStatus } from "@generated/type-graphql";
+import { RoleType, FeatureGroupStatus } from "@prisma/client";
 import expect from "expect";
 
 const createFeatureGroupMutation = `

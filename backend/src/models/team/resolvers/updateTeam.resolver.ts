@@ -58,14 +58,17 @@ builder.mutationField("updateTeam", (t) =>
         }
       }
 
+      // Nullable columns (description, coverUrl) pass the value through so an
+      // explicit `null` clears them; `undefined` still means "skip". Non-null
+      // columns coerce `null` back to "skip" via `?? undefined`.
       return ctx.prisma.team.update({
         ...query,
         where: { id: team.id },
         data: {
           name: args.input.name ?? undefined,
           code: args.input.code ?? undefined,
-          description: args.input.description ?? undefined,
-          coverUrl: args.input.coverUrl ?? undefined,
+          description: args.input.description,
+          coverUrl: args.input.coverUrl,
         },
       });
     },

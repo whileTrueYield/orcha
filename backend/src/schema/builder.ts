@@ -65,6 +65,16 @@ const builder = new SchemaBuilder<{
     authorizeOnSubscribe: false,
     defaultStrategy: "any",
 
+    // Default message for a failed scope check that did not throw its own error
+    // (e.g. `isAuthenticated: true` returning false). This restores the message
+    // the legacy `isAuthenticated` middleware produced, instead of Pothos's
+    // generic "Not authorized to resolve …". Scopes that throw their own
+    // GraphQLError (hasRole, isStaff) surface that error untouched.
+    unauthorizedError: () =>
+      new GraphQLError("You need to be authenticated", {
+        extensions: { code: "UNAUTHENTICATED" },
+      }),
+
     authScopes: async (context: AppContext<AuthContext>) => ({
     // -----------------------------------------------------------------------
     // isAuthenticated — user has a session (anything beyond GUEST)

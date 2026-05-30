@@ -9,6 +9,7 @@
 
 import builder from "../../../schema/builder";
 import { AuthRoleContext } from "../../../types";
+import { assertLength } from "../../../utils/validation";
 
 // ---------------------------------------------------------------------------
 // Input type
@@ -33,6 +34,11 @@ builder.mutationField("createTodo", (t) =>
     },
     resolve: (query, _root, args, ctx) => {
       const me = ctx.me as AuthRoleContext;
+
+      // Legacy contract: a todo body, when provided, must be 1–2048 chars.
+      if (args.input.body !== null && args.input.body !== undefined) {
+        assertLength(args.input.body, 1, 2048, "body");
+      }
 
       return ctx.prisma.todo.create({
         ...query,

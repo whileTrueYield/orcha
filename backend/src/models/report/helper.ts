@@ -1,7 +1,7 @@
 import { clamp, trim } from "lodash";
 import { Report, ModelStage } from "@prisma/client";
 import prisma from "../../prisma";
-import { Prisma, ReportAggregateField, ReportGroupBy } from ".prisma/client";
+import { Prisma, ReportAggregateField, ReportGroupBy } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
 import { FilterElementShape, QueryAggregateShape } from "./entity";
 // TODO: DateFilterElement was a TypeGraphQL @InputType. In Pothos it will be

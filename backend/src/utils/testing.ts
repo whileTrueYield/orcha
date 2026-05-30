@@ -36,6 +36,8 @@ import { UserSession } from "../types";
 type Maybe<T> = T | null | undefined;
 import prisma from "../prisma";
 import { DEFAULT_WORK_WEEK } from "../models/entities";
+import { buildMeContext } from "../middlewares/isAuthenticated";
+import { formatGraphQLError } from "./graphqlErrors";
 
 interface Options {
   source: string;
@@ -217,25 +219,48 @@ export const graphqlRequest = async ({
     cachedSchema = getSchema();
   }
 
-  return graphql({
+  // Mirror the production Apollo context factory: build `me` from the session
+  // so authScopes and resolvers see the same shape they do at runtime.
+  const req = {
+    session: {
+      ...session,
+      destroy: (x: () => void) => x(),
+    },
+    ip: TEST_IP,
+    ips: TEST_IPS,
+  };
+
+  const result = await graphql({
     schema: await cachedSchema,
     source,
     variableValues,
     contextValue: {
       prisma: prisma,
-      req: {
-        session: {
-          ...session,
-          destroy: (x: () => void) => x(),
-        },
-        ip: TEST_IP,
-        ips: TEST_IPS,
-      },
+      req,
       res: {
         clearCookie: () => null,
       },
+      me: buildMeContext(req as never),
     },
   });
+
+  // Mirror HTTP transport: the wire serialises the response to JSON, so scalars
+  // like DateTime reach clients as ISO strings rather than the in-memory Date
+  // objects graphql() returns. Round-trip `data` so assertions match the shape
+  // a real client receives.
+  //
+  // Errors are run through the same normaliser the production Apollo
+  // `formatError` hook uses, so Prisma "record not found" failures surface the
+  // clean "No {Model} found" message clients actually receive.
+  return {
+    ...result,
+    data: result.data
+      ? JSON.parse(JSON.stringify(result.data))
+      : result.data,
+    errors: result.errors
+      ? result.errors.map(formatGraphQLError)
+      : result.errors,
+  };
 };
 
 export const createRandomDocumentation = (

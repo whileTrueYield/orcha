@@ -2,7 +2,7 @@ import prisma from "../../prisma";
 import { clamp, max, min } from "lodash";
 import { ScheduleItem } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { Prisma, ModelStage, TicketStatus } from ".prisma/client";
+import { Prisma, ModelStage, TicketStatus } from "@prisma/client";
 import { WorkWeekTime } from "../entities";
 import { TzCalendar } from "../../utils/calendar";
 import { zonedTimeToUtc } from "date-fns-tz";

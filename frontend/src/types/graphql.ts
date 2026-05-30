@@ -135,6 +135,18 @@ export type CommentReply = {
   updatedAt: Scalars['DateTime']['output'];
 };
 
+export type CreateApiTokenInput = {
+  expiresInDays?: InputMaybe<Scalars['Int']['input']>;
+  name: Scalars['String']['input'];
+  readOnly?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type CreateApiTokenResult = {
+  __typename?: 'CreateApiTokenResult';
+  plaintext: Scalars['String']['output'];
+  token: PersonalAccessToken;
+};
+
 export type CreateBlackoutTimeInput = {
   name: Scalars['String']['input'];
   roleIds: Array<Scalars['Int']['input']>;
@@ -726,6 +738,7 @@ export type Mutation = {
   /** Close an active workflow state */
   closeScheduleItem: ScheduleItem;
   commitScheduleChanges: Scalars['Boolean']['output'];
+  createApiToken: CreateApiTokenResult;
   createBlackoutTime: BlackoutTime;
   createComment: Ticket;
   createDocumentation: Documentation;
@@ -817,6 +830,7 @@ export type Mutation = {
   requestDemo: DemoRequest;
   resendInvite: Role;
   resumeLastScheduleItem: ScheduleItem;
+  revokeApiToken: PersonalAccessToken;
   scheduleTicket: Ticket;
   sendConfirmationEmail: Scalars['Boolean']['output'];
   setChecklist: TicketWorkflowState;
@@ -1029,6 +1043,11 @@ export type MutationCommitScheduleChangesArgs = {
   addTicketIds: Array<InputMaybe<Scalars['Int']['input']>>;
   removeTicketIds: Array<InputMaybe<Scalars['Int']['input']>>;
   scheduleConfigs: Array<InputMaybe<UpdateScheduleConfig>>;
+};
+
+
+export type MutationCreateApiTokenArgs = {
+  input: CreateApiTokenInput;
 };
 
 
@@ -1486,6 +1505,11 @@ export type MutationRequestDemoArgs = {
 
 export type MutationResendInviteArgs = {
   email: Scalars['String']['input'];
+};
+
+
+export type MutationRevokeApiTokenArgs = {
+  id: Scalars['Int']['input'];
 };
 
 
@@ -2198,6 +2222,19 @@ export type PasswordResetInput = {
   secret: Scalars['String']['input'];
 };
 
+export type PersonalAccessToken = {
+  __typename?: 'PersonalAccessToken';
+  createdAt: Scalars['DateTime']['output'];
+  expiresAt?: Maybe<Scalars['DateTime']['output']>;
+  id: Scalars['Int']['output'];
+  lastUsedAt?: Maybe<Scalars['DateTime']['output']>;
+  name: Scalars['String']['output'];
+  readOnly: Scalars['Boolean']['output'];
+  revokedAt?: Maybe<Scalars['DateTime']['output']>;
+  roleId: Scalars['Int']['output'];
+  tokenPrefix: Scalars['String']['output'];
+};
+
 export type PersonalTag = {
   __typename?: 'PersonalTag';
   createdAt: Scalars['DateTime']['output'];
@@ -2430,6 +2467,7 @@ export type Query = {
   miniWorkflows: Array<MiniWorkflow>;
   moreTickets: PaginatedTickets;
   moreTicketsForProject: PaginatedTickets;
+  myApiTokens: Array<PersonalAccessToken>;
   myEstimatedTickets: Array<Ticket>;
   myLastProject?: Maybe<Project>;
   myMiniProjects: Array<MiniProject>;
@@ -2454,6 +2492,7 @@ export type Query = {
   notes: PaginatedNotes;
   notification: Notification;
   organization: Organization;
+  organizationApiTokens: Array<PersonalAccessToken>;
   organizations: PaginatedOrganizations;
   paginatedBlackoutTimes: PaginatedBlackoutTimes;
   paginatedRecurringBlackoutTimes: PaginatedRecurringBlackoutTimes;
@@ -3693,7 +3732,7 @@ export type Ticket = {
   cases: Array<Issue>;
   closedAt?: Maybe<Scalars['DateTime']['output']>;
   closingNote?: Maybe<Scalars['String']['output']>;
-  comments: Array<Comment>;
+  comments: PaginatedComments;
   createdAt: Scalars['DateTime']['output'];
   deletedAt?: Maybe<Scalars['DateTime']['output']>;
   description?: Maybe<Scalars['String']['output']>;
@@ -3734,6 +3773,14 @@ export type Ticket = {
   watchers: Array<Role>;
   workflow?: Maybe<Workflow>;
   workflowId?: Maybe<Scalars['Int']['output']>;
+};
+
+
+export type TicketCommentsArgs = {
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type TicketBatchPayload = {

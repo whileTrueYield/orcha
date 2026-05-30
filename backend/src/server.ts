@@ -36,6 +36,7 @@ import { json as jsonBodyParser } from "express";
 import { corsCheckOrigin } from "./utils";
 import RedisStore from "connect-redis";
 import { getSchema } from "./models";
+import { formatApolloError } from "./utils/graphqlErrors";
 
 // TODO: remove after DO deployment is verified
 process.stderr.write("[api] imports done, calling start()\n");
@@ -47,6 +48,9 @@ async function start() {
   // Apollo Server v4 — standalone server that produces middleware
   const server = new ApolloServer<AppContext<AuthContext>>({
     schema,
+    // Map Prisma "record not found" (P2025) failures to the clean
+    // "No {Model} found" message instead of leaking the raw query invocation.
+    formatError: formatApolloError,
     // TODO: Apollo v4 dropped the built-in "bounded" cache option.
     // Consider adding @apollo/server-plugin-response-cache if needed.
   });

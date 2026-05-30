@@ -2,7 +2,7 @@ import prisma from "../../prisma";
 import { clamp, trim } from "lodash";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
 import { MiniWorkflowShape } from "./entity";
-import { Prisma } from ".prisma/client";
+import { Prisma } from "@prisma/client";
 import {
   Workflow,
   ModelStage,

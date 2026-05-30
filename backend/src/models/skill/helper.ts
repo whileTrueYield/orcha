@@ -2,7 +2,7 @@ import prisma from "../../prisma";
 import { clamp, trim } from "lodash";
 import { Skill } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
-import { Prisma } from ".prisma/client";
+import { Prisma } from "@prisma/client";
 
 interface GetPageArgs extends GetPageArgsFor<Skill> {
   organizationId: number;

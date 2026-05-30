@@ -145,7 +145,7 @@ endif
 ai-venv: ai/venv/touchfile
 
 ai/venv/touchfile: ./ai/requirements.txt
-	test -d venv || virtualenv ./ai/venv
+	test -d ./ai/venv || python3.12 -m venv ./ai/venv
 	. ./ai/venv/bin/activate; pip install -Ur ./ai/requirements.txt
 	touch ai/venv/touchfile
 

@@ -1,6 +1,6 @@
 import { graphqlRequest, getTestSession } from "../../../utils/testing";
 import { faker } from "@faker-js/faker";
-import { OrganizationStatus, RoleType } from "@generated/type-graphql";
+import { OrganizationStatus, RoleType } from "@prisma/client";
 import { v4 as uuid } from "uuid";
 import prisma from "../../../prisma";
 import expect from "expect";

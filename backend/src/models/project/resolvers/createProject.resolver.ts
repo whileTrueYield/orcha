@@ -7,6 +7,7 @@ import { GraphQLError } from "graphql";
 import { ModelStage, Prisma } from "@prisma/client";
 import { findProjectByName } from "../helper";
 import { AuthRoleContext } from "../../../types";
+import { assertLength } from "../../../utils/validation";
 
 export const CreateProjectInput = builder.inputType("CreateProjectInput", {
   fields: (t) => ({
@@ -23,6 +24,9 @@ builder.mutationField("createProject", (t) =>
       input: t.arg({ type: CreateProjectInput, required: true }),
     },
     resolve: async (query, _root, args, ctx) => {
+      // Legacy contract: project name must be 1–128 chars (no empty names).
+      assertLength(args.input.name, 1, 128, "name");
+
       const projectUsingSameName = await findProjectByName(
         args.input.name,
         args.input.parentId ?? null,

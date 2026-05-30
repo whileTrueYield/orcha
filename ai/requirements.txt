@@ -20,6 +20,10 @@ tqdm>=4.67,<5
 
 # Dev / testing
 pytest>=8,<9
+# Required by fastapi.testclient.TestClient. Starlette >=1.2 prefers `httpx2`
+# (the httpx successor) and emits a StarletteDeprecationWarning if only the
+# legacy `httpx` is present, so we install httpx2 directly.
+httpx2>=2,<3
 
 # Profiling
 snakeviz>=2.2,<3
