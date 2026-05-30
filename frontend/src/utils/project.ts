@@ -1,6 +1,6 @@
 import { gql, useQuery } from "@apollo/client";
 import { keyBy } from "lodash";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { MiniProject, Project } from "types/graphql";
 import { QueryReturnValue } from "types/queryTypes";
 
@@ -78,12 +78,15 @@ export function getProjectParents(
 // to be loaded to reconstruct their path. This hook allows
 // getProjectParentPath above to display every project's ancestry
 export function useProjectPath() {
-  const { data } = useQuery<QueryReturnValue["myMiniProjects"]>(
-    GET_MINI_PROJECTS_QUERY,
-    {
-      onError: () => console.error("Could not retrieve projects"),
-    }
+  // Apollo 3.14 deprecated the `onError` callback. The recommended pattern is
+  // to derive side-effects from the `error` returned by the hook via useEffect.
+  const { data, error } = useQuery<QueryReturnValue["myMiniProjects"]>(
+    GET_MINI_PROJECTS_QUERY
   );
+
+  useEffect(() => {
+    if (error) console.error("Could not retrieve projects");
+  }, [error]);
 
   const miniProjects = data?.myMiniProjects;
 
@@ -98,13 +101,15 @@ export function useProjectPath() {
 // to be loaded to reconstruct their path. This hook allows
 // getProjectParentPath above to display every project's ancestry
 export function useProjectParents() {
-  const { data } = useQuery<QueryReturnValue["myMiniProjects"]>(
-    GET_MINI_PROJECTS_QUERY,
-    {
-      // fetchPolicy: "cache-first",
-      onError: () => console.error("Could not retrieve projects"),
-    }
+  // Apollo 3.14 deprecated the `onError` callback. The recommended pattern is
+  // to derive side-effects from the `error` returned by the hook via useEffect.
+  const { data, error } = useQuery<QueryReturnValue["myMiniProjects"]>(
+    GET_MINI_PROJECTS_QUERY
   );
+
+  useEffect(() => {
+    if (error) console.error("Could not retrieve projects");
+  }, [error]);
 
   const miniProjects = data?.myMiniProjects;
 

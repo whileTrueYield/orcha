@@ -14,30 +14,35 @@ const mocks = [
       data: {
         myMiniProjects: [
           {
+            __typename: "MiniProject",
             id: 1,
             name: "Project 01",
             parentId: null,
             stage: ModelStage.Published,
           },
           {
+            __typename: "MiniProject",
             id: 10,
             name: "Project 10",
             parentId: null,
             stage: ModelStage.Published,
           },
           {
+            __typename: "MiniProject",
             id: 11,
             name: "Project 11",
             parentId: 1,
             stage: ModelStage.Published,
           },
           {
+            __typename: "MiniProject",
             id: 12,
             name: "Project 12",
             parentId: 11,
             stage: ModelStage.Published,
           },
           {
+            __typename: "MiniProject",
             id: 13,
             name: "Project 13",
             parentId: null,
@@ -58,7 +63,7 @@ describe("TruncatedProject", () => {
     };
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <TruncatedProjectPath project={project as Project} />
       </MockedProvider>
     );
@@ -78,7 +83,7 @@ describe("TruncatedProject", () => {
     };
 
     const component = renderer.create(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <TruncatedProjectPath project={project as Project} />
       </MockedProvider>
     );
