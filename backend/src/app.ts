@@ -1,6 +1,7 @@
 import express from "express";
 import { config } from "./config";
 import { router } from "./routes";
+import { v1Router } from "./rest/router";
 
 /**
  * Automate the creation of the express application and
@@ -17,6 +18,11 @@ export function createExpressApp(middlewares: any[] = []) {
   // our reverse proxy isn't encrypted (AWS load balancer is encrypting for us)
   // this will make sure we read the client's IP address properly amongst other values.
   app.set("trust proxy", true);
+
+  // Mount the public REST API ahead of the session/cookie-CORS middleware so a
+  // `/v1` request is handled entirely by its own bearer-only stack and never
+  // acquires a session cookie or the credentialed GraphQL CORS headers.
+  app.use(`${config.apiPathPrefix}/v1`, v1Router);
 
   for (const middleware of middlewares) {
     app.use(middleware);
