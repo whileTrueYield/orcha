@@ -114,7 +114,6 @@ export const IssueTicket: FCWithFragments<Props> = (props) => {
           visible={createTicketModalVisibility}
           onClose={() => setCreateTicketModalVisibility(false)}
           defaultProductId={issue.product.id}
-          defaultDescription={issue.description}
           onCreate={(ticketId: number) => {
             setCreateTicketModalVisibility(false);
             setTicket(ticketId);

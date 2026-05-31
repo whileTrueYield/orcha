@@ -101,7 +101,6 @@ export const TicketCreateComponent: React.FC<NodeViewProps> = (props) => {
         {renderSelectTicket()}
         <TicketCreateModal
           defaultTitle={props.node.attrs.title}
-          defaultDescription={props.node.attrs.description}
           defaultProjectId={props.node.attrs.projectId || projectId}
           defaultWorkflowId={props.node.attrs.workflowId}
           defaultProductId={props.node.attrs.productId}

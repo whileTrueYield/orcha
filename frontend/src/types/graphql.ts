@@ -3777,7 +3777,6 @@ export type Ticket = {
   comments: PaginatedComments;
   createdAt: Scalars['DateTime']['output'];
   deletedAt?: Maybe<Scalars['DateTime']['output']>;
-  description?: Maybe<Scalars['String']['output']>;
   difficulty?: Maybe<Scalars['Int']['output']>;
   estimate: Scalars['Int']['output'];
   estimating: Scalars['Boolean']['output'];

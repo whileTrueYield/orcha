@@ -274,7 +274,6 @@ TicketView.fragments = {
       status
       stage
       title
-      description
       ticketWorkflowStates {
         id
         ...TicketWorkflowStateAssigneeModalFragment

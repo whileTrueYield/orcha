@@ -40,7 +40,6 @@ TicketToEstimateRow.fragments = {
       id
       title
       localId
-      description
       product {
         id
         code
