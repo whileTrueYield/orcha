@@ -119,6 +119,7 @@ export const TicketBody: React.FC<Props> = ({ ticketId }) => {
       setSeedId((n) => n + 1);
       setBaseVersion(result.conflict.version);
       setConflict(true);
+      setWarnings([]);
       setDirty(false);
       setStatus("");
       return;

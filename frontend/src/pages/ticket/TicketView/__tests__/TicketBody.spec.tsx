@@ -181,3 +181,52 @@ it("surfaces unresolved-mention warnings after a successful save", async () => {
   expect(await screen.findByText("Saved")).toBeInTheDocument();
   expect(screen.getByRole("status")).toHaveTextContent("@nobody");
 });
+
+// After a warn-save (baseVersion bumps to 3), a subsequent conflict must clear
+// the stale warnings banner so both banners never coexist.
+const saveConflictAfterWarnMock = {
+  request: {
+    query: SAVE_DOCUMENT_BODY,
+    variables: {
+      documentType: DocumentBodyType.Ticket,
+      documentId: 7,
+      markdown: "hello\n",
+      baseVersion: 3, // version returned by saveWarnMock
+    },
+  },
+  result: {
+    data: {
+      saveDocumentBody: {
+        __typename: "SaveDocumentBodyResult",
+        body: null,
+        conflict: {
+          __typename: "DocumentBodyConflict",
+          markdown: "<<<<<<< ours\nmine\n=======\ntheirs\n>>>>>>> theirs\n",
+          version: 5,
+        },
+        warnings: [],
+      },
+    },
+  },
+};
+
+it("clears stale warnings when a later save conflicts", async () => {
+  render(
+    <MockedProvider mocks={[loadMock, saveWarnMock, saveConflictAfterWarnMock]}>
+      <TicketBody ticketId={7} />
+    </MockedProvider>,
+  );
+
+  expect(await screen.findByTestId("seed")).toHaveTextContent("hello");
+
+  // First save: succeeds with a warning.
+  fireEvent.click(screen.getByText("edit"));
+  fireEvent.click(screen.getByText("Save"));
+  expect(await screen.findByRole("status")).toHaveTextContent("@nobody");
+
+  // Second save: conflicts. The stale warnings banner must be gone.
+  fireEvent.click(screen.getByText("edit"));
+  fireEvent.click(screen.getByText("Save"));
+  expect(await screen.findByRole("alert")).toHaveTextContent("edited elsewhere");
+  expect(screen.queryByRole("status")).toBeNull();
+});

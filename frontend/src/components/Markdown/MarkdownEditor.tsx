@@ -56,11 +56,16 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
         });
       });
 
-      // create() is async; only destroy after it has resolved so we never tear
-      // down a half-initialised editor.
-      const ready = crepe.create();
+      // create() is async; destroy synchronously once it has resolved so we
+      // never leave two editors on the same host, and never tear down a
+      // half-initialised one.
+      let ready = false;
+      const created = crepe.create().then(() => {
+        ready = true;
+      });
       return () => {
-        ready.then(() => crepe.destroy());
+        if (ready) crepe.destroy();
+        else created.then(() => crepe.destroy());
       };
       // Remount when the seeded content or the readonly flag changes. onDirty is
       // intentionally excluded — it must not trigger a remount.
@@ -70,5 +75,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
     return <div ref={hostRef} />;
   },
 );
+
+MarkdownEditor.displayName = "MarkdownEditor";
 
 export default MarkdownEditor;
