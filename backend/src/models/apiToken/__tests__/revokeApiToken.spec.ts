@@ -99,7 +99,7 @@ describe("revokeApiToken", () => {
     expect(response.errors).toBeDefined();
     // The token still works — the failed revoke had no effect.
     const resolved = await verifyAndResolve(plaintext);
-    expect(resolved.id).toBe(other.role.id);
+    expect(resolved.role.id).toBe(other.role.id);
   });
 
   it("lets an ADMIN revoke another Role's token in the same organization", async () => {
