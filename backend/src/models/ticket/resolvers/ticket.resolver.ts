@@ -9,7 +9,7 @@
  *
  * Also registers computed prismaObject fields on the Ticket type:
  *  - isWatching: whether the current user watches this ticket
- *  - description: reconstructed from the Yjs document stored in ticketText
+ *  (the body lives on the `body` field — see ticketBody.resolver.ts)
  *
  * Relation fields (organization, product, author, owner, workflow, project,
  * ticketWorkflowStates, ancestors, successors, tags, watchers, personalTags,
@@ -20,7 +20,6 @@
 import jwt from "jsonwebtoken";
 import { ModelStage, TicketStatus } from "@prisma/client";
 import { find, last, without } from "lodash";
-import { TiptapTransformer } from "@hocuspocus/transformer";
 import builder from "../../../schema/builder";
 import { TicketWorkflowStateRef } from "../entity";
 import { ScheduleItemRef } from "../../schedule/entity";
@@ -29,7 +28,6 @@ import { getRolePreferences, updateRolePreferences } from "../../entities";
 import { config } from "../../../config";
 import { DocumentToken } from "../../../hocuspocus/documentToken";
 import { logger } from "../../../logger";
-import { getDocFromBytes } from "../../../utils/yjs";
 
 // ---------------------------------------------------------------------------
 // Query: ticket
@@ -238,34 +236,10 @@ builder.prismaObjectField("Ticket", "isWatching", (t) =>
   }),
 );
 
-// ---------------------------------------------------------------------------
-// Computed field: description — reconstructed from the Yjs ticketText document
-//
-// The description is no longer stored on the ticket directly. It lives in
-// the ticketText table as a Yjs byte array for collaborative editing.
-// This field enables read-only rendering in a TipTap editor.
-// ---------------------------------------------------------------------------
-
-builder.prismaObjectField("Ticket", "description", (t) =>
-  t.string({
-    nullable: true,
-    resolve: async (ticket, _args, ctx) => {
-      let ticketText = (ticket as any).ticketText;
-      if (!ticketText) {
-        ticketText = await ctx.prisma.ticketText.findFirst({
-          where: { ticketId: ticket.id },
-        });
-      }
-
-      if (ticketText && ticketText.bytes) {
-        const doc = getDocFromBytes(ticketText.bytes);
-        return JSON.stringify(TiptapTransformer.fromYdoc(doc).default);
-      }
-
-      return null;
-    },
-  }),
-);
+// The ticket body is exposed through the `body` field (Markdown + version) on
+// the Ticket type — see ticketBody.resolver.ts. The former `description`
+// computed field (which reconstructed TipTap JSON from a Yjs byte array) is
+// retired with the move to Markdown-as-source-of-truth (ADR 0007).
 
 // ---------------------------------------------------------------------------
 // Computed field: lastScheduleItem — the most recent schedule item for this ticket

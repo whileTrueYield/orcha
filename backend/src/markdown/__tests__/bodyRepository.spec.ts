@@ -107,6 +107,12 @@ describe("body repository", () => {
     expect(a.conflicts).toEqual([
       { base: ["shared line"], ours: ["A edited"], theirs: ["B edited"] },
     ]);
+    // The conflict also carries the git-markered body and the current stored
+    // version the writer must rebase onto.
+    expect(a.version).toBe(2);
+    expect(a.markered).toBe(
+      "<<<<<<< ours\nA edited\n=======\nB edited\n>>>>>>> theirs\n",
+    );
 
     // The conflicting save must not have touched the stored body or version.
     expect(await getBody("ticket", ticket.id)).toEqual({

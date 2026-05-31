@@ -30,6 +30,8 @@ import { DEFAULT_WORK_WEEK } from "../../entities";
 import initialWorkflows from "./initialWorkflows.json";
 import initialTags from "./initialTags.json";
 import { AuthUserContext } from "../../../types";
+import { writeDocumentBody } from "../../documentBody/writeDocumentBody";
+import { GETTING_STARTED_BODY } from "../gettingStartedBody";
 
 // ---------------------------------------------------------------------------
 // Input type
@@ -207,9 +209,17 @@ export async function createGettingStartedProject(
 
   await Promise.all(roleUpdates);
 
-  // TODO(#40): Seed the Getting Started project body as Markdown through the
-  // body repository (saveBody) once the document-body API lands. Bodies are no
-  // longer Yjs binary (ADR 0007); the project reads as an empty body until then.
+  // Seed the project body as Markdown (ADR 0007) through the shared write
+  // service, so the seed populates `indexableContent` for search exactly like a
+  // user edit would. base 0: the body is unwritten, so this is a fast-forward.
+  await writeDocumentBody({
+    type: "project",
+    id: project.id,
+    markdown: GETTING_STARTED_BODY,
+    baseVersion: 0,
+    organizationId: organization.id,
+    actorRoleId: roles[0].id,
+  });
 
   return project;
 }

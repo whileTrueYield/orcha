@@ -86,6 +86,27 @@ describe("3-way markdown merge", () => {
     ]);
   });
 
+  it("renders the conflict as git-style markered Markdown", () => {
+    const base = "line one\nline two\nline three\n";
+    const ours = "line one, ours\nline two\nline three\n";
+    const theirs = "line one, theirs\nline two\nline three\n";
+
+    const result = merge(base, ours, theirs);
+
+    expect(result.clean).toBe(false);
+    if (result.clean) throw new Error("expected a conflict");
+    // The conflicting region is wrapped in git merge-file markers; the unchanged
+    // tail (and the body's trailing newline) is preserved verbatim.
+    expect(result.markered).toBe(
+      "<<<<<<< ours\n" +
+        "line one, ours\n" +
+        "=======\n" +
+        "line one, theirs\n" +
+        ">>>>>>> theirs\n" +
+        "line two\nline three\n",
+    );
+  });
+
   it("reports a conflict when both sides write different bodies from empty", () => {
     const result = merge("", "first author wins\n", "second author wins\n");
 
