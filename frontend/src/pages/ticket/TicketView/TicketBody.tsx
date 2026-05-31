@@ -9,7 +9,7 @@
  * the markered text back into the editor for manual resolution.
  */
 import { gql, useMutation, useQuery } from "@apollo/client";
-import { Suspense, lazy, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { onGraphQLError } from "utils/GQLClient";
 import {
   DocumentBodyType,
@@ -18,10 +18,13 @@ import {
   Mutation,
   Query,
 } from "types/graphql";
-import type { MarkdownEditorHandle } from "components/Markdown/MarkdownEditor";
+// Imported eagerly (not React.lazy): Vite's dep scanner skips dynamic imports
+// behind React.lazy, so Crepe's ProseMirror was pre-bundled in a separate pass
+// and loaded twice, triggering "Adding different instances of a keyed plugin".
+import MarkdownEditor, {
+  type MarkdownEditorHandle,
+} from "components/Markdown/MarkdownEditor";
 import { EditorErrorBoundary } from "components/Markdown/EditorErrorBoundary";
-
-const MarkdownEditor = lazy(() => import("components/Markdown/MarkdownEditor"));
 
 export const GET_TICKET_BODY = gql`
   query GetTicketBody($id: Int!) {
@@ -151,18 +154,16 @@ export const TicketBody: React.FC<Props> = ({ ticketId }) => {
         </div>
       )}
       <EditorErrorBoundary resetKey={ticketId}>
-        <Suspense fallback={null}>
-          <MarkdownEditor
-            key={seedId}
-            ref={editorRef}
-            value={seed}
-            readOnly={archived}
-            onDirty={() => {
-              setDirty(true);
-              setStatus("");
-            }}
-          />
-        </Suspense>
+        <MarkdownEditor
+          key={seedId}
+          ref={editorRef}
+          value={seed}
+          readOnly={archived}
+          onDirty={() => {
+            setDirty(true);
+            setStatus("");
+          }}
+        />
       </EditorErrorBoundary>
       {!archived && (
         <div className="flex items-center gap-x-3 p-2">
