@@ -28,14 +28,56 @@
  * valid bearer token.
  */
 
-import { Router, json as jsonBodyParser } from "express";
+import {
+  Router,
+  json as jsonBodyParser,
+  Request,
+  Response,
+  NextFunction,
+  RequestHandler,
+} from "express";
 import { bearerAuth } from "./bearerAuth";
 import { execute } from "./executor";
-import { ME_OPERATION } from "./operations";
-import { toEnvelope } from "./errorEnvelope";
+import {
+  ME_OPERATION,
+  TICKETS_OPERATION,
+  TICKET_OPERATION,
+  PROJECTS_OPERATION,
+  PROJECT_OPERATION,
+  SCHEDULE_OPERATION,
+} from "./operations";
+import { toEnvelope, errorEnvelope } from "./errorEnvelope";
+import {
+  parsePageParams,
+  buildPage,
+  CursorError,
+} from "./pagination";
+import { stringParam, intParam, stringList, intList } from "./params";
+import { AuthRoleContext } from "../types";
 import { openApiSpec } from "./openapi";
 
 export const v1Router = Router();
+
+// Run a GraphQL operation as the token's role and either return its `data`
+// (for the caller to shape into a response) or write the error envelope and
+// return undefined. Centralising this keeps every route's success/failure
+// handling identical.
+async function executeAs(
+  res: Response,
+  document: string,
+  variables: Record<string, unknown>,
+  me: AuthRoleContext,
+): Promise<Record<string, any> | undefined> {
+  const { data, errors } = await execute({ document, variables, me });
+
+  if (errors && errors.length > 0) {
+    const { status, body } = toEnvelope(errors);
+    res.status(status).json(body);
+    return undefined;
+  }
+
+  return data ?? undefined;
+}
 
 // Bodies are JSON. Harmless for the current read-only tracer; ready for the
 // write endpoints (#28) that ride this same router.
@@ -46,24 +88,109 @@ v1Router.get("/openapi.json", (_req, res) => {
   res.json(openApiSpec);
 });
 
-// GET /v1/me — the tracer. Resolve the token, run the `me` operation as that
-// role, and return its data (or map any GraphQL errors to the envelope).
-v1Router.get("/me", bearerAuth, async (req, res, next) => {
-  try {
-    // bearerAuth guarantees req.me is a resolved LINKED context past this point.
-    const { data, errors } = await execute({
-      document: ME_OPERATION,
-      me: req.me!,
-    });
+// Wrap a bearer-authenticated route. bearerAuth runs first (so req.me is a
+// resolved LINKED context inside the handler), then the handler runs under one
+// try/catch: a thrown CursorError is a client mistake (a bad `?after=`) → 400
+// with the envelope; anything else is unexpected → forwarded to Express. This
+// keeps every route below free of repeated error plumbing.
+function route(handler: (req: Request, res: Response) => Promise<void>): RequestHandler[] {
+  return [
+    bearerAuth,
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        await handler(req, res);
+      } catch (error) {
+        if (error instanceof CursorError) {
+          res.status(400).json(errorEnvelope("BAD_USER_INPUT", error.message));
+          return;
+        }
+        next(error);
+      }
+    },
+  ];
+}
 
-    if (errors && errors.length > 0) {
-      const { status, body } = toEnvelope(errors);
-      res.status(status).json(body);
-      return;
-    }
+// GET /v1/me — the tracer. The token's Role, User, and Organization.
+v1Router.get(
+  "/me",
+  route(async (req, res) => {
+    const data = await executeAs(res, ME_OPERATION, {}, req.me!);
+    if (data) res.json(data.me);
+  }),
+);
 
-    res.json(data!.me);
-  } catch (error) {
-    next(error);
-  }
-});
+// GET /v1/tickets — tenant-scoped, filterable, cursor-paginated list.
+v1Router.get(
+  "/tickets",
+  route(async (req, res) => {
+    const { first, offset } = parsePageParams(req.query);
+    const variables = {
+      first,
+      offset,
+      sort: stringParam(req.query.sort),
+      projectId: intParam(req.query.project),
+      search: stringParam(req.query.search),
+      statuses: stringList(req.query.status),
+      assigneeIds: intList(req.query.assignee),
+      stages: stringList(req.query.stage),
+    };
+
+    const data = await executeAs(res, TICKETS_OPERATION, variables, req.me!);
+    if (data) res.json(buildPage(data.tickets, offset));
+  }),
+);
+
+// GET /v1/tickets/:id — a single ticket's detail, scoped to the caller's org.
+v1Router.get(
+  "/tickets/:id",
+  route(async (req, res) => {
+    const data = await executeAs(
+      res,
+      TICKET_OPERATION,
+      { id: parseInt(req.params.id, 10) },
+      req.me!,
+    );
+    if (data) res.json(data.ticket);
+  }),
+);
+
+// GET /v1/projects — tenant-scoped, searchable, cursor-paginated list.
+v1Router.get(
+  "/projects",
+  route(async (req, res) => {
+    const { first, offset } = parsePageParams(req.query);
+    const variables = {
+      first,
+      offset,
+      sort: stringParam(req.query.sort),
+      search: stringParam(req.query.search),
+      parentId: intParam(req.query.parent),
+    };
+
+    const data = await executeAs(res, PROJECTS_OPERATION, variables, req.me!);
+    if (data) res.json(buildPage(data.projects, offset));
+  }),
+);
+
+// GET /v1/projects/:id — a single project's detail, scoped to the caller's org.
+v1Router.get(
+  "/projects/:id",
+  route(async (req, res) => {
+    const data = await executeAs(
+      res,
+      PROJECT_OPERATION,
+      { id: parseInt(req.params.id, 10) },
+      req.me!,
+    );
+    if (data) res.json(data.project);
+  }),
+);
+
+// GET /v1/schedule — the caller's own outstanding scheduled work and its ETAs.
+v1Router.get(
+  "/schedule",
+  route(async (req, res) => {
+    const data = await executeAs(res, SCHEDULE_OPERATION, {}, req.me!);
+    if (data) res.json({ data: data.myUnfinishedScheduleItems });
+  }),
+);
