@@ -123,10 +123,11 @@ export const openApiSpec = {
       },
       Ticket: {
         type: "object",
+        // The body is omitted until the Markdown read/write format is decided
+        // (see operations.ts). Structured fields only for now.
         properties: {
           id: { type: "integer" },
           title: { type: "string" },
-          description: { type: "string", nullable: true },
           estimate: { type: "integer" },
           eta: { type: "string", format: "date-time", nullable: true },
           status: { type: "string" },

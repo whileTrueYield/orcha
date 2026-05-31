@@ -84,12 +84,17 @@ export const TICKETS_OPERATION = /* GraphQL */ `
 // GET /v1/tickets/:id — a single ticket with the detail an agent needs to act:
 // estimate/ETA, its workflow states (with their three-point estimates), and
 // its dependency edges (ancestors it waits on, successors waiting on it).
+// NOTE: the ticket body is intentionally NOT exposed yet. It is stored as a
+// Yjs/Tiptap document; the GraphQL `description` field returns the editor's
+// stringified ProseMirror JSON, which is the wrong contract for an API client.
+// Exposing it as Markdown (read) and accepting Markdown (write, #28) is a
+// cross-cutting format decision tracked separately — see the pending body-format
+// ADR. Until then we ship structured fields only, not a half-usable body.
 export const TICKET_OPERATION = /* GraphQL */ `
   query RestTicket($id: Int!) {
     ticket(id: $id) {
       id
       title
-      description
       estimate
       eta
       status
