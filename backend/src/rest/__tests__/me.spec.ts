@@ -64,7 +64,16 @@ describe("GET /v1/me", () => {
       .expect(200);
 
     expect(res.body.openapi).toMatch(/^3\./);
-    expect(res.body.paths["/v1/me"].get).toBeDefined();
+    for (const path of [
+      "/v1/me",
+      "/v1/tickets",
+      "/v1/tickets/{id}",
+      "/v1/projects",
+      "/v1/projects/{id}",
+      "/v1/schedule",
+    ]) {
+      expect(res.body.paths[path].get).toBeDefined();
+    }
   });
 
   it("emits no CORS headers, so browsers cannot read it cross-origin", async () => {
