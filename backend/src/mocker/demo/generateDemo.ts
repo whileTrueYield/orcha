@@ -1,7 +1,6 @@
 import YAML from "yaml";
 import fs from "fs";
 import * as path from "path";
-import * as Y from "yjs";
 
 import { createOrganization } from "../organization";
 import { createRole, createUser } from "../employee";
@@ -46,7 +45,7 @@ import { createRandomComments } from "./createRandomComments";
 import { config } from "../../config";
 import { markdownToTipTapDoc } from "./markdownToDoc";
 import { logger } from "../../logger";
-import { tiptapToYdoc } from "../../utils/tiptap";
+import { saveBody } from "../../markdown/bodyRepository";
 import { waitFor } from "../../utils";
 
 const WORK_HOURS: { [name: string]: WorkWeekTime } = {
@@ -190,16 +189,10 @@ export async function generateDemo() {
     });
 
     projects[projectRecord.name] = projectRecord;
-    const tipTapDoc = markdownToTipTapDoc(projectInfo.body);
-    if (tipTapDoc.content.length) {
-      const doc = tiptapToYdoc(tipTapDoc);
-
-      await prisma.projectText.create({
-        data: {
-          projectId: projectRecord.id,
-          bytes: Buffer.from(Y.encodeStateAsUpdate(doc)),
-        },
-      });
+    // Bodies are Markdown source-of-truth now (ADR 0007): seed them straight
+    // through the body repository instead of encoding Yjs binary.
+    if (projectInfo.body) {
+      await saveBody("project", projectRecord.id, projectInfo.body, 0);
     }
 
     const admins = filter(roles, { type: RoleType.ADMIN });
@@ -234,17 +227,10 @@ export async function generateDemo() {
         },
       );
 
-      const tipTapDoc = markdownToTipTapDoc(ticketInfo.description);
-      if (tipTapDoc.content.length) {
+      // Markdown body straight into the repository (ADR 0007), no Yjs encoding.
+      if (description) {
         logger.info(`Generating ticket description for ${ticketInfo.title}`);
-        const doc = tiptapToYdoc(tipTapDoc);
-
-        await prisma.ticketText.create({
-          data: {
-            ticketId: ticket.id,
-            bytes: Buffer.from(Y.encodeStateAsUpdate(doc)),
-          },
-        });
+        await saveBody("ticket", ticket.id, description, 0);
       } else {
         logger.warn(
           "Could not generate ticket description for",

@@ -26,7 +26,7 @@ import { AuthRoleContext } from "../../../types";
 import { findOrCreateTags } from "../../tag/helper";
 import { commaSeparatedValues } from "../../../utils/string";
 import { getWorkflowQueryForProduct } from "../../workflow/helper";
-import { createTicketText, getIndexableContentFromTipTapJson } from "../helper";
+import { getIndexableContentFromTipTapJson } from "../helper";
 import { createNotificationsForTarget } from "../../notification/createNotification";
 import { getMentions } from "../../../utils/tiptap";
 import { ModelStageEnum } from "../../../schema/enums";
@@ -196,8 +196,10 @@ builder.mutationField("createTicket", (t) =>
         data: ticketInput,
       });
 
-      // Create the Yjs document for the ticket body
-      await createTicketText(ticket.id, input.description ?? null);
+      // TODO(#40): The ticket body is now Markdown stored via the body
+      // repository (saveBody), not created here from TipTap JSON. Initial-body
+      // creation moves into the document-body API slice; a freshly created
+      // ticket reads as an empty body (getBody → version 0) until then.
 
       // Create ticket workflow states when publishing
       if (ticket.stage === ModelStage.PUBLISHED && input.workflowId) {
