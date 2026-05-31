@@ -29,9 +29,6 @@ import prisma from "../../../prisma";
 import { DEFAULT_WORK_WEEK } from "../../entities";
 import initialWorkflows from "./initialWorkflows.json";
 import initialTags from "./initialTags.json";
-import gettingStartedProject from "./GettingStartedProject.json";
-import * as Y from "yjs";
-import { tiptapToYdoc } from "../../../utils/tiptap";
 import { AuthUserContext } from "../../../types";
 
 // ---------------------------------------------------------------------------
@@ -210,13 +207,9 @@ export async function createGettingStartedProject(
 
   await Promise.all(roleUpdates);
 
-  const doc = tiptapToYdoc(gettingStartedProject);
-  await prisma.projectText.create({
-    data: {
-      projectId: project.id,
-      bytes: Buffer.from(Y.encodeStateAsUpdate(doc)),
-    },
-  });
+  // TODO(#40): Seed the Getting Started project body as Markdown through the
+  // body repository (saveBody) once the document-body API lands. Bodies are no
+  // longer Yjs binary (ADR 0007); the project reads as an empty body until then.
 
   return project;
 }

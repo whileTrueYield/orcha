@@ -82,6 +82,7 @@ model DocumentationPage {
   pois                  DocumentationPagePOI[]
   documentationPageData DocumentationPageData?
   documentationPageText DocumentationPageText?
+  documentationPageTextRevisions DocumentationPageTextRevision[]
 
   @@unique([documentationId, customId])
   @@index([organizationId])
@@ -97,11 +98,34 @@ model DocumentationPageText {
   documentationPageId Int               @unique
   documentationPage   DocumentationPage @relation(fields: [documentationPageId], references: [id], onDelete: Cascade)
 
-  bytes Bytes?
+  // Markdown is the literal source of truth (ADR 0007). `version` is the
+  // optimistic-concurrency counter, bumped on every successful save; past
+  // versions live in DocumentationPageTextRevision so a stale save can recover
+  // its base for 3-way merge.
+  markdown String @default("")
+  version  Int    @default(0)
 
   // timestamps
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
+}
+
+// Append-only history feeding the 3-way merge: one row per saved version,
+// holding the exact Markdown at that version so `saveBody` can fetch the base a
+// stale writer started from. See backend/src/markdown/bodyRepository.ts.
+model DocumentationPageTextRevision {
+  id Int @id @default(autoincrement())
+
+  documentationPageId Int
+  documentationPage   DocumentationPage @relation(fields: [documentationPageId], references: [id], onDelete: Cascade)
+
+  version  Int
+  markdown String
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([documentationPageId, version])
+  @@map("documentation_page_text_revision")
 }
 
 model DocumentationPageData {
@@ -1114,6 +1138,7 @@ model Project {
   children    Project[]    @relation("ProjectParentChildren")
   projectData ProjectData?
   projectText ProjectText?
+  projectTextRevisions ProjectTextRevision[]
 
   // indices, table map and constraints
   @@unique([organizationId, name, parentId], map: "uniq_project_name_per_parent_and_organization")
@@ -1147,11 +1172,30 @@ model ProjectText {
   projectId Int     @unique
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  bytes Bytes?
+  // Markdown source of truth + optimistic-concurrency version (ADR 0007); past
+  // versions live in ProjectTextRevision for stale-save merge base recovery.
+  markdown String @default("")
+  version  Int    @default(0)
 
   // timestamps
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
+}
+
+// Append-only Markdown history per saved version; see DocumentationPageTextRevision.
+model ProjectTextRevision {
+  id Int @id @default(autoincrement())
+
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  version  Int
+  markdown String
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([projectId, version])
+  @@map("project_text_revision")
 }
 
 model Question {
@@ -1645,6 +1689,7 @@ model Ticket {
   successors Ticket[] @relation("TicketAncestry")
 
   ticketText             TicketText?
+  ticketTextRevisions    TicketTextRevision[]
   comments               Comment[]
   questions              Question[]
   tags                   Tag[]
@@ -1683,11 +1728,30 @@ model TicketText {
   ticketId Int    @unique
   ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
-  bytes Bytes?
+  // Markdown source of truth + optimistic-concurrency version (ADR 0007); past
+  // versions live in TicketTextRevision for stale-save merge base recovery.
+  markdown String @default("")
+  version  Int    @default(0)
 
   // timestamps
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
+}
+
+// Append-only Markdown history per saved version; see DocumentationPageTextRevision.
+model TicketTextRevision {
+  id Int @id @default(autoincrement())
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  version  Int
+  markdown String
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([ticketId, version])
+  @@map("ticket_text_revision")
 }
 
 model ScheduleConfig {
