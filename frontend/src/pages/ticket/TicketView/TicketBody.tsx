@@ -19,6 +19,7 @@ import {
   Query,
 } from "types/graphql";
 import type { MarkdownEditorHandle } from "components/Markdown/MarkdownEditor";
+import { EditorErrorBoundary } from "components/Markdown/EditorErrorBoundary";
 
 const MarkdownEditor = lazy(() => import("components/Markdown/MarkdownEditor"));
 
@@ -149,18 +150,20 @@ export const TicketBody: React.FC<Props> = ({ ticketId }) => {
           {warnings.map((w) => w.reference).join(", ")}
         </div>
       )}
-      <Suspense fallback={null}>
-        <MarkdownEditor
-          key={seedId}
-          ref={editorRef}
-          value={seed}
-          readOnly={archived}
-          onDirty={() => {
-            setDirty(true);
-            setStatus("");
-          }}
-        />
-      </Suspense>
+      <EditorErrorBoundary resetKey={ticketId}>
+        <Suspense fallback={null}>
+          <MarkdownEditor
+            key={seedId}
+            ref={editorRef}
+            value={seed}
+            readOnly={archived}
+            onDirty={() => {
+              setDirty(true);
+              setStatus("");
+            }}
+          />
+        </Suspense>
+      </EditorErrorBoundary>
       {!archived && (
         <div className="flex items-center gap-x-3 p-2">
           <button

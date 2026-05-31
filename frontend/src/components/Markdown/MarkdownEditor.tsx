@@ -19,7 +19,12 @@ import {
   useEffect,
   useImperativeHandle,
   useRef,
+  useState,
 } from "react";
+
+function asError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(String(err));
+}
 
 export interface MarkdownEditorHandle {
   getMarkdown: () => string;
@@ -35,6 +40,11 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
   ({ value, readOnly = false, onDirty }, ref) => {
     const hostRef = useRef<HTMLDivElement>(null);
     const latestRef = useRef<string>(value);
+    // Crepe failures (a throw while wiring it up, or a rejected async create())
+    // are stored here and re-thrown during render, so the surrounding
+    // EditorErrorBoundary shows the cause instead of a silent blank — React
+    // boundaries don't catch errors from async callbacks on their own.
+    const [crepeError, setCrepeError] = useState<Error | null>(null);
 
     useImperativeHandle(
       ref,
@@ -47,22 +57,31 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       if (!host) return;
 
       latestRef.current = value;
-      const crepe = new Crepe({ root: host, defaultValue: value });
-      crepe.setReadonly(readOnly);
-      crepe.on((listener) => {
-        listener.markdownUpdated((_ctx, markdown) => {
-          latestRef.current = markdown;
-          onDirty?.();
+      let crepe: Crepe;
+      try {
+        crepe = new Crepe({ root: host, defaultValue: value });
+        crepe.setReadonly(readOnly);
+        crepe.on((listener) => {
+          listener.markdownUpdated((_ctx, markdown) => {
+            latestRef.current = markdown;
+            onDirty?.();
+          });
         });
-      });
+      } catch (err) {
+        setCrepeError(asError(err));
+        return;
+      }
 
       // create() is async; destroy synchronously once it has resolved so we
       // never leave two editors on the same host, and never tear down a
       // half-initialised one.
       let ready = false;
-      const created = crepe.create().then(() => {
-        ready = true;
-      });
+      const created = crepe
+        .create()
+        .then(() => {
+          ready = true;
+        })
+        .catch((err) => setCrepeError(asError(err)));
       return () => {
         if (ready) crepe.destroy();
         else created.then(() => crepe.destroy());
@@ -71,6 +90,8 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       // intentionally excluded — it must not trigger a remount.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value, readOnly]);
+
+    if (crepeError) throw crepeError;
 
     return <div ref={hostRef} />;
   },
