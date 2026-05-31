@@ -1,6 +1,6 @@
 import React, { Suspense, useState } from "react";
 import { Documentation, DocumentationPage } from "types/graphql";
-import { gql, useQuery } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { DangerConfirm } from "components/modals/DangerConfirm";
 import { ChevronDownIcon, CogIcon, TrashIcon } from "@heroicons/react/solid";
 import { DocumentationPageConfigModal } from "./DocumentationPageConfigModal";
@@ -8,9 +8,6 @@ import { FCWithFragments } from "types";
 import { PopMenu, PopMenuOption } from "components/modals/PopMenu";
 import { Button } from "components/fields/Button";
 import { Menu } from "@headlessui/react";
-import { QueryReturnValue } from "types/queryTypes";
-import { onGraphQLError } from "utils/GQLClient";
-import TiptapCollab from "components/TipTap/TipTapCollab";
 
 interface Props {
   documentation: Documentation;
@@ -26,17 +23,6 @@ export const DocumentationPageView: FCWithFragments<Props> = (props) => {
   ] = useState(false);
   const { documentationPage, onDelete } = props;
 
-  const { data: tokenData } = useQuery<
-    QueryReturnValue["documentationPageAccessToken"]
-  >(GET_DOCUMENTATION_PAGE_ACCESS_TOKEN, {
-    pollInterval: 14 * 60 * 1000, // every 14 mins, token lasts 15mins
-    fetchPolicy: "no-cache", // we want the data reloaded && but NEVER stored cache
-    onError: onGraphQLError({
-      title: "Access to documentation page details rejected",
-    }),
-    variables: { id: documentationPage.id },
-  });
-
   // const words = reduce(
   //   documentationPage.blocks,
   //   (acc: number, block: DocumentationDataBlock): number => {
@@ -50,8 +36,6 @@ export const DocumentationPageView: FCWithFragments<Props> = (props) => {
   //   },
   //   0
   // );
-
-  const accessToken = tokenData?.documentationPageAccessToken;
 
   if (!documentationPage) {
     return <div className="min-h-[20vh]"></div>;
@@ -126,15 +110,16 @@ export const DocumentationPageView: FCWithFragments<Props> = (props) => {
 
       <div className="relative flex h-full flex-1 flex-col rounded-br-xl bg-white">
         <Suspense>
-          <div className="mx-auto w-full">
-            {accessToken ? (
-              <TiptapCollab
-                documentId={documentationPage.id}
-                documentType="documentationText"
-                accessToken={accessToken}
-                // readOnly={isReadOnly}
-              />
-            ) : null}
+          <div className="mx-auto w-full p-4">
+            {/* TODO(tiptap-removal): interim read-only plain-text view of the
+                documentation page body. The collaborative rich-text editor was
+                removed; a Crepe-based editor with a save mutation is the
+                follow-up. The body field is the Markdown source of truth. */}
+            <textarea
+              readOnly
+              value={documentationPage.body ?? ""}
+              className="min-h-[40vh] w-full rounded border p-2 font-mono text-sm"
+            />
           </div>
         </Suspense>
       </div>
@@ -162,9 +147,3 @@ DocumentationPageView.fragments = {
       .DocumentationPageConfigModalFragment}
   `,
 };
-
-const GET_DOCUMENTATION_PAGE_ACCESS_TOKEN = gql`
-  query getDocumentationPageAccessToken($id: Int!) {
-    documentationPageAccessToken(id: $id)
-  }
-`;

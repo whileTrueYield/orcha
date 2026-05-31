@@ -1,7 +1,7 @@
 import { yupResolver } from "@hookform/resolvers/yup";
 import { Button } from "components/fields/Button";
 import { Label } from "components/fields/Label";
-import TiptapForm from "components/TipTap/TipTapForm";
+import PlainTextForm from "components/PlainText/PlainTextForm";
 import React from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { Issue } from "types/graphql";
@@ -41,11 +41,11 @@ export const IssueNoteForm: React.FC<Props> = (props) => {
           >
             Create a new note
           </Label>
-          <TiptapForm
+          <PlainTextForm
             name="note"
             autoFocus
             placeholder="Type your note here..."
-            className="mt-1 max-w-none rounded-md border bg-white p-4 shadow-sm"
+            className="mt-1 w-full max-w-none rounded-md border bg-white p-4 shadow-sm"
           />
         </div>
 

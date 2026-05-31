@@ -29,7 +29,6 @@ import { BookmarkIcon } from "@heroicons/react/solid";
 
 import { QueryReturnValue } from "types/queryTypes";
 import { useAddToRecentlyVisitedProject } from "utils/preferences";
-import TiptapCollab from "components/TipTap/TipTapCollab";
 import { HoverTooltip } from "components/help/Tooltip";
 import { ProjectName } from "./ProjectName/ProjectName";
 
@@ -67,10 +66,9 @@ export const ExplorerEditorY: FCWithFragments = () => {
     resolver: yupResolver(schema),
   });
 
-  const { data, loading } = useQuery<
-    QueryReturnValue["project"],
-    QueryProjectArgs
-  >(GET_PROJECT_QUERY, {
+  const { data } = useQuery<QueryReturnValue["project"], QueryProjectArgs>(
+    GET_PROJECT_QUERY,
+    {
     fetchPolicy: "network-only", // we want the data reloaded && stored in cache
     variables: { id: projectId },
     onError: onGraphQLError({ title: "Could not retrieve project" }),
@@ -80,15 +78,6 @@ export const ExplorerEditorY: FCWithFragments = () => {
       });
       addToRecentlyVisitedProject(project);
     },
-  });
-
-  const { data: tokenData } = useQuery<
-    QueryReturnValue["projectTextAccessToken"]
-  >(GET_PROJECT_ACCESS_TOKEN, {
-    pollInterval: 14 * 60 * 1000, // every 14 mins, token lasts 15mins
-    fetchPolicy: "no-cache", // we want the data reloaded && but NEVER stored cache
-    onError: onGraphQLError({ title: "Access to project details rejected" }),
-    variables: { id: projectId },
   });
 
   const [publishProject] = usePublishProject({ variables: { projectId } });
@@ -162,11 +151,6 @@ export const ExplorerEditorY: FCWithFragments = () => {
   const { project } = data;
 
   const isBookmarked = find(me?.role?.pinnedProjects, { id: project.id });
-  const accessToken = tokenData?.projectTextAccessToken;
-  const isReadOnly =
-    project.ancestorIsArchived ||
-    project.stage === ModelStage.Deleted ||
-    project.stage === ModelStage.Archived;
 
   const renderBookmarkButton = () => {
     if (isBookmarked) {
@@ -252,15 +236,16 @@ export const ExplorerEditorY: FCWithFragments = () => {
                 <ProjectActions project={project} />
               </div>
 
-              {accessToken && !loading ? (
-                <TiptapCollab
-                  documentId={projectId}
-                  documentType="projectText"
-                  accessToken={accessToken}
-                  readonly={isReadOnly}
-                  placeholder="Use Readme to describe your project plan, goals and description..."
-                />
-              ) : null}
+              {/* TODO(tiptap-removal): the collaborative rich-text project-body
+                  editor was removed. The project body is not part of this
+                  view's fragment, so this is an interim disabled placeholder. A
+                  Crepe-based editor (loading/saving the project body via the
+                  body API) is the follow-up. */}
+              <textarea
+                disabled
+                placeholder="Use Readme to describe your project plan, goals and description..."
+                className="m-4 min-h-[40vh] w-auto rounded border p-2 font-mono text-sm"
+              />
             </div>
           </div>
         </Suspense>
@@ -300,10 +285,4 @@ const GET_PROJECT_QUERY = gql`
     }
   }
   ${ExplorerEditorY.fragments.ExplorerEditorYFragment}
-`;
-
-const GET_PROJECT_ACCESS_TOKEN = gql`
-  query getProjectTextAccessToken($id: Int!) {
-    projectTextAccessToken(id: $id)
-  }
 `;

@@ -1,3 +1,14 @@
+/**
+ * PlainTextModal — interim plain-textarea replacement for the retired
+ * `TipTapTextModal` (Tiptap removal, #41).
+ *
+ * Public API: `PlainTextModal` (named export). Same `Props` contract as the old
+ * `TipTapTextModal` so its callers (ticket/issue actions, workflow state
+ * buttons) keep compiling and submitting. The edited value is a plain string.
+ *
+ * Migrating this modal's editor to the new Crepe/Markdown editor is a separate
+ * follow-up.
+ */
 import React, { useState } from "react";
 import * as yup from "yup";
 
@@ -9,8 +20,7 @@ import { FormProvider, useForm } from "react-hook-form";
 import { Label } from "components/fields/Label";
 import { FieldDescription } from "components/fields/FieldDescription";
 import { CheckboxGroup } from "components/fields/Checkbox";
-import TiptapForm from "components/TipTap/TipTapForm";
-import { TipTapDecoration } from "components/TipTap/TipTapDecoration";
+import PlainTextForm from "components/PlainText/PlainTextForm";
 
 const schema = yup
   .object({
@@ -36,7 +46,7 @@ interface Props extends ModalProps {
   id?: string;
 }
 
-export const TipTapTextModal: React.FC<Props> = (props) => {
+export const PlainTextModal: React.FC<Props> = (props) => {
   const {
     onSubmit,
     title,
@@ -65,7 +75,6 @@ export const TipTapTextModal: React.FC<Props> = (props) => {
     }
   };
 
-  const { ref, ...rest } = formContext.register("value");
   const error = formContext.formState.errors["value"];
 
   const renderDescription = () => (
@@ -96,16 +105,12 @@ export const TipTapTextModal: React.FC<Props> = (props) => {
                 <Label htmlFor="modal-value" className="mb-1">
                   {label}
                 </Label>
-                <TipTapDecoration>
-                  <TiptapForm
-                    {...rest}
-                    onChange={(value) => formContext.setValue("value", value)}
-                    autoFocus
-                    placeholder={placeholder}
-                    showToolbar="minimal"
-                    className="max-h-48 overflow-y-auto rounded-t-md border border-gray-300 px-4 py-2"
-                  />
-                </TipTapDecoration>
+                <PlainTextForm
+                  name="value"
+                  autoFocus
+                  placeholder={placeholder}
+                  className="max-h-48 w-full overflow-y-auto rounded-md border border-gray-300 px-4 py-2"
+                />
                 {fieldDescription && !error ? renderDescription() : null}
               </div>
             </div>
