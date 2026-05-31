@@ -31,12 +31,14 @@ import {
   WorkflowState,
 } from "@prisma/client";
 
+import { PersonalAccessToken } from "@prisma/client";
 import { UserSession } from "../types";
 // Maybe<T> is T | null — simple utility type previously from type-graphql
 type Maybe<T> = T | null | undefined;
 import prisma from "../prisma";
 import { DEFAULT_WORK_WEEK } from "../models/entities";
 import { buildMeContext } from "../middlewares/isAuthenticated";
+import { generateToken } from "../models/apiToken/token";
 import { formatGraphQLError } from "./graphqlErrors";
 
 interface Options {
@@ -195,6 +197,53 @@ export const getTestSessionWithRole = async (
   };
 
   return { session, user, organization, role };
+};
+
+interface TestApiToken {
+  plaintext: string;
+  token: PersonalAccessToken;
+  user: User;
+  organization: Organization;
+  role: Role;
+}
+
+/**
+ * Mint a Personal Access Token bound to a freshly-created org/user/role, the
+ * way the REST bearer middleware expects to find one in the database.
+ *
+ * Returns the one-time `plaintext` (what a client puts in the Authorization
+ * header) alongside the persisted row and its owning role/org/user, so a test
+ * can both present the token and assert against what it resolves to.
+ *
+ * `tokenOptions` covers the lifecycle states REST specs need to exercise —
+ * read-only, revoked, expired — without each spec re-deriving the hashing.
+ */
+export const getTestApiToken = async (
+  tokenOptions: Partial<{
+    name: string;
+    readOnly: boolean;
+    revokedAt: Date;
+    expiresAt: Date;
+  }> = {},
+  roleType: RoleType = RoleType.MEMBER,
+): Promise<TestApiToken> => {
+  const { user, organization, role } = await createRandomOrgAndUser(roleType);
+  const { plaintext, hash, prefix } = generateToken();
+
+  const token = await prisma.personalAccessToken.create({
+    data: {
+      name: tokenOptions.name ?? "test token",
+      tokenHash: hash,
+      tokenPrefix: prefix,
+      roleId: role.id,
+      organizationId: organization.id,
+      readOnly: tokenOptions.readOnly ?? false,
+      revokedAt: tokenOptions.revokedAt,
+      expiresAt: tokenOptions.expiresAt,
+    },
+  });
+
+  return { plaintext, token, user, organization, role };
 };
 
 interface TestUserSession {

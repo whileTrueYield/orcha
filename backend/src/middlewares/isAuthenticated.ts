@@ -8,13 +8,13 @@
  * The old MeContextMiddleware logic has moved into the Apollo v4 context
  * factory in server.ts.
  *
- * Exports: isAuthenticated, hasRole, isStaff, buildMeContext.
+ * Exports: isAuthenticated, hasRole, isStaff, buildRoleContext, buildMeContext.
  */
 
 import { GraphQLError } from "graphql";
 import { RoleType, Role, User, Organization } from "@prisma/client";
 import { isArray, isEmpty, toLower } from "lodash";
-import { AppContext, AuthContext, AuthStatus } from "../types";
+import { AppContext, AuthContext, AuthRoleContext, AuthStatus } from "../types";
 import prisma from "../prisma";
 import { Request } from "express";
 import { Session } from "express-session";
@@ -96,10 +96,58 @@ export async function assertIsStaff(
 }
 
 // ---------------------------------------------------------------------------
+// buildRoleContext — constructs a LINKED AuthRoleContext from the four
+// identifiers a Role is known by, with no dependence on how the caller
+// authenticated.
+//
+// This is the single source of truth for the `me` object: both the Apollo
+// session factory (via buildMeContext) and the REST PAT bearer middleware
+// funnel through it, so a session-authenticated request and a token-
+// authenticated request produce an identical context — no drift between the
+// two transports.
+//
+// The accessors are lazy (resolvers only pay for what they read) and use
+// `*OrThrow`, so a context built from stale identifiers fails loudly rather
+// than silently returning a partial `me`.
+// ---------------------------------------------------------------------------
+
+export function buildRoleContext(role: {
+  userId: number;
+  roleId: number;
+  organizationId: number;
+  roleType: RoleType;
+}): AuthRoleContext {
+  const { userId, roleId, organizationId, roleType } = role;
+
+  return {
+    userId,
+    roleId,
+    organizationId,
+    roleType,
+    status: AuthStatus.LINKED,
+    getUser: (): Promise<User> =>
+      prisma.user.findUniqueOrThrow({
+        where: { id: userId },
+        include: { roles: true },
+      }),
+    getOrganization: (): Promise<Organization> =>
+      prisma.organization.findUniqueOrThrow({
+        where: { id: organizationId },
+      }),
+    getRole: (): Promise<Role> =>
+      prisma.role.findUniqueOrThrow({
+        where: { id: roleId },
+        include: { teams: true },
+      }),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // buildMeContext — constructs the `me` portion of AppContext from a session.
 //
 // Extracted from the old MeContextMiddleware class so that the Apollo v4
-// context factory can call it synchronously.
+// context factory can call it synchronously. The LINKED branch delegates to
+// buildRoleContext so the token path and the session path stay identical.
 // ---------------------------------------------------------------------------
 
 export function buildMeContext(
@@ -110,40 +158,18 @@ export function buildMeContext(
   const organizationId = req.session.organizationId;
   const roleType = req.session.roleType;
 
-  const getUser = async (): Promise<User> =>
-    prisma.user.findUniqueOrThrow({
-      where: { id: userId },
-      include: { roles: true },
-    });
-
-  const getOrganization = async (): Promise<Organization> =>
-    prisma.organization.findUniqueOrThrow({
-      where: { id: organizationId },
-    });
-
-  const getRole = async (): Promise<Role> =>
-    prisma.role.findUniqueOrThrow({
-      where: { id: roleId },
-      include: { teams: true },
-    });
-
   if (userId && roleType && roleId && organizationId) {
-    return {
-      userId,
-      roleId,
-      organizationId,
-      status: AuthStatus.LINKED,
-      roleType,
-      getUser,
-      getRole,
-      getOrganization,
-    };
+    return buildRoleContext({ userId, roleId, organizationId, roleType });
   }
 
   if (userId) {
     return {
       userId,
-      getUser,
+      getUser: (): Promise<User> =>
+        prisma.user.findUniqueOrThrow({
+          where: { id: userId },
+          include: { roles: true },
+        }),
       status: AuthStatus.USER,
     };
   }
