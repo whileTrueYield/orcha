@@ -5,7 +5,7 @@
   "private": true,
   "license": "UNLICENSED",
   "volta": {
-    "node": "22.11.0",
+    "node": "22.12.0",
     "yarn": "1.22.22"
   },
   "dependencies": {
@@ -103,7 +103,7 @@
   "scripts": {
     "prebuild": "prisma generate && prisma migrate deploy",
     "find-deadcode": "ts-prune",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "dev:build": "dotenv -e .env.development -- yarn tsc",
     "dev:generate": "dotenv -e .env.development -- yarn prisma generate",
     "dev:db:reset": "dotenv -e .env.development -- yarn prisma migrate reset",

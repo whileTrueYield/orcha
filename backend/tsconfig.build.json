@@ -1,0 +1,17 @@
+{
+  // Production build config. `tsconfig.json` uses `module: preserve` so the IDE
+  // and tsc can read modern packages' `exports.types`, but `preserve` emits ESM
+  // `import` statements — and prod runs `node dist/server.js` from a package
+  // with no `"type": "module"`, i.e. CommonJS. So the build (and ONLY the build)
+  // overrides the emit back to CommonJS. Resolution reverts to `node` because
+  // `bundler` can't pair with a CommonJS module target; the ESM-only deps
+  // (node-diff3, remark/unified) still emit to plain require() calls that Node
+  // 22's require(esm) loader resolves at runtime — exactly as the test/dev path
+  // already does. `noEmitOnError` stays off (the repo carries known type errors),
+  // so type-resolution gaps under classic `node` here never block the emit.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node"
+  }
+}

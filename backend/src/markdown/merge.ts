@@ -23,13 +23,11 @@
  * discriminated result shape — and the line-level (de)serialisation.
  */
 
-// node-diff3 ships official types via package.json "exports".types, but this
-// project's classic `moduleResolution: "node"` predates `exports` and can't read
-// them, so this import is `any` at compile time (types aren't enforced in the
-// ts-node transpile-only test path either). The runtime resolver loads it fine.
-// To get the real types, modernise moduleResolution — a separate, cross-cutting
-// migration, not part of this slice.
-import { diff3Merge } from "node-diff3";
+// node-diff3 is ESM-only and ships its types via package.json `exports.types`.
+// They resolve to real types because tsconfig.json now uses
+// `moduleResolution: "bundler"`; at runtime Node 22's require(esm) loads the ESM
+// module from our CommonJS emit.
+import { diff3Merge, type MergeRegion } from "node-diff3";
 
 /**
  * One region the two sides changed with no unchanged line between them. `base`
@@ -67,27 +65,29 @@ export function merge(
     excludeFalseConflicts: true,
   });
 
-  const conflicts = regions
-    .filter(isConflict)
-    .map(({ conflict }) => ({
-      base: conflict.o,
-      ours: conflict.a,
-      theirs: conflict.b,
-    }));
+  const conflicts = regions.filter(hasConflict).map((region) => ({
+    base: region.conflict.o,
+    ours: region.conflict.a,
+    theirs: region.conflict.b,
+  }));
 
   if (conflicts.length > 0) {
     return { clean: false, conflicts };
   }
 
-  const merged = regions.flatMap((region) => (region as OkRegion).ok).join("\n");
+  const merged = regions.flatMap((region) => region.ok ?? []).join("\n");
   return { clean: true, merged };
 }
 
-type OkRegion = { ok: string[] };
-type ConflictRegion = { conflict: { a: string[]; o: string[]; b: string[] } };
-
-function isConflict(region: OkRegion | ConflictRegion): region is ConflictRegion {
-  return "conflict" in region;
+// Narrow a diff3 region to the conflict case. node-diff3's MergeRegion carries
+// both `ok` and `conflict` as optional fields on one type; the presence of
+// `conflict` is what distinguishes an overlapping region from a clean one.
+function hasConflict<T>(
+  region: MergeRegion<T>,
+): region is MergeRegion<T> & {
+  conflict: NonNullable<MergeRegion<T>["conflict"]>;
+} {
+  return region.conflict !== undefined;
 }
 
 function toLines(text: string): string[] {

@@ -1,10 +1,19 @@
 {
   "compilerOptions": {
     "target": "ES2020", // or newer if your node.js version supports this
-    "module": "commonjs",
+    // `preserve` + `bundler` resolution is what lets tsc and the IDE read modern
+    // packages' `exports.types`. node-diff3 and the whole remark/unified stack
+    // are ESM-only and ship types only via the `exports` field; classic `node`
+    // resolution can't read those, so their imports silently degraded to `any`.
+    // We never EMIT with `preserve`: the prod build uses tsconfig.build.json
+    // (CommonJS) and ts-node overrides to CommonJS below, so what actually runs
+    // is plain require() output — and Node 22's require(esm) loads the ESM-only
+    // deps at runtime. This config exists purely to give us real types.
+    "module": "preserve",
     "lib": ["ES2020", "esnext.asynciterable", "dom"], // for graphql-subscription
     "outDir": "dist",
-    "moduleResolution": "node",
+    "rootDir": "./src",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "types": ["node", "mocha"],
     "removeComments": true,
@@ -26,9 +35,13 @@
     "transpileOnly": true,
     // "files": true,
     "compilerOptions": {
-      // compilerOptions specified here will override those declared below,
-      // but *only* in ts-node.  Useful if you want ts-node and tsc to use
-      // different options with a single tsconfig.json.
+      // ts-node (tests + dev `nodemon src/server.ts`) must EMIT CommonJS so the
+      // require() hook + Node's require(esm) loader work; `preserve`/`bundler`
+      // above is for type resolution only. `bundler` can't pair with a CommonJS
+      // emit, so we revert resolution to `node` here — harmless because
+      // transpileOnly does no resolution, it only transpiles syntax.
+      "module": "commonjs",
+      "moduleResolution": "node"
     }
   },
   "include": ["./src/**/*.ts"],

@@ -25,7 +25,7 @@ COPY prisma prisma/
 ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN yarn prisma generate
 
-COPY tsconfig.json ./
+COPY tsconfig.json tsconfig.build.json ./
 COPY assets assets/
 COPY src src/
 
@@ -33,6 +33,8 @@ COPY templates templates/
 COPY tailwind.config.js ./
 RUN yarn tailwindcss -i ./templates/input.css -o ./templates/css/style.css
 
-RUN yarn tsc
+# Emit CommonJS to dist/ via the build config (tsconfig.json itself is
+# `module: preserve`, for type resolution only — see tsconfig.build.json).
+RUN yarn tsc -p tsconfig.build.json
 
 ENV NODE_ENV=production
