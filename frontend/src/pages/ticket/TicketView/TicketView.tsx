@@ -13,7 +13,7 @@ import {
 } from "types/graphql";
 import { useQuery } from "@apollo/client";
 import { EmptyState } from "components/views/EmtpyState";
-import { TicketDescription } from "./TicketDescription";
+import { TicketBody } from "./TicketBody";
 import { onGraphQLError, onMutationComplete } from "utils/GQLClient";
 import { TicketInfo } from "./TicketInfo";
 import { TicketComments } from "./TicketComments";
@@ -164,10 +164,7 @@ export const TicketView: FCWithFragments = () => {
                 ticketLocaLId={ticket.localId}
                 productCode={ticket.product?.code}
               />
-              <TicketDescription
-                description={ticket.description!}
-                ticketId={ticketId}
-              />
+              <TicketBody ticketId={ticketId} />
             </div>
             {ticket.status === TicketStatus.Scheduled ? (
               <TicketNote
@@ -277,7 +274,6 @@ TicketView.fragments = {
       status
       stage
       title
-      description
       ticketWorkflowStates {
         id
         ...TicketWorkflowStateAssigneeModalFragment

@@ -708,6 +708,12 @@ export enum ModelStage {
   Published = 'PUBLISHED'
 }
 
+export enum DocumentBodyType {
+  Ticket = 'TICKET',
+  Project = 'PROJECT',
+  Documentation = 'DOCUMENTATION'
+}
+
 export type Mutation = {
   __typename?: 'Mutation';
   acceptReply: Comment;
@@ -831,6 +837,7 @@ export type Mutation = {
   resendInvite: Role;
   resumeLastScheduleItem: ScheduleItem;
   revokeApiToken: PersonalAccessToken;
+  saveDocumentBody: SaveDocumentBodyResult;
   scheduleTicket: Ticket;
   sendConfirmationEmail: Scalars['Boolean']['output'];
   setChecklist: TicketWorkflowState;
@@ -1510,6 +1517,14 @@ export type MutationResendInviteArgs = {
 
 export type MutationRevokeApiTokenArgs = {
   id: Scalars['Int']['input'];
+};
+
+
+export type MutationSaveDocumentBodyArgs = {
+  baseVersion: Scalars['Int']['input'];
+  documentId: Scalars['Int']['input'];
+  documentType: DocumentBodyType;
+  markdown: Scalars['String']['input'];
 };
 
 
@@ -3723,19 +3738,45 @@ export type Team = {
   updatedAt: Scalars['DateTime']['output'];
 };
 
+export type DocumentBody = {
+  __typename?: 'DocumentBody';
+  markdown: Scalars['String']['output'];
+  version: Scalars['Int']['output'];
+};
+
+export type DocumentBodyConflict = {
+  __typename?: 'DocumentBodyConflict';
+  markdown: Scalars['String']['output'];
+  version: Scalars['Int']['output'];
+};
+
+export type MentionWarning = {
+  __typename?: 'MentionWarning';
+  kind: Scalars['String']['output'];
+  reference: Scalars['String']['output'];
+  matches?: Maybe<Scalars['Int']['output']>;
+};
+
+export type SaveDocumentBodyResult = {
+  __typename?: 'SaveDocumentBodyResult';
+  body?: Maybe<DocumentBody>;
+  conflict?: Maybe<DocumentBodyConflict>;
+  warnings: Array<MentionWarning>;
+};
+
 export type Ticket = {
   __typename?: 'Ticket';
   ancestors: Array<Ticket>;
   archivedAt?: Maybe<Scalars['DateTime']['output']>;
   author?: Maybe<Role>;
   authorId?: Maybe<Scalars['Int']['output']>;
+  body: DocumentBody;
   cases: Array<Issue>;
   closedAt?: Maybe<Scalars['DateTime']['output']>;
   closingNote?: Maybe<Scalars['String']['output']>;
   comments: PaginatedComments;
   createdAt: Scalars['DateTime']['output'];
   deletedAt?: Maybe<Scalars['DateTime']['output']>;
-  description?: Maybe<Scalars['String']['output']>;
   difficulty?: Maybe<Scalars['Int']['output']>;
   estimate: Scalars['Int']['output'];
   estimating: Scalars['Boolean']['output'];

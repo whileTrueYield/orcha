@@ -26,7 +26,7 @@ import { getMe } from "reducers/selector";
 import { ScheduleItem, Ticket, TicketWorkflowState } from "types/graphql";
 import { TicketChangeAssigneeModal } from "../TicketChangeAssigneeAndStartModal";
 import { onMutationComplete } from "utils/GQLClient";
-import { TipTapTextModal } from "components/modals/TipTapTextModal";
+import { PlainTextModal } from "components/modals/PlainTextModal";
 
 interface Props {
   className?: string;
@@ -264,7 +264,7 @@ export const WorkflowStateActionMenu: React.FC<Props> = (props) => {
         onConfirm={() => startTask()}
         cta="Join Task"
       />
-      <TipTapTextModal
+      <PlainTextModal
         title="Mark ticket as blocked"
         description="Once blocked, nobody will be able to work on that ticket until it is unblocked."
         placeholder="Leave a note, use :emoji, mention @people and link #ticket"
@@ -287,7 +287,7 @@ export const WorkflowStateActionMenu: React.FC<Props> = (props) => {
         }}
         id="change-state-modal"
       />
-      <TipTapTextModal
+      <PlainTextModal
         title="Unblock ticket"
         description="Once unblocked assignees will be able to resume work on this ticket."
         placeholder="Leave a note, use :emoji, mention @people and link #ticket"
@@ -309,7 +309,7 @@ export const WorkflowStateActionMenu: React.FC<Props> = (props) => {
           });
         }}
       />
-      <TipTapTextModal
+      <PlainTextModal
         title="Mark ticket as done"
         description="Once closed, the ticket will no longer be part of the schedule. Make sure the ticket is completed before closing it."
         placeholder="Leave a note, use :emoji, mention @people and link #ticket"
@@ -319,7 +319,7 @@ export const WorkflowStateActionMenu: React.FC<Props> = (props) => {
         onClose={() => setCloseScheduleItemId(null)}
         onSubmit={(value) => closeTicket(value)}
       />
-      <TipTapTextModal
+      <PlainTextModal
         cta="Change State"
         description="Leave a note for the next assignee. This note will be displayed publicly below the description of the ticket"
         placeholder="Leave a note, use :emoji, mention @people and link #ticket"

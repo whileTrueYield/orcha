@@ -19,7 +19,7 @@ import { DangerConfirm } from "components/modals/DangerConfirm";
 import { useHistory, useParams } from "react-router-dom";
 import { urlResolver } from "utils/navigation";
 import { ConfirmModal } from "components/modals/ConfirmModal";
-import { TipTapTextModal } from "components/modals/TipTapTextModal";
+import { PlainTextModal } from "components/modals/PlainTextModal";
 
 interface Props {
   ticket: Ticket;
@@ -143,7 +143,7 @@ export const TicketOtherActions: FCWithFragments<Props> = (props) => {
         title={`Archive ticket?`}
         visible={isArchiveWarningModalVisible}
       />
-      <TipTapTextModal
+      <PlainTextModal
         cta={`Yes, Cancel Ticket`}
         label="Cancelling Notes"
         description={`Please confirm you want to cancel this ticket. You may add notes below.`}
@@ -153,7 +153,7 @@ export const TicketOtherActions: FCWithFragments<Props> = (props) => {
         title={`Cancel ticket`}
         visible={isCancelWarningModalVisible}
       />
-      <TipTapTextModal
+      <PlainTextModal
         description={`Please confirm you want to make this ticket as done. You may add notes below.`}
         cta={`Mark Ticket as Done`}
         label="Closing Notes"

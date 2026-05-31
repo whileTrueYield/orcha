@@ -86,7 +86,6 @@ const GET_TICKETS = gql`
         id
         createdAt
         updatedAt
-        description
         eta
         localId
         stage

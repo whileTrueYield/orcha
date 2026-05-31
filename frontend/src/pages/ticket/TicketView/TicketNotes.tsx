@@ -8,7 +8,7 @@ import {
 } from "types/graphql";
 import { QueryReturnValue } from "types/queryTypes";
 import cn from "classnames";
-import Tiptap from "components/TipTap/TipTap";
+import PlainTextView from "components/PlainText/PlainTextView";
 
 interface Props {
   ticketId: number;
@@ -135,7 +135,7 @@ export const TicketNotes: React.FC<Props> = (props) => {
                       </div>
                     </div>
                     <div className={containerClassName}>
-                      <Tiptap readonly content={note.body} />
+                      <PlainTextView content={note.body} />
                     </div>
                   </div>
                 </div>

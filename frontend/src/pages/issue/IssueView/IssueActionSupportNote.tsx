@@ -9,8 +9,8 @@ import { FCWithFragments } from "types";
 import { Issue, IssueAction, IssueActionCategory } from "types/graphql";
 import { useSelector } from "react-redux";
 import { getMe } from "reducers/selector";
-import Tiptap from "components/TipTap/TipTap";
-import { TipTapTextModal } from "components/modals/TipTapTextModal";
+import PlainTextView from "components/PlainText/PlainTextView";
+import { PlainTextModal } from "components/modals/PlainTextModal";
 
 interface Props {
   action: IssueAction;
@@ -25,8 +25,6 @@ export const IssueActionSupportNote: FCWithFragments<Props> = (props) => {
   const me = useSelector(getMe);
 
   const { action } = props;
-
-  console.log({ body: action.body });
 
   const body = action.body || "";
 
@@ -89,7 +87,7 @@ export const IssueActionSupportNote: FCWithFragments<Props> = (props) => {
             onClose={() => setShowConfirmDelete(false)}
             onConfirm={() => props.onDelete(action.id)}
           />
-          <TipTapTextModal
+          <PlainTextModal
             large
             title="Edit your note"
             visible={showEditModal}
@@ -122,7 +120,7 @@ export const IssueActionSupportNote: FCWithFragments<Props> = (props) => {
             </p>
           </div>
           <div className="mt-2 space-y-4 text-sm text-yellow-800">
-            <Tiptap readonly content={action.body} className="max-w-none" />
+            <PlainTextView content={action.body} className="max-w-none" />
           </div>
         </div>
       </>
