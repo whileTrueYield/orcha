@@ -262,3 +262,36 @@ describe("PUT /v1/tickets/:id/body", () => {
     });
   });
 });
+
+describe("read-only tokens on the body write surface", () => {
+  it("rejects a body write from a read-only token with 403, writing nothing", async () => {
+    const token = await getTestApiToken({ readOnly: true });
+    const { ticket } = await createRandomTicket(token.organization, token.role);
+
+    const res = await request(app())
+      .put(`/v1/tickets/${ticket.id}/body`)
+      .set("Authorization", auth(token.plaintext))
+      .set("If-Match", '"0"')
+      .send({ markdown: "read-only should not persist" })
+      .expect(403);
+
+    expect(res.body.error.code).toBe("FORBIDDEN");
+    expect(await getBody("ticket", ticket.id)).toEqual({
+      markdown: "",
+      version: 0,
+    });
+  });
+
+  it("still lets a read-only token read a body", async () => {
+    const token = await getTestApiToken({ readOnly: true });
+    const { ticket } = await createRandomTicket(token.organization, token.role);
+    await saveBody("ticket", ticket.id, "readable\n", 0);
+
+    const res = await request(app())
+      .get(`/v1/tickets/${ticket.id}/body`)
+      .set("Authorization", auth(token.plaintext))
+      .expect(200);
+
+    expect(res.body.markdown).toBe("readable\n");
+  });
+});

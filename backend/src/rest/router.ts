@@ -96,11 +96,30 @@ v1Router.get("/openapi.json", (_req, res) => {
 // try/catch: a thrown CursorError is a client mistake (a bad `?after=`) → 400
 // with the envelope; anything else is unexpected → forwarded to Express. This
 // keeps every route below free of repeated error plumbing.
-function route(handler: (req: Request, res: Response) => Promise<void>): RequestHandler[] {
+//
+// `options.write` marks a mutating route: a read-only PAT is refused with 403
+// before the handler runs, so the capability check lives in one place rather
+// than in every write handler. (PATs only reach the API through this router, so
+// this is the complete enforcement point for token read-only.)
+function route(
+  handler: (req: Request, res: Response) => Promise<void>,
+  options: { write?: boolean } = {},
+): RequestHandler[] {
   return [
     bearerAuth,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
+        if (options.write && req.tokenReadOnly) {
+          res
+            .status(403)
+            .json(
+              errorEnvelope(
+                "FORBIDDEN",
+                "This token is read-only and cannot perform writes.",
+              ),
+            );
+          return;
+        }
         await handler(req, res);
       } catch (error) {
         if (error instanceof CursorError) {
@@ -210,7 +229,7 @@ function writeBody(
     );
     if (!data) return;
     sendBodyResult(res, data.saveDocumentBody);
-  });
+  }, { write: true });
 }
 
 // GET /v1/me — the tracer. The token's Role, User, and Organization.
