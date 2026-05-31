@@ -38,7 +38,16 @@ export type Body = { markdown: string; version: number };
  */
 export type SaveResult =
   | { ok: true; body: Body }
-  | { ok: false; conflicts: ConflictHunk[] };
+  | {
+      ok: false;
+      conflicts: ConflictHunk[];
+      // The whole body rewritten with git merge-file markers, for a caller that
+      // wants to present the conflict as text rather than structured hunks.
+      markered: string;
+      // The current stored version the rejected writer must re-read and rebase
+      // onto (the ETag a 409 returns).
+      version: number;
+    };
 
 /**
  * Per-type storage adapter — the only place the three body tables differ. Args
@@ -172,7 +181,12 @@ export async function saveBody(
 
   const reconciled = merge(base, markdown, current.markdown);
   if (!reconciled.clean) {
-    return { ok: false, conflicts: reconciled.conflicts };
+    return {
+      ok: false,
+      conflicts: reconciled.conflicts,
+      markered: reconciled.markered,
+      version: current.version,
+    };
   }
 
   const version = current.version + 1;

@@ -74,6 +74,40 @@ describe("create organization", () => {
     expect(workflows.length).toBeGreaterThan(0);
   });
 
+  it("seeds the Getting Started project with a Markdown body and search index", async () => {
+    const { session } = await getTestSession();
+
+    const response = await graphqlRequest({
+      source: createOrganizationMutation,
+      variableValues: {
+        input: {
+          name: `${faker.person.lastName()} co ${uuid()}`,
+          userName: faker.person.firstName(),
+          timeZone: "America/Los_Angeles",
+        },
+      },
+      session,
+    });
+
+    const projectId = response.data!.createOrganization.project.id;
+
+    // The body is Markdown (ADR 0007), stored in projectText, not Yjs bytes.
+    const text = await prisma.projectText.findUnique({
+      where: { projectId },
+    });
+    expect(text?.markdown).toContain("# Welcome to Orcha");
+    expect(text?.version).toBe(1);
+
+    // ...and search is populated from it, with Markdown syntax stripped.
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { indexableContent: true },
+    });
+    expect(project?.indexableContent).toContain("Welcome to Orcha");
+    // The heading's `#` marker is stripped in the plain-text index.
+    expect(project?.indexableContent).not.toContain("# Welcome");
+  });
+
   it("does not create a organization with an incomplete address", async () => {
     const organization = {
       name: `${faker.person.lastName()} co ${uuid()}`,

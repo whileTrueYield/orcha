@@ -15,6 +15,7 @@ import {
   createRandomTicket,
   createRandomProject,
 } from "../../utils/testing";
+import { saveBody } from "../../markdown/bodyRepository";
 
 const app = () => createExpressApp();
 const auth = (plaintext: string) => `Bearer ${plaintext}`;
@@ -136,6 +137,22 @@ describe("GET /v1/tickets/:id", () => {
     expect(res.body.ticketWorkflowStates.length).toBeGreaterThan(0);
     expect(Array.isArray(res.body.ancestors)).toBe(true);
     expect(Array.isArray(res.body.successors)).toBe(true);
+  });
+
+  it("exposes the ticket body as Markdown in the detail response", async () => {
+    const token = await getTestApiToken();
+    const { ticket } = await createRandomTicket(
+      token.organization,
+      token.role,
+    );
+    await saveBody("ticket", ticket.id, "# Detail body\n", 0);
+
+    const res = await request(app())
+      .get(`/v1/tickets/${ticket.id}`)
+      .set("Authorization", auth(token.plaintext))
+      .expect(200);
+
+    expect(res.body.body).toEqual({ markdown: "# Detail body\n", version: 1 });
   });
 
   it("returns 404 for a ticket in another organization", async () => {

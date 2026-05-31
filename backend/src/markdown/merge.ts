@@ -42,11 +42,14 @@ export type ConflictHunk = {
 
 /**
  * Always the same shape regardless of outcome: branch on `clean`. A clean merge
- * carries the merged body; a conflict carries the regions that overlapped.
+ * carries the merged body; a conflict carries both the structured regions that
+ * overlapped (`conflicts`) and the whole body rewritten with git merge-file
+ * markers (`markered`), so a caller can show either representation without
+ * re-running the merge.
  */
 export type MergeResult =
   | { clean: true; merged: string }
-  | { clean: false; conflicts: ConflictHunk[] };
+  | { clean: false; conflicts: ConflictHunk[]; markered: string };
 
 export function merge(
   base: string,
@@ -72,11 +75,31 @@ export function merge(
   }));
 
   if (conflicts.length > 0) {
-    return { clean: false, conflicts };
+    return { clean: false, conflicts, markered: renderMarkers(regions) };
   }
 
   const merged = regions.flatMap((region) => region.ok ?? []).join("\n");
   return { clean: true, merged };
+}
+
+// Reconstruct the whole body with git merge-file conflict markers: unchanged
+// regions pass through verbatim, each overlapping region is wrapped as
+// `<<<<<<< ours / ours / ======= / theirs / >>>>>>> theirs`. Built from the same
+// region list as `conflicts`, so the markered text and the hunks always agree.
+function renderMarkers(regions: MergeRegion<string>[]): string {
+  const lines: string[] = [];
+  for (const region of regions) {
+    if (hasConflict(region)) {
+      lines.push("<<<<<<< ours");
+      lines.push(...region.conflict.a);
+      lines.push("=======");
+      lines.push(...region.conflict.b);
+      lines.push(">>>>>>> theirs");
+    } else {
+      lines.push(...(region.ok ?? []));
+    }
+  }
+  return lines.join("\n");
 }
 
 // Narrow a diff3 region to the conflict case. node-diff3's MergeRegion carries

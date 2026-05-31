@@ -10,7 +10,8 @@
  * on. Treat each operation as the wire contract for its endpoint.
  *
  * Exports: ME_OPERATION, TICKETS_OPERATION, TICKET_OPERATION,
- * PROJECTS_OPERATION, PROJECT_OPERATION, SCHEDULE_OPERATION.
+ * TICKET_BODY_OPERATION, SAVE_DOCUMENT_BODY_OPERATION, PROJECTS_OPERATION,
+ * PROJECT_OPERATION, PROJECT_BODY_OPERATION, SCHEDULE_OPERATION.
  */
 
 // GET /v1/me — the token's Role, the User behind it, and the Organization it
@@ -82,14 +83,11 @@ export const TICKETS_OPERATION = /* GraphQL */ `
 `;
 
 // GET /v1/tickets/:id — a single ticket with the detail an agent needs to act:
-// estimate/ETA, its workflow states (with their three-point estimates), and
-// its dependency edges (ancestors it waits on, successors waiting on it).
-// NOTE: the ticket body is intentionally NOT exposed yet. It is stored as a
-// Yjs/Tiptap document; the GraphQL `description` field returns the editor's
-// stringified ProseMirror JSON, which is the wrong contract for an API client.
-// Exposing it as Markdown (read) and accepting Markdown (write, #28) is a
-// cross-cutting format decision tracked separately — see the pending body-format
-// ADR. Until then we ship structured fields only, not a half-usable body.
+// the Markdown body (+ its version), estimate/ETA, its workflow states (with
+// their three-point estimates), and its dependency edges (ancestors it waits
+// on, successors waiting on it). The body is the Markdown source of truth (ADR
+// 0007); the dedicated GET/PUT /v1/tickets/:id/body endpoints add the ETag /
+// If-Match optimistic-concurrency contract for editing it.
 export const TICKET_OPERATION = /* GraphQL */ `
   query RestTicket($id: Int!) {
     ticket(id: $id) {
@@ -100,6 +98,10 @@ export const TICKET_OPERATION = /* GraphQL */ `
       status
       stage
       progress
+      body {
+        markdown
+        version
+      }
       project {
         id
         name
@@ -122,6 +124,66 @@ export const TICKET_OPERATION = /* GraphQL */ `
         id
         title
         status
+      }
+    }
+  }
+`;
+
+// GET /v1/tickets/:id/body — the ticket's Markdown body + version (ETag). The
+// `ticket(id)` query scopes to the caller's organization (throws NOT_FOUND for a
+// foreign ticket), so the body inherits tenant scoping for free.
+export const TICKET_BODY_OPERATION = /* GraphQL */ `
+  query RestTicketBody($id: Int!) {
+    ticket(id: $id) {
+      body {
+        markdown
+        version
+      }
+    }
+  }
+`;
+
+// PUT /v1/{type}/:id/body — write a Markdown body with optimistic concurrency.
+// Executes the shared saveDocumentBody mutation; the REST layer maps If-Match to
+// baseVersion and the result to 200 + ETag or 409 (conflict).
+export const SAVE_DOCUMENT_BODY_OPERATION = /* GraphQL */ `
+  mutation RestSaveDocumentBody(
+    $documentType: DocumentBodyType!
+    $documentId: Int!
+    $markdown: String!
+    $baseVersion: Int!
+  ) {
+    saveDocumentBody(
+      documentType: $documentType
+      documentId: $documentId
+      markdown: $markdown
+      baseVersion: $baseVersion
+    ) {
+      body {
+        markdown
+        version
+      }
+      conflict {
+        markdown
+        version
+      }
+      warnings {
+        kind
+        reference
+        matches
+      }
+    }
+  }
+`;
+
+// GET /v1/projects/:id/body — the project's Markdown body + version (ETag),
+// scoped to the caller's organization through the `project(id)` query.
+export const PROJECT_BODY_OPERATION = /* GraphQL */ `
+  query RestProjectBody($id: Int!) {
+    project(id: $id) {
+      body {
+        markdown
+        version
       }
     }
   }

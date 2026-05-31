@@ -6,6 +6,7 @@ import "./createProject.resolver";
 import "./deleteProject.resolver";
 import "./miniProjects.resolver";
 import "./project.resolver";
+import "./projectBody.resolver";
 import "./projectAnalytics.resolver";
 import "./projects.resolver";
 import "./updateProject.resolver";

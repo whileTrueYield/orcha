@@ -14,21 +14,13 @@
  */
 
 import { GraphQLError } from "graphql";
-import {
-  ModelStage,
-  NotificationCategory,
-  NotificationTarget,
-  Prisma,
-} from "@prisma/client";
+import { ModelStage, Prisma } from "@prisma/client";
 import { filter, map, reduce, trim, uniq } from "lodash";
 import builder from "../../../schema/builder";
 import { AuthRoleContext } from "../../../types";
 import { findOrCreateTags } from "../../tag/helper";
 import { commaSeparatedValues } from "../../../utils/string";
 import { getWorkflowQueryForProduct } from "../../workflow/helper";
-import { getIndexableContentFromTipTapJson } from "../helper";
-import { createNotificationsForTarget } from "../../notification/createNotification";
-import { getMentions } from "../../../utils/tiptap";
 import { ModelStageEnum } from "../../../schema/enums";
 
 // ---------------------------------------------------------------------------
@@ -41,7 +33,6 @@ const CreateTicketInput = builder.inputType("CreateTicketInput", {
     productId: t.int({ required: false }),
     workflowId: t.int({ required: false }),
     projectId: t.int({ required: true }),
-    description: t.string({ required: false }),
     stage: t.field({ type: ModelStageEnum, required: false }),
   }),
 });
@@ -186,20 +177,16 @@ builder.mutationField("createTicket", (t) =>
           : 1;
       }
 
-      // Extract indexable text for search from the TipTap JSON
-      ticketInput.indexableContent = getIndexableContentFromTipTapJson(
-        input.description ?? null,
-      );
-
+      // The ticket body is no longer seeded here. It is Markdown stored via the
+      // body repository (ADR 0007): a client that has initial content writes it
+      // through the saveDocumentBody mutation (or PUT /v1/tickets/:id/body),
+      // which is the single write path that resolves mentions, repopulates
+      // indexableContent, and fires notifications. A fresh ticket reads as an
+      // empty body (getBody → version 0) until that write lands.
       const ticket = await ctx.prisma.ticket.create({
         ...query,
         data: ticketInput,
       });
-
-      // TODO(#40): The ticket body is now Markdown stored via the body
-      // repository (saveBody), not created here from TipTap JSON. Initial-body
-      // creation moves into the document-body API slice; a freshly created
-      // ticket reads as an empty body (getBody → version 0) until then.
 
       // Create ticket workflow states when publishing
       if (ticket.stage === ModelStage.PUBLISHED && input.workflowId) {
@@ -218,23 +205,9 @@ builder.mutationField("createTicket", (t) =>
         });
       }
 
-      // Extract mentions from the TipTap description and notify
-      if (input.description) {
-        const mentions = getMentions(input.description);
-
-        if (mentions.length > 0) {
-          await createNotificationsForTarget(
-            me.organizationId,
-            NotificationCategory.MENTION,
-            NotificationTarget.TICKET,
-            ticket.id,
-            mentions,
-            me.roleId,
-            `{} mentioned you in a ticket`,
-          );
-        }
-      }
-
+      // Mention notifications now fire from the body write path (the
+      // saveDocumentBody mutation), not from ticket creation — see the note
+      // above. Nothing mention-related happens here anymore.
       return ticket;
     },
   }),

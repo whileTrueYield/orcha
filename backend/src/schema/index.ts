@@ -65,6 +65,10 @@ import "../models/comment/resolvers";
 // demo — resolvers/index.ts imports ../entity internally
 import "../models/demo/resolvers";
 
+// documentBody — shared body type + saveDocumentBody mutation (#40)
+import "../models/documentBody/entity";
+import "../models/documentBody/resolvers";
+
 // documentation
 import "../models/documentation/entity";
 import "../models/documentation/resolvers";
