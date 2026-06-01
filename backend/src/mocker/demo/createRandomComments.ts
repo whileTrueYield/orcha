@@ -46,13 +46,16 @@ export async function createRandomComments(
   return comments;
 }
 
+// Comment bodies are Markdown source now (the Tiptap-JSON-over-Yjs storage was
+// retired); the frontend renders the raw string, so seed plain Markdown text
+// rather than the old ProseMirror JSON blob, which would render literally.
 function createRandomComment(ticket: Ticket, author: Role): Promise<Comment> {
   return prisma.comment.create({
     data: {
       organizationId: ticket.organizationId,
       ticketId: ticket.id,
       authorId: author.id,
-      body: stringToDoc(faker.hacker.phrase()),
+      body: faker.hacker.phrase(),
     },
   });
 }
@@ -66,28 +69,7 @@ function createRandomReply(
       organizationId: comment.organizationId,
       commentId: comment.id,
       authorId: author.id,
-      body: stringToDoc(faker.hacker.phrase()),
+      body: faker.hacker.phrase(),
     },
-  });
-}
-
-// Converts a string to a ProseMirror doc
-function stringToDoc(str: string): string {
-  return JSON.stringify({
-    type: "doc",
-    content: [
-      {
-        type: "paragraph",
-        attrs: {
-          textAlign: "left",
-        },
-        content: [
-          {
-            type: "text",
-            text: str,
-          },
-        ],
-      },
-    ],
   });
 }

@@ -13,7 +13,7 @@
 import { NotificationCategory, NotificationTarget } from "@prisma/client";
 import builder from "../../../schema/builder";
 import { AuthRoleContext } from "../../../types";
-import { getMentions } from "../../../utils/tiptap";
+import { analyze } from "../../../markdown/analysis";
 import { logger } from "../../../logger";
 import { createNotificationsForTarget } from "../../notification/createNotification";
 import { assertLength } from "../../../utils/validation";
@@ -71,7 +71,7 @@ builder.mutationField("createComment", (t) =>
       let notifiedRolesForAction: number[] = [];
 
       // Create notifications if necessary
-      const mentions = getMentions(comment.body);
+      const mentions = analyze(comment.body).mentions;
       logger.info(JSON.stringify({ mentions }));
       if (mentions.length > 0) {
         const notifiedRoleIds = await createNotificationsForTarget(
