@@ -102,6 +102,12 @@
       "react-app/jest"
     ]
   },
+  "resolutions": {
+    "prosemirror-model": "^1.25.4",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.41.3",
+    "prosemirror-transform": "^1.10.5"
+  },
   "jest": {
     "preset": "ts-jest/presets/js-with-ts",
     "testEnvironment": "jest-environment-jsdom",

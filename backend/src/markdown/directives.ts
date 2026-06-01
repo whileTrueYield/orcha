@@ -23,14 +23,22 @@ import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkStringify from "remark-stringify";
 import remarkDirective from "remark-directive";
+import remarkGfm from "remark-gfm";
 import type { Root } from "mdast";
 
 // Built once and reused: both processors are pure, so a single frozen instance
 // each avoids rebuilding the plugin chain on every call. `remark-directive`
 // contributes the micromark/mdast extensions that make `:name[label]{attrs}`
-// parse to a directive node and serialise back.
-const parser = unified().use(remarkParse).use(remarkDirective);
-const serializer = unified().use(remarkStringify).use(remarkDirective);
+// parse to a directive node and serialise back. `remark-gfm` adds the
+// GitHub-Flavored Markdown the Crepe editor emits (task lists, tables,
+// strikethrough, autolinks); without it a save re-serialises `* [ ] x` with the
+// bracket escaped, so the body reloads as the literal text `[ ] x` instead of a
+// checkbox. Both parser and serializer get it so the round-trip is symmetric.
+const parser = unified().use(remarkParse).use(remarkGfm).use(remarkDirective);
+const serializer = unified()
+  .use(remarkStringify)
+  .use(remarkGfm)
+  .use(remarkDirective);
 
 export function parseBody(markdown: string): Root {
   return parser.parse(markdown);

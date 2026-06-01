@@ -31,6 +31,7 @@ import { QueryReturnValue } from "types/queryTypes";
 import { useAddToRecentlyVisitedProject } from "utils/preferences";
 import { HoverTooltip } from "components/help/Tooltip";
 import { ProjectName } from "./ProjectName/ProjectName";
+import { ProjectBody } from "./ProjectBody";
 
 interface params {
   projectId: string;
@@ -236,16 +237,7 @@ export const ExplorerEditorY: FCWithFragments = () => {
                 <ProjectActions project={project} />
               </div>
 
-              {/* TODO(tiptap-removal): the collaborative rich-text project-body
-                  editor was removed. The project body is not part of this
-                  view's fragment, so this is an interim disabled placeholder. A
-                  Crepe-based editor (loading/saving the project body via the
-                  body API) is the follow-up. */}
-              <textarea
-                disabled
-                placeholder="Use Readme to describe your project plan, goals and description..."
-                className="m-4 min-h-[40vh] w-auto rounded border p-2 font-mono text-sm"
-              />
+              <ProjectBody projectId={project.id} />
             </div>
           </div>
         </Suspense>
