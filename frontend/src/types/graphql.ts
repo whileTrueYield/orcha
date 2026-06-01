@@ -2343,6 +2343,7 @@ export type Project = {
   ancestors: Array<Project>;
   author?: Maybe<Role>;
   authorId?: Maybe<Scalars['Int']['output']>;
+  body: DocumentBody;
   checklist: Array<ChecklistItem>;
   children: Array<Project>;
   createdAt: Scalars['DateTime']['output'];
