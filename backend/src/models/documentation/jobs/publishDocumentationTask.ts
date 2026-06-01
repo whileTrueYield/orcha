@@ -11,9 +11,8 @@ import { cloudfront } from "../../upload/cloudfront";
 import { format } from "date-fns";
 import { buildSearchDocuments } from "../resolvers/buildSearchDocuments";
 import { logger } from "../../../logger";
-import { getHeadersFromTipTapDoc, htmlSerializer } from "../../../utils/tiptap";
-import { TiptapTransformer } from "@hocuspocus/transformer";
-import { getDocFromBytes } from "../../../utils/yjs";
+import { renderHtml } from "../../../markdown/render";
+import { analyze } from "../../../markdown/analysis";
 
 export const publishDocumentationTask = async (documentationId: number) => {
   logger.info(`Starting publication of documentation ${documentationId}`);
@@ -87,15 +86,20 @@ export const publishDocumentationTask = async (documentationId: number) => {
           }
         : null;
 
-    // capture the titles for the table of context of the page
-    if (page.documentationPageText?.bytes) {
-      const doc = getDocFromBytes(page.documentationPageText.bytes);
-      const document = TiptapTransformer.fromYdoc(doc);
-      const bodyTitles = getHeadersFromTipTapDoc(document);
+    // Build the page's TOC + HTML from its Markdown body (#44). `analyze` and
+    // `renderHtml` share the same slugger, so the TOC `hash` links match the
+    // heading ids `renderHtml` emits.
+    const markdown = page.documentationPageText?.markdown ?? "";
+    const bodyTitles = analyze(markdown).headings.map((heading) => ({
+      level: heading.level,
+      text: heading.text,
+      hash: heading.anchor,
+    }));
 
-      logger.info(`Found ${bodyTitles.length} titles in page "${page.title}"`);
-      const htmlBody = htmlSerializer(document);
+    logger.info(`Found ${bodyTitles.length} titles in page "${page.title}"`);
+    const htmlBody = renderHtml(markdown);
 
+    {
       // Full page contains the help header, the sidebar navigation
       // and all other artefacts that makes the page a complete website
       // experience

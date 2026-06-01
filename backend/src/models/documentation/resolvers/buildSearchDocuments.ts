@@ -1,8 +1,16 @@
-import { DocumentationPage, DocumentationPageText } from "@prisma/client";
-import { getDocFromBytes } from "../../../utils/yjs";
-import { TiptapTransformer } from "@hocuspocus/transformer";
-import { kebabCase } from "lodash";
-import { getPlainTextFromTipTapDoc } from "../../../utils/tiptap";
+/**
+ * Build the per-heading search blocks the published documentation site indexes
+ * (PRD #36, issue #44).
+ *
+ * Each heading in a page's Markdown body starts a new search block, anchored so
+ * the static-site search can deep-link to it; the text between headings is the
+ * block body. Replaces the old Tiptap-JSON + Yjs (`.bytes`) walk — search is now
+ * built from the Markdown source of truth (ADR 0007).
+ *
+ * The input is narrowed to just what we read (page identity/title + markdown), so
+ * the Prisma page the publish job loads satisfies it structurally.
+ */
+import { toSections } from "../../../markdown/sections";
 
 export interface SearchDocument {
   id: string;
@@ -11,41 +19,21 @@ export interface SearchDocument {
   pageTitle: string;
 }
 
-// Generate a JSON to be used by the frontend search engine
-export const buildSearchDocuments = (
-  page: DocumentationPage & {
-    documentationPageText: DocumentationPageText | null;
-  },
-): SearchDocument[] => {
-  const searchDocuments: SearchDocument[] = [];
-  const id = page.customId ? page.customId : page.id;
-  let currentBlock: SearchDocument = {
+export interface SearchablePage {
+  id: number;
+  customId: string | null;
+  title: string;
+  documentationPageText: { markdown: string } | null;
+}
+
+export const buildSearchDocuments = (page: SearchablePage): SearchDocument[] => {
+  const pageId = page.customId ? page.customId : `${page.id}`;
+  const markdown = page.documentationPageText?.markdown ?? "";
+
+  return toSections(markdown).map((section) => ({
+    id: section.anchor ? `${pageId}#${section.anchor}` : `${pageId}`,
+    title: section.title,
+    body: section.body,
     pageTitle: page.title,
-    id: `${id}`,
-    title: "",
-    body: "",
-  };
-
-  if (page.documentationPageText?.bytes) {
-    const doc = getDocFromBytes(page.documentationPageText.bytes);
-    const document = TiptapTransformer.fromYdoc(doc);
-    for (const node of document.content) {
-      if (node.type === "heading") {
-        // add the current block to the pile of document only
-        // if we added some information to it
-        const title = getPlainTextFromTipTapDoc(node);
-        currentBlock = {
-          pageTitle: page.title,
-          id: `${id}#${kebabCase(title)}`,
-          title,
-          body: "",
-        };
-        searchDocuments.push(currentBlock);
-      } else {
-        currentBlock.body = `${currentBlock.body} ${getPlainTextFromTipTapDoc(node)}`;
-      }
-    }
-  }
-
-  return searchDocuments;
+  }));
 };
