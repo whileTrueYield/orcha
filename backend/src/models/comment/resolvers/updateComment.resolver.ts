@@ -17,7 +17,7 @@ import {
 import builder from "../../../schema/builder";
 import { AuthRoleContext } from "../../../types";
 import { isAuthorOrAdmin } from "../../../utils/rbac";
-import { getMentions } from "../../../utils/tiptap";
+import { analyze } from "../../../markdown/analysis";
 import { logger } from "../../../logger";
 import { createNotificationsForTarget } from "../../notification/createNotification";
 
@@ -64,7 +64,7 @@ builder.mutationField("updateComment", (t) =>
       }
 
       // Create notifications for mentions if necessary
-      const mentions = getMentions(args.input.body);
+      const mentions = analyze(args.input.body).mentions;
       logger.info(JSON.stringify({ mentions }));
       await createNotificationsForTarget(
         me.organizationId,
