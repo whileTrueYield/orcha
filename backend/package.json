@@ -90,6 +90,7 @@
     "prettier": "^3.2.5",
     "prisma": "^6.0.0",
     "remark-directive": "^4.0.0",
+    "remark-gfm": "^4.0.0",
     "remark-parse": "^11.0.0",
     "remark-stringify": "^11.0.0",
     "resend": "^6.12.3",

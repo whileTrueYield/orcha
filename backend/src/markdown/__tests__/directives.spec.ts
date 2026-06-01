@@ -49,3 +49,30 @@ describe("markdown directives", () => {
     assertRoundTrips('Diagram :excalidraw[Architecture]{id="d1" rev="3"}.\n');
   });
 });
+
+// The Crepe editor emits GitHub-Flavored Markdown, and every save re-serialises
+// the body through this pipeline. Without GFM the serializer escapes a task
+// list's bracket (`* [ ] x` → `* \[ ] x`), so it reparses as literal text and
+// the checkbox is lost on reload. These pin the GFM constructs that must survive.
+describe("markdown GFM", () => {
+  it("round-trips an unchecked task list item", () => {
+    assertRoundTrips("* [ ] buy milk\n");
+  });
+
+  it("round-trips a checked task list item", () => {
+    assertRoundTrips("* [x] done\n");
+  });
+
+  it("round-trips a table", () => {
+    assertRoundTrips("| a | b |\n| - | - |\n| 1 | 2 |\n");
+  });
+
+  it("round-trips strikethrough", () => {
+    assertRoundTrips("~~struck~~\n");
+  });
+
+  it("round-trips a task list alongside a :mention directive", () => {
+    // GFM and remark-directive must coexist without interfering.
+    assertRoundTrips('* [ ] ping :mention[Alice]{type="user" id="5"}\n');
+  });
+});
