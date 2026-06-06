@@ -290,7 +290,6 @@ export type CreateTeamInput = {
 };
 
 export type CreateTicketInput = {
-  description?: InputMaybe<Scalars['String']['input']>;
   productId?: InputMaybe<Scalars['Int']['input']>;
   projectId: Scalars['Int']['input'];
   stage?: InputMaybe<ModelStage>;
@@ -355,6 +354,24 @@ export type DependencySet = {
   projects: Array<ProjectDependency>;
   tickets: Array<TicketDependency>;
 };
+
+export type DocumentBody = {
+  __typename?: 'DocumentBody';
+  markdown: Scalars['String']['output'];
+  version: Scalars['Int']['output'];
+};
+
+export type DocumentBodyConflict = {
+  __typename?: 'DocumentBodyConflict';
+  markdown: Scalars['String']['output'];
+  version: Scalars['Int']['output'];
+};
+
+export enum DocumentBodyType {
+  Documentation = 'DOCUMENTATION',
+  Project = 'PROJECT',
+  Ticket = 'TICKET'
+}
 
 export type Documentation = {
   __typename?: 'Documentation';
@@ -646,6 +663,13 @@ export type Me = {
   user?: Maybe<User>;
 };
 
+export type MentionWarning = {
+  __typename?: 'MentionWarning';
+  kind: Scalars['String']['output'];
+  matches?: Maybe<Scalars['Int']['output']>;
+  reference: Scalars['String']['output'];
+};
+
 export type MiniDocumentationPage = {
   __typename?: 'MiniDocumentationPage';
   id: Scalars['Int']['output'];
@@ -706,12 +730,6 @@ export enum ModelStage {
   Deleted = 'DELETED',
   Draft = 'DRAFT',
   Published = 'PUBLISHED'
-}
-
-export enum DocumentBodyType {
-  Ticket = 'TICKET',
-  Project = 'PROJECT',
-  Documentation = 'DOCUMENTATION'
 }
 
 export type Mutation = {
@@ -3585,6 +3603,13 @@ export type RoleWorkload = {
   role: Role;
 };
 
+export type SaveDocumentBodyResult = {
+  __typename?: 'SaveDocumentBodyResult';
+  body?: Maybe<DocumentBody>;
+  conflict?: Maybe<DocumentBodyConflict>;
+  warnings: Array<MentionWarning>;
+};
+
 export type ScheduleConfig = {
   __typename?: 'ScheduleConfig';
   createdAt: Scalars['DateTime']['output'];
@@ -3737,32 +3762,6 @@ export type Team = {
   organization: Organization;
   organizationId: Scalars['Int']['output'];
   updatedAt: Scalars['DateTime']['output'];
-};
-
-export type DocumentBody = {
-  __typename?: 'DocumentBody';
-  markdown: Scalars['String']['output'];
-  version: Scalars['Int']['output'];
-};
-
-export type DocumentBodyConflict = {
-  __typename?: 'DocumentBodyConflict';
-  markdown: Scalars['String']['output'];
-  version: Scalars['Int']['output'];
-};
-
-export type MentionWarning = {
-  __typename?: 'MentionWarning';
-  kind: Scalars['String']['output'];
-  reference: Scalars['String']['output'];
-  matches?: Maybe<Scalars['Int']['output']>;
-};
-
-export type SaveDocumentBodyResult = {
-  __typename?: 'SaveDocumentBodyResult';
-  body?: Maybe<DocumentBody>;
-  conflict?: Maybe<DocumentBodyConflict>;
-  warnings: Array<MentionWarning>;
 };
 
 export type Ticket = {

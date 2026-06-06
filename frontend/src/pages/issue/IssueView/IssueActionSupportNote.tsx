@@ -9,7 +9,7 @@ import { FCWithFragments } from "types";
 import { Issue, IssueAction, IssueActionCategory } from "types/graphql";
 import { useSelector } from "react-redux";
 import { getMe } from "reducers/selector";
-import PlainTextView from "components/PlainText/PlainTextView";
+import MarkdownView from "components/Markdown/MarkdownView";
 import { PlainTextModal } from "components/modals/PlainTextModal";
 
 interface Props {
@@ -120,7 +120,7 @@ export const IssueActionSupportNote: FCWithFragments<Props> = (props) => {
             </p>
           </div>
           <div className="mt-2 space-y-4 text-sm text-yellow-800">
-            <PlainTextView content={action.body} className="max-w-none" />
+            <MarkdownView variant="light" value={action.body ?? ""} />
           </div>
         </div>
       </>

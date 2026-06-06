@@ -1,3 +1,10 @@
 .milkdown .ProseMirror {
   padding: 30px;
 }
+
+/* The read-only view owns no chrome — its host surface (comment box, note
+ * card, modal panel) controls the spacing, so the editor padding goes. The
+ * extra class wins the specificity contest against the rule above. */
+.orcha-markdown-view .milkdown .ProseMirror {
+  padding: 0;
+}
