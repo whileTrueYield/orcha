@@ -1,8 +1,9 @@
 /**
  * Round-trip tests for the Markdown directive grammar (PRD #36, issue #38).
  *
- * The custom content nodes — role/user `:mention`, `:ticket`, `:emoji`, and the
- * `:excalidraw` embed (ADR 0007) — are encoded as remark-directive nodes. The
+ * The custom content nodes — inline role/user `:mention` and `:emoji`, block
+ * `::ticket` and `::excalidraw` embeds (ADR 0007) — are encoded as
+ * remark-directive nodes. The
  * storage contract is that parsing a body and serializing it back is lossless
  * for these nodes: `parse(serialize(parse(md)))` is structurally equal to
  * `parse(md)`, with ids and attributes preserved. These tests pin that down so
@@ -37,16 +38,16 @@ describe("markdown directives", () => {
     assertRoundTrips('Hello :mention[Alice]{type="user" id="5"}.\n');
   });
 
-  it("round-trips a :ticket directive", () => {
-    assertRoundTrips('See :ticket[#123]{id="42"}.\n');
+  it("round-trips a ::ticket block directive", () => {
+    assertRoundTrips('Before.\n\n::ticket{id="42"}\n\nAfter.\n');
   });
 
   it("round-trips a :emoji directive (no attributes)", () => {
     assertRoundTrips("Nice work :emoji[tada].\n");
   });
 
-  it("round-trips an :excalidraw embed", () => {
-    assertRoundTrips('Diagram :excalidraw[Architecture]{id="d1" rev="3"}.\n');
+  it("round-trips an ::excalidraw block embed", () => {
+    assertRoundTrips('::excalidraw[Architecture]{id="5"}\n');
   });
 });
 

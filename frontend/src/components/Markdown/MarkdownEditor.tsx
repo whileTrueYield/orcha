@@ -12,8 +12,10 @@
  * is verified manually in the running app, not in jsdom.
  */
 import { Crepe } from "@milkdown/crepe";
-import "@milkdown/crepe/theme/common/style.css";
-import "@milkdown/crepe/theme/frame.css";
+// Crepe's theme CSS is imported in `index.tsx`, NOT here: it must land before
+// Tailwind in the bundle so utility classes win specificity ties against
+// Crepe's `.milkdown *` margin/padding reset (see the comment there).
+import "./editorStyle.css";
 import {
   forwardRef,
   useEffect,
@@ -21,6 +23,9 @@ import {
   useRef,
   useState,
 } from "react";
+
+import { directiveEditorPlugins } from "./editorNodes";
+import "./directiveNodes.css";
 
 function asError(err: unknown): Error {
   return err instanceof Error ? err : new Error(String(err));
@@ -59,7 +64,17 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       latestRef.current = value;
       let crepe: Crepe;
       try {
-        crepe = new Crepe({ root: host, defaultValue: value });
+        crepe = new Crepe({
+          root: host,
+          defaultValue: value,
+          // We don't use Crepe's block editing mode
+          features: { [Crepe.Feature.BlockEdit]: false },
+        });
+        // Teach Crepe the ADR-0007 directive grammar (mentions, tickets, emoji)
+        // before create(); without remark-directive + these node schemas they
+        // render as literal `:mention[…]` text. Registration must precede
+        // create() because that is when Milkdown freezes the plugin set.
+        crepe.editor.use(directiveEditorPlugins);
         crepe.setReadonly(readOnly);
         crepe.on((listener) => {
           listener.markdownUpdated((_ctx, markdown) => {

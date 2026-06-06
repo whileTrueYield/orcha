@@ -18,9 +18,12 @@
 
 // The mdast directive node shape, narrowed to the fields the mappers read/write.
 // `attributes` values are strings on the wire (mdast stores them verbatim); the
-// label is carried as the directive's text children.
+// label is carried as the directive's text children. Inline nodes (mention,
+// emoji) are `textDirective`; block embeds (ticket, and the Excalidraw embed)
+// are `leafDirective` — `::ticket{id}` on its own line — so ProseMirror can
+// render them as block node views rather than inside a paragraph.
 export interface DirectiveNode {
-  type: "textDirective";
+  type: "textDirective" | "leafDirective";
   name: string;
   attributes: Record<string, string>;
   children: { type: "text"; value: string }[];
@@ -38,20 +41,22 @@ function label(node: DirectiveNode): string {
   return node.children[0]?.value ?? "";
 }
 
-// Every custom node serialises to the same skeleton — a named text directive
-// whose attributes hold its ids and whose single text child is the bracket
-// label. Only the name, attributes, and label differ per node, so the skeleton
-// (and its mdast type tag) is defined exactly once here.
+// Every custom node serialises to the same skeleton — a named directive whose
+// attributes hold its ids and whose single text child is the bracket label.
+// Only the directive kind (inline vs block), name, attributes, and label differ
+// per node, so the skeleton is defined exactly once here. A label of `undefined`
+// produces a directive with no bracket (e.g. block `::ticket{id}`).
 function makeDirective(
+  type: DirectiveNode["type"],
   name: string,
   attributes: Record<string, string>,
-  label: string,
+  label?: string,
 ): DirectiveNode {
   return {
-    type: "textDirective",
+    type,
     name,
     attributes,
-    children: [{ type: "text", value: label }],
+    children: label === undefined ? [] : [{ type: "text", value: label }],
   };
 }
 
@@ -65,23 +70,27 @@ export function mentionFromDirective(node: DirectiveNode): MentionAttrs {
 
 export function mentionToDirective(attrs: MentionAttrs): DirectiveNode {
   return makeDirective(
+    "textDirective",
     "mention",
     { type: attrs.mentionType, id: String(attrs.id) },
     attrs.label,
   );
 }
 
+// A ticket reference is a block embed that renders the live ticket card, so it
+// only needs to carry the database id — the card fetches title, status, etc. by
+// id. It serialises to the block directive `::ticket{id="42"}` (no bracket
+// label), distinct from the inline mention/emoji directives.
 export interface TicketAttrs {
   id: number;
-  label: string;
 }
 
 export function ticketFromDirective(node: DirectiveNode): TicketAttrs {
-  return { id: Number(node.attributes.id), label: label(node) };
+  return { id: Number(node.attributes.id) };
 }
 
 export function ticketToDirective(attrs: TicketAttrs): DirectiveNode {
-  return makeDirective("ticket", { id: String(attrs.id) }, attrs.label);
+  return makeDirective("leafDirective", "ticket", { id: String(attrs.id) });
 }
 
 export interface EmojiAttrs {
@@ -93,30 +102,33 @@ export function emojiFromDirective(node: DirectiveNode): EmojiAttrs {
 }
 
 export function emojiToDirective(attrs: EmojiAttrs): DirectiveNode {
-  return makeDirective("emoji", {}, attrs.name);
+  return makeDirective("textDirective", "emoji", {}, attrs.name);
 }
 
-// The Drawing store owns the scene; the embed only references it. The id stays a
-// string (it is the Drawing record's id, not a numeric foreign key like ticket),
-// while the revision is numeric so a stale embed can be detected on render.
+// The Drawing store owns the scene; the embed only references it by the Drawing
+// record's numeric id, like ticket. The bracket label keeps the raw Markdown
+// readable (`::excalidraw[Architecture sketch]{id="5"}`). ADR-0007 sketched a
+// `rev=N` attribute, but `Drawing` has no revision field and the store stays
+// unchanged (issue #42) — freshness comes from `updatedAt`, so `rev` is dropped.
 export interface ExcalidrawAttrs {
-  id: string;
-  rev: number;
+  id: number;
   label: string;
 }
 
 export function excalidrawFromDirective(node: DirectiveNode): ExcalidrawAttrs {
   return {
-    id: node.attributes.id,
-    rev: Number(node.attributes.rev),
+    id: Number(node.attributes.id),
     label: label(node),
   };
 }
 
 export function excalidrawToDirective(attrs: ExcalidrawAttrs): DirectiveNode {
   return makeDirective(
+    "leafDirective",
     "excalidraw",
-    { id: attrs.id, rev: String(attrs.rev) },
-    attrs.label,
+    { id: String(attrs.id) },
+    // An unlabelled embed serialises without a bracket (`::excalidraw{id}`),
+    // not with an empty one — mirroring how it parses back (`label: ""`).
+    attrs.label === "" ? undefined : attrs.label,
   );
 }

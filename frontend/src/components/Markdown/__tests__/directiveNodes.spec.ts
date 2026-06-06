@@ -42,18 +42,19 @@ describe("directive nodes — mention", () => {
 });
 
 describe("directive nodes — ticket", () => {
-  it("maps a :ticket directive to editor attrs and back losslessly", () => {
-    // `:ticket[#123]{id="42"}` — the bracket label is the human-facing `#123`,
-    // the attribute carries the database id the reference resolves to.
+  it("maps a ::ticket block directive to editor attrs and back losslessly", () => {
+    // A ticket is a block embed rendering the live card by id, so it carries only
+    // the database id and serialises to the block directive `::ticket{id="42"}`
+    // (a leaf directive with no bracket label).
     const directive = {
-      type: "textDirective",
+      type: "leafDirective",
       name: "ticket",
       attributes: { id: "42" },
-      children: [{ type: "text", value: "#123" }],
+      children: [],
     };
 
     const attrs = ticketFromDirective(directive);
-    expect(attrs).toEqual({ id: 42, label: "#123" });
+    expect(attrs).toEqual({ id: 42 });
     expect(ticketToDirective(attrs)).toEqual(directive);
   });
 });
@@ -77,18 +78,19 @@ describe("directive nodes — emoji", () => {
 });
 
 describe("directive nodes — excalidraw embed", () => {
-  it("maps an :excalidraw directive to editor attrs and back losslessly", () => {
-    // `:excalidraw[Architecture]{id="d1" rev="3"}` references a Drawing record by
-    // its (string) id at a numeric revision; the label is the embed's caption.
+  it("maps an ::excalidraw block directive to editor attrs and back losslessly", () => {
+    // `::excalidraw[Architecture]{id="5"}` is a block embed referencing a Drawing
+    // record by its numeric id; the bracket label is the embed's caption. (The
+    // `rev=N` sketched in ADR-0007 was dropped: Drawing has no revision field.)
     const directive = {
-      type: "textDirective",
+      type: "leafDirective",
       name: "excalidraw",
-      attributes: { id: "d1", rev: "3" },
+      attributes: { id: "5" },
       children: [{ type: "text", value: "Architecture" }],
     };
 
     const attrs = excalidrawFromDirective(directive);
-    expect(attrs).toEqual({ id: "d1", rev: 3, label: "Architecture" });
+    expect(attrs).toEqual({ id: 5, label: "Architecture" });
     expect(excalidrawToDirective(attrs)).toEqual(directive);
   });
 });

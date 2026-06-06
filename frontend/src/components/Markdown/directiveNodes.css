@@ -1,0 +1,57 @@
+/**
+ * Chip styling for the inline directive nodes rendered by `editorNodes.ts`
+ * (mentions, tickets, emoji). Scoped by the `data-directive` attribute the node
+ * schemas emit so it never leaks onto ordinary editor text. Emoji render as a
+ * bare glyph (no pill), so they opt out of the chip box.
+ */
+
+.orcha-directive {
+  display: inline;
+  white-space: nowrap;
+}
+
+.orcha-mention,
+.orcha-ticket {
+  padding: 0 0.25em;
+  border-radius: 0.375em;
+  font-weight: 500;
+  font-size: 0.9em;
+  cursor: default;
+}
+
+.orcha-mention {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.orcha-ticket {
+  color: #6d28d9;
+  background: #ede9fe;
+}
+
+.orcha-emoji {
+  font-style: normal;
+}
+
+/* Block embeds (ticket card, Excalidraw) rendered by reactNodeView. The embedded
+ * React component brings its own (Tailwind) styling, which survives Crepe's
+ * `.milkdown *` margin/padding reset because the theme CSS is bundled before
+ * Tailwind (see `index.tsx`) and utilities win the specificity tie by source
+ * order. This file only owns the wrapper margin and selection state. */
+.milkdown .orcha-embed {
+  margin: 0.5rem 0;
+  /* The embed is an atom; without this the editor's text selection bleeds a blue
+   * highlight across the card's text when the caret passes over it. */
+  user-select: none;
+}
+
+/* ProseMirror tags a selected atom block with this class; replace its default
+ * heavy outline with a clean ring around the card. */
+.orcha-embed.ProseMirror-selectednode {
+  outline: none;
+}
+
+.orcha-embed.ProseMirror-selectednode > * {
+  border-radius: 0.5rem;
+  box-shadow: 0 0 0 2px #93c5fd;
+}
