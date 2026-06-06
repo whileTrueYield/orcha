@@ -3,9 +3,10 @@
  * (PRD #36, issue #38).
  *
  * ADR 0007 encodes Orcha's custom content as remark-directive nodes rather than
- * raw HTML or MDX: role/user `:mention[Name]{type=user id=…}`, ticket
- * `:ticket[#123]{id=…}`, `:emoji[name]`, and the `:excalidraw[label]{id rev=N}`
- * embed. This module owns the single configured pipeline that turns a Markdown
+ * raw HTML or MDX: inline role/user `:mention[Name]{type=user id=…}` and
+ * `:emoji[name]`, plus the block embeds `::ticket{id=…}` and
+ * `::excalidraw[label]{id=…}` (the live ticket card and drawing canvas).
+ * This module owns the single configured pipeline that turns a Markdown
  * body into an mdast tree and back, so every other consumer (analysis, mention
  * resolution, body normalisation on write) shares exactly one grammar.
  *

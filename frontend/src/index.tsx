@@ -1,4 +1,12 @@
 // import React from "react";
+// Crepe's theme must be bundled BEFORE Tailwind: its `.milkdown * { margin: 0;
+// padding: 0 }` reset ties on specificity with utility classes (both 0,1,0), so
+// source order decides the winner. Loading it first lets Tailwind-styled React
+// embeds inside the editor keep their spacing, while Crepe's own editor styling
+// is unaffected (it targets `.milkdown .ProseMirror …`, which wins on
+// specificity alone).
+import "@milkdown/crepe/theme/common/style.css";
+import "@milkdown/crepe/theme/nord.css";
 import "./index.css";
 // import ReactDOM from "react-dom";
 import App from "./App";

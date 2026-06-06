@@ -12,11 +12,15 @@ text-level reconciliation. The editor sits behind a Markdown contract, so it is
 swappable without touching storage or the API.
 
 Custom content (the three mentions — role `@`, ticket `#`, emoji — and the
-Excalidraw embed) is encoded with `remark-directive`
-(`:mention[Name]{type=user id=…}`, `:ticket[#123]{id=…}`, `:emoji[name]`,
-`:excalidraw[label]{id rev=N}`). The Excalidraw scene stays in its own `Drawing`
-store, referenced by id. Free-form text colour is dropped; raw HTML and MDX are
-not allowed in stored content.
+Excalidraw embed) is encoded with `remark-directive`. Mentions and emoji are
+inline directives (`:mention[Name]{type=user id=…}`, `:emoji[name]`); ticket
+references and Excalidraw embeds are **block** (leaf) directives on their own
+line (`::ticket{id=…}`, `::excalidraw[label]{id=…}`), because both render as
+block embeds (the live ticket card, the drawing canvas), not as inline chips.
+The Excalidraw scene stays in its own `Drawing` store, referenced by numeric id
+(the originally sketched `rev=N` was dropped — `Drawing` has no revision field;
+`updatedAt` covers freshness). Free-form text colour is dropped; raw HTML and
+MDX are not allowed in stored content.
 
 This reverses the direction of the earlier external-API plan
 ([0006](0006-external-api-thin-rest-over-graphql-with-role-scoped-tokens.md)),

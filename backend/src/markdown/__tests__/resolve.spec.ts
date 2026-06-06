@@ -3,11 +3,14 @@
  *
  * `resolveMentions(markdown, resolvers)` is the write-side step that turns the
  * loose references an author (or an AI agent) types — `@name`, `#123` — into the
- * canonical id-bearing directives ADR 0007 stores. The org lookups are injected
- * so the module stays pure: tests pass fakes, the API passes prisma-backed,
- * org-scoped resolvers. The rule (crash-early, never silently wrong): an
- * unambiguous reference resolves; an ambiguous or unknown one is left literal and
- * surfaced as a warning, never guessed.
+ * canonical id-bearing directives ADR 0007 stores: `@name` to the inline
+ * `:mention`, a standalone `#123` paragraph to the block `::ticket{id}` embed
+ * (the editor's ticket card). A mid-sentence `#123` stays literal — the editor
+ * has no inline ticket node, so binding it would churn on every edit. The org
+ * lookups are injected so the module stays pure: tests pass fakes, the API
+ * passes prisma-backed, org-scoped resolvers. The rule (crash-early, never
+ * silently wrong): an unambiguous reference resolves; an ambiguous or unknown
+ * one is left literal and surfaced as a warning, never guessed.
  *
  * Resolution is asserted through `analyze` — the actual consumer of the output —
  * so the tests pin the real write→read contract, not a serialization detail.
@@ -35,13 +38,18 @@ type MdNode = {
   children?: MdNode[];
 };
 
-// Ids bound to directives of a given name in the resolved body, read back
-// through the parser (robust to the serializer's attribute formatting — e.g.
-// remark-directive emits the `id` attribute as the `{#id}` shorthand).
+// Ids bound to directives of a given name in the resolved body — inline
+// (textDirective) or block (leafDirective) — read back through the parser
+// (robust to the serializer's attribute formatting — e.g. remark-directive
+// emits the `id` attribute as the `{#id}` shorthand).
 function boundIds(markdown: string, name: string): string[] {
   const ids: string[] = [];
   const walk = (node: MdNode) => {
-    if (node.type === "textDirective" && node.name === name && node.attributes?.id != null) {
+    if (
+      (node.type === "textDirective" || node.type === "leafDirective") &&
+      node.name === name &&
+      node.attributes?.id != null
+    ) {
       ids.push(node.attributes.id);
     }
     node.children?.forEach(walk);
@@ -58,10 +66,22 @@ describe("resolveMentions", () => {
     expect(warnings).toEqual([]);
   });
 
-  it("resolves an unambiguous #123 to a :ticket directive", async () => {
-    const { markdown, warnings } = await resolveMentions("see #123 for details", resolvers);
+  it("resolves a standalone #123 paragraph to the block ::ticket embed", async () => {
+    const { markdown, warnings } = await resolveMentions(
+      "See below.\n\n#123\n\nDone.",
+      resolvers,
+    );
 
     expect(boundIds(markdown, "ticket")).toEqual(["42"]);
+    expect(markdown).toContain("::ticket");
+    expect(warnings).toEqual([]);
+  });
+
+  it("leaves a mid-sentence #123 literal — tickets are block embeds only", async () => {
+    const { markdown, warnings } = await resolveMentions("see #123 for details", resolvers);
+
+    expect(boundIds(markdown, "ticket")).toEqual([]);
+    expect(markdown).toContain("#123");
     expect(warnings).toEqual([]);
   });
 
@@ -79,20 +99,25 @@ describe("resolveMentions", () => {
   });
 
   it("leaves unknown references literal and warns", async () => {
-    const { markdown, warnings } = await resolveMentions("hi @nobody and #999", resolvers);
+    // The block (ticket) pass runs before the inline (mention) pass, so its
+    // warning comes first.
+    const { markdown, warnings } = await resolveMentions(
+      "hi @nobody\n\n#999",
+      resolvers,
+    );
 
     expect(analyze(markdown).mentions).toEqual([]);
     expect(markdown).toContain("@nobody");
     expect(markdown).toContain("#999");
     expect(warnings).toEqual([
-      { kind: "unknown", reference: "@nobody" },
       { kind: "unknown", reference: "#999" },
+      { kind: "unknown", reference: "@nobody" },
     ]);
   });
 
-  it("resolves multiple references in one block independently", async () => {
+  it("resolves multiple references in one body independently", async () => {
     const { markdown, warnings } = await resolveMentions(
-      "ping @alice about #123 and @nobody",
+      "ping @alice and @nobody\n\n#123",
       resolvers,
     );
 
@@ -103,10 +128,11 @@ describe("resolveMentions", () => {
   });
 
   it("is idempotent on already-resolved content", async () => {
-    const once = (await resolveMentions("ping @alice", resolvers)).markdown;
+    const once = (await resolveMentions("ping @alice\n\n#123", resolvers)).markdown;
     const twice = (await resolveMentions(once, resolvers)).markdown;
 
     expect(twice).toEqual(once);
     expect(analyze(twice).mentions).toEqual([5]);
+    expect(boundIds(twice, "ticket")).toEqual(["42"]);
   });
 });
