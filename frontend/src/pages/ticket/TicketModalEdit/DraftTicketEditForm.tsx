@@ -20,6 +20,7 @@ import { useBlockingMutation } from "utils/graphql";
 import { TicketInfo } from "../TicketView/TicketInfo";
 import { hideTicketEditModal } from "actions";
 import { useAppDispatch } from "store";
+import MarkdownView from "components/Markdown/MarkdownView";
 
 interface Props {
   ticket: Ticket;
@@ -77,6 +78,11 @@ export const DraftTicketEditForm: FCWithFragments<Props> = (props) => {
             </h3>
 
           </div>
+          <MarkdownView
+            variant="full"
+            value={ticket.body.markdown}
+            className="px-4 pb-4 text-gray-800 sm:px-6"
+          />
           <div className="rounded-b-md border-t border-gray-100 bg-gray-50 px-4 py-3 sm:px-6">
             <div className="flex flex-col space-y-4 sm:flex-row-reverse sm:justify-between sm:space-y-0">
               <Button
@@ -125,6 +131,9 @@ DraftTicketEditForm.fragments = {
       estimate
       stage
       milestone
+      body {
+        markdown
+      }
       workflow {
         id
         name

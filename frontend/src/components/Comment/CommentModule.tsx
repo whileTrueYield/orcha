@@ -19,7 +19,7 @@ import { NotificationTarget } from "types/graphql";
 import { CommentNotificationDecorator } from "./CommentNotificationDecorator";
 import { Tag } from "components/tags/Tag";
 import PlainTextForm from "components/PlainText/PlainTextForm";
-import PlainTextView from "components/PlainText/PlainTextView";
+import MarkdownView from "components/Markdown/MarkdownView";
 
 interface Props {
   author: {
@@ -170,7 +170,7 @@ export const CommentModule: React.FC<Props> = (props) => {
 
     return (
       <div onDoubleClick={() => props.onChange && setEditMode(true)}>
-        <PlainTextView content={content} className="max-w-none" />
+        <MarkdownView variant="light" value={content} />
       </div>
     );
   };

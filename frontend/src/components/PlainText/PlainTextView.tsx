@@ -1,14 +1,12 @@
 /**
- * PlainTextView — interim read-only replacement for the retired Tiptap editor
- * used in `readonly` mode (Tiptap removal, #41).
+ * PlainTextView — renders a string as plain text, preserving line breaks.
  *
- * Public API: default export. Renders a string body as plain text, splitting on
- * newlines into paragraphs. Mirrors the props its callers passed to the old
- * readonly `<Tiptap content={...} readonly />` (`content`, `className`).
+ * Public API: default export (`content`, `className`).
  *
- * Note: content stored before this migration may be Tiptap JSON. We do NOT
- * parse it — it renders as its raw string, which is accepted breakage during
- * the migration. New content is plain text / Markdown source.
+ * Body-like content (comments, notes, ticket bodies) renders through
+ * `components/Markdown/MarkdownView` instead; this stays for fields that are
+ * genuinely plain text and must never be interpreted as Markdown (e.g. a
+ * team's description).
  */
 import cn from "classnames";
 

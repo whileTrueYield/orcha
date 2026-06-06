@@ -15,7 +15,11 @@
  *      mapping stays in the tested, headless module.
  *
  * Public API:
- *   - directiveEditorPlugins: MilkdownPlugin[] — pass to `crepe.editor.use(...)`
+ *   - directiveEditorPlugins: MilkdownPlugin[] — the full editing preset, pass
+ *     to `crepe.editor.use(...)` (MarkdownEditor)
+ *   - directiveViewerPlugins: MilkdownPlugin[] — the light read-only preset
+ *     (MarkdownView "light"): same schemas, cheap embed views, soft breaks
+ *     preserved, no autocomplete
  *   - mentionSchema / ticketSchema / emojiSchema — the individual node schemas
  *     (exported so commands and autocomplete can reference their node types)
  *
@@ -25,6 +29,7 @@
 import { expectDomTypeError } from "@milkdown/kit/exception";
 import type { MilkdownPlugin } from "@milkdown/kit/ctx";
 import { $nodeSchema, $remark } from "@milkdown/kit/utils";
+import remarkBreaks from "remark-breaks";
 import remarkDirective from "remark-directive";
 
 import { directiveAutocomplete } from "./autocomplete/autocompletePlugin";
@@ -38,9 +43,13 @@ import {
   mentionToDirective,
 } from "./directiveNodes";
 import { findEmojiChar } from "./emoji";
-import { legacyDirectiveDowngrade } from "./legacyDirectives";
-import { excalidrawPlugins } from "./nodes/excalidrawNode";
-import { ticketPlugins } from "./nodes/ticketNode";
+import {
+  type MdastNode,
+  downgradeUnknownDirectives,
+} from "./directiveDowngrade";
+import { excalidrawPlugins, excalidrawSchema } from "./nodes/excalidrawNode";
+import { lightEmbedViews } from "./nodes/lightEmbeds";
+import { ticketPlugins, ticketSchema } from "./nodes/ticketNode";
 
 // Each editor attr is either a string or a number on the wire. The DOM stores
 // every attr as a `data-*` string, so the schema needs the type to coerce it
@@ -154,15 +163,44 @@ export const directiveRemark = $remark(
   () => remarkDirective as never,
 );
 
+// Any directive without a node schema would crash Milkdown's parser; downgrade
+// the unknown ones to plain text. The pure transformer lives in
+// `directiveDowngrade.ts` (kept Milkdown-free so jest can test it).
+const directiveDowngrade = $remark(
+  "orchaDirectiveDowngrade",
+  () => () => (tree) => downgradeUnknownDirectives(tree as MdastNode),
+);
+
+// Comments and notes are chat-like: a lone newline should read as a line break
+// (GitHub comment semantics), and legacy plain-text bodies rely on it. CommonMark
+// renders a lone `\n` as a space, so the viewer preset converts soft breaks to
+// hard break nodes at parse time. The editor preset keeps CommonMark semantics —
+// bodies are documents, not chat.
+const softBreakRemark = $remark("orchaSoftBreaks", () => remarkBreaks as never);
+
 // A single flat list so callers register everything with one `editor.use(...)`.
 // Each schema/remark helper is a [ctx, plugin] tuple; spreading flattens them so
 // Milkdown receives plain MilkdownPlugins, not nested arrays.
 export const directiveEditorPlugins: MilkdownPlugin[] = [
   ...directiveRemark,
-  ...legacyDirectiveDowngrade,
+  ...directiveDowngrade,
   ...mentionSchema,
   ...emojiSchema,
   ...ticketPlugins,
   ...excalidrawPlugins,
   directiveAutocomplete,
+];
+
+// The light read-only preset (MarkdownView "light"): identical document model —
+// both block schemas stay registered, since an unregistered block directive
+// crashes Milkdown's parser — but cheap views and no editing affordances.
+export const directiveViewerPlugins: MilkdownPlugin[] = [
+  ...directiveRemark,
+  ...softBreakRemark,
+  ...directiveDowngrade,
+  ...mentionSchema,
+  ...emojiSchema,
+  ...ticketSchema,
+  ...excalidrawSchema,
+  ...lightEmbedViews,
 ];
