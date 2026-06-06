@@ -27,8 +27,6 @@ import {
 import { Prisma, ScheduleItem, TicketWorkflowState } from "@prisma/client";
 import { getProjectDescendantIds } from "../project/helper";
 import { subDays } from "date-fns";
-import { getTextFromTipTapJson } from "../../hocuspocus/getText";
-import { logger } from "../../logger";
 
 interface GetPageArgs extends GetPageArgsFor<Ticket> {
   allUntagged?: boolean;
@@ -1005,19 +1003,3 @@ export async function isTicketBlocked(
 
   return some(ticket.ticketWorkflowStates, "isBlocked");
 }
-
-export function getIndexableContentFromTipTapJson(json: string | null): string {
-  if (!json) {
-    return "";
-  }
-
-  const content = JSON.parse(json);
-  try {
-    return getTextFromTipTapJson({ default: content });
-  } catch (error) {
-    logger.error(error);
-  }
-
-  return "";
-}
-

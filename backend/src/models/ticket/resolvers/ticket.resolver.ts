@@ -3,7 +3,6 @@
  *
  * Registers:
  *  - Query.ticket(id, visited?): Ticket!
- *  - Query.ticketTextAccessToken(id): String
  *  - Query.ticketNotes(ticketId): [TicketWorkflowStateNote!]!
  *  - Query.lastTicketWorkflowStateNote(ticketId): TicketWorkflowStateNote
  *
@@ -17,7 +16,6 @@
  * defined in entity.ts.
  */
 
-import jwt from "jsonwebtoken";
 import { ModelStage, TicketStatus } from "@prisma/client";
 import { find, last, without } from "lodash";
 import builder from "../../../schema/builder";
@@ -25,9 +23,6 @@ import { TicketWorkflowStateRef } from "../entity";
 import { ScheduleItemRef } from "../../schedule/entity";
 import { AuthRoleContext } from "../../../types";
 import { getRolePreferences, updateRolePreferences } from "../../entities";
-import { config } from "../../../config";
-import { DocumentToken } from "../../../hocuspocus/documentToken";
-import { logger } from "../../../logger";
 
 // ---------------------------------------------------------------------------
 // Query: ticket
@@ -96,60 +91,6 @@ builder.queryField("ticket", (t) =>
       }
 
       return ticket;
-    },
-  }),
-);
-
-// ---------------------------------------------------------------------------
-// Query: ticketTextAccessToken
-//
-// Returns a JWT for the TipTap collaborative editor websocket.
-// Valid for 15 minutes.
-// ---------------------------------------------------------------------------
-
-builder.queryField("ticketTextAccessToken", (t) =>
-  t.string({
-    nullable: true,
-    authScopes: { hasRole: true },
-    args: {
-      id: t.arg.int({ required: true }),
-    },
-    resolve: async (_root, args, ctx) => {
-      const me = ctx.me as AuthRoleContext;
-
-      const ticket = await ctx.prisma.ticket.findFirstOrThrow({
-        where: {
-          id: args.id,
-          organizationId: me.organizationId,
-          stage: { not: ModelStage.DELETED },
-        },
-        include: { project: true },
-      });
-
-      const readOnly =
-        ticket.project.ancestorIsArchived ||
-        ticket.project.stage === "ARCHIVED" ||
-        ticket.stage === "ARCHIVED";
-
-      const accessToken: DocumentToken = {
-        roleId: me.roleId,
-        orgId: me.organizationId,
-        documentId: ticket.id,
-        documentType: "ticketText",
-        mode: readOnly ? "read" : "write",
-      };
-
-      logger.info(
-        `creating access token for ticket ${ticket.title},\n${JSON.stringify(
-          accessToken,
-          null,
-          2,
-        )}`,
-      );
-
-      return jwt.sign(accessToken, config.sessionSecret, {
-        expiresIn: 900,
-      });
     },
   }),
 );

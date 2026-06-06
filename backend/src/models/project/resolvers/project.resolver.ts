@@ -1,8 +1,7 @@
 /**
  * Project queries and field resolvers.
  *
- * Queries: project, myLastProject, projectTextAccessToken, projectAccessToken,
- *          exportTickets, projectTickets, projectTicketsForCategory,
+ * Queries: project, myLastProject, exportTickets, projectTickets, projectTicketsForCategory,
  *          projectGoalStats, deliveredTicketForPeriod, workedTicketForPeriod,
  *          scheduledTicketToBeWorked, scheduledTicketToBeClosing,
  *          ticketStatusHistogram, projectedWorkload, pastGoalProgress,
@@ -60,9 +59,6 @@ import { getRolePreferences, updateRolePreferences } from "../../role/entity";
 import { GraphQLError } from "graphql";
 import { getTicketSorting } from "../../ticket/helper";
 import { paginateNodes } from "../../../utils/pagination";
-import jwt from "jsonwebtoken";
-import { config } from "../../../config";
-import { DocumentToken } from "../../../hocuspocus/documentToken";
 import { AuthRoleContext } from "../../../types";
 
 // ---------------------------------------------------------------------------
@@ -157,54 +153,6 @@ builder.queryField("myLastProject", (t) =>
         },
         orderBy: { createdAt: "desc" },
       });
-    },
-  }),
-);
-
-// ---------------------------------------------------------------------------
-// Query: projectTextAccessToken
-// ---------------------------------------------------------------------------
-
-builder.queryField("projectTextAccessToken", (t) =>
-  t.string({
-    nullable: true,
-    authScopes: { hasRole: true },
-    args: { id: t.arg.int({ required: true }) },
-    resolve: async (_root, args, ctx) => {
-      const project = await ctx.prisma.project.findFirstOrThrow({
-        where: { id: args.id, organizationId: (ctx.me as AuthRoleContext).organizationId, stage: { not: ModelStage.DELETED } },
-      });
-      const readOnly = project.ancestorIsArchived || project.stage === "ARCHIVED";
-      const accessToken: DocumentToken = {
-        roleId: (ctx.me as AuthRoleContext).roleId, orgId: (ctx.me as AuthRoleContext).organizationId,
-        documentId: project.id, documentType: "projectText",
-        mode: readOnly ? "read" : "write",
-      };
-      return jwt.sign(accessToken, config.sessionSecret, { expiresIn: 900 });
-    },
-  }),
-);
-
-// ---------------------------------------------------------------------------
-// Query: projectAccessToken
-// ---------------------------------------------------------------------------
-
-builder.queryField("projectAccessToken", (t) =>
-  t.string({
-    nullable: true,
-    authScopes: { hasRole: true },
-    args: { id: t.arg.int({ required: true }) },
-    resolve: async (_root, args, ctx) => {
-      const project = await ctx.prisma.project.findFirstOrThrow({
-        where: { id: args.id, organizationId: (ctx.me as AuthRoleContext).organizationId, stage: { not: ModelStage.DELETED } },
-      });
-      const readOnly = project.ancestorIsArchived || project.stage === "ARCHIVED";
-      const accessToken: DocumentToken = {
-        roleId: (ctx.me as AuthRoleContext).roleId, orgId: (ctx.me as AuthRoleContext).organizationId,
-        documentId: project.id, documentType: "projectText",
-        mode: readOnly ? "read" : "write",
-      };
-      return jwt.sign(accessToken, config.sessionSecret, { expiresIn: 900 });
     },
   }),
 );

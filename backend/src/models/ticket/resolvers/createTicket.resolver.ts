@@ -6,8 +6,9 @@
  *  - Mutation.importTickets(input): [Ticket!]!
  *
  * createTicket validates project/product/workflow constraints,
- * assigns local IDs, creates the Yjs document for the ticket body,
- * creates workflow state copies, and triggers mention notifications.
+ * assigns local IDs, creates workflow state copies, and triggers
+ * mention notifications. It seeds no body — Markdown is written
+ * later via saveDocumentBody (ADR 0007).
  *
  * importTickets bulk-creates tickets with optional tag, author, and
  * owner association via CSV-style inputs.
