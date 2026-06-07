@@ -1,13 +1,12 @@
 # Production Dockerfile for the Orcha backend.
 #
-# Shared by four DO App Platform components — api, cron, hocuspocus, and
-# the pre-deploy migration job. Each overrides CMD via run_command in the
+# Shared by three DO App Platform components — api, cron, and the
+# pre-deploy migration job. Each overrides CMD via run_command in the
 # app spec:
 #
-#   api:        node dist/server.js
-#   cron:       node dist/cron.js
-#   hocuspocus: node dist/hocuspocus/server.js
-#   migrate:    npx prisma migrate deploy
+#   api:     node dist/server.js
+#   cron:    node dist/cron.js
+#   migrate: npx prisma migrate deploy
 
 # Cache bust: 2026-05-24
 FROM node:22-alpine

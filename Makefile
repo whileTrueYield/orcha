@@ -54,9 +54,6 @@ rebuild-backend:
 rebuild-cron:
 	docker compose up --build cron -d
 
-rebuild-hocuspocus:
-	docker compose up --build hocuspocus -d
-
 # Database commands
 db-init:
 	docker exec -it -w /orcha orcha-backend yarn prisma migrate deploy
@@ -67,8 +64,7 @@ db-push:
 db-reset:
 	docker exec -it -w /orcha orcha-backend yarn prisma migrate reset --skip-generate && \
 	docker restart orcha-backend && \
-	docker restart orcha-cron && \
-	docker restart orcha-hocuspocus
+	docker restart orcha-cron
 
 db-reset-test:
 	DATABASE_URL=postgresql://webapp:postgres@localhost:5432/tests?connection_limit=5 \
@@ -79,7 +75,6 @@ db-reset-test:
 db-load:
 	docker compose stop backend
 	docker compose stop cron
-	docker compose stop hocuspocus
 	docker cp production_db_backup.sql postgres:production_db_backup.sql
 	docker exec -it postgres dropdb -h localhost -U webapp "webapp" 
 	docker exec -it postgres createdb -h localhost -U webapp "webapp" 
@@ -97,9 +92,6 @@ ssh-studio:
 
 ssh-ai:	
 	docker exec -it orcha-ai /bin/sh
-
-ssh-hocuspocus:	
-	docker exec -it orcha-hocuspocus /bin/sh
 
 ssh-support:	
 	docker exec -it orcha-support /bin/sh
@@ -192,7 +184,6 @@ help:
 	@echo "make ssh-cron \t\tSSH in the cron docker instance"
 	@echo "make ssh-ai \t\tSSH in the AI python docker instance"
 	@echo "make ssh-studio \tSSH in the studio docker instance"
-	@echo "make ssh-hocuspocus \tSSH in the hocuspocus docker instance"
 	@echo "make ssh-support \tSSH in the support docker instance"
 	@echo "make ssh-frontend \tSSH in the frontend docker instance"
 	@echo "\n\033[1mDev commands\033[0m"

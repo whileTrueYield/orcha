@@ -114,7 +114,6 @@ services:
       - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
       - NODE_ENV=development
       - APOLLO_GRAPH_REF=orcha@current
-      - ORCHA_WS_BACKEND_PORT=${__DOCKER_ORCHA_WS_BACKEND_PORT}
       - ORCHA_BACKEND_PORT=${__DOCKER_ORCHA_BACKEND_PORT}
       - ORCHA_HOSTNAME=localhost
       - ORCHA_WEBAPP_URI=http://localhost:${__DOCKER_ORCHA_FRONTEND_PORT}
@@ -123,7 +122,6 @@ services:
       - ORCHA_TEST_INTERFACE=${__DOCKER_ORCHA_TEST_INTERFACE}
       - ORCHA_DOMAIN=localhost
       - ORCHA_API_URI=http://localhost:${__DOCKER_ORCHA_BACKEND_PORT}
-      - ORCHA_API_WS_URI=ws://localhost:${__DOCKER_ORCHA_WS_BACKEND_PORT}
       - ORCHA_AI_URI=http://ai:${__DOCKER_ORCHA_AI_PORT}
       - ORCHA_WWW_URI=http://localhost:${__DOCKER_ORCHA_WWW_PORT}
       - UPLOADS_BUCKET=${__DOCKER_UPLOADS_BUCKET}
@@ -178,7 +176,6 @@ services:
       - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
       - NODE_ENV=development
       - APOLLO_GRAPH_REF=orcha@current
-      - ORCHA_WS_BACKEND_PORT=${__DOCKER_ORCHA_WS_BACKEND_PORT}
       - ORCHA_BACKEND_PORT=${__DOCKER_ORCHA_BACKEND_PORT}
       - ORCHA_HOSTNAME=localhost
       - ORCHA_WEBAPP_URI=http://localhost:${__DOCKER_ORCHA_FRONTEND_PORT}
@@ -187,7 +184,6 @@ services:
       - ORCHA_TEST_INTERFACE=${__DOCKER_ORCHA_TEST_INTERFACE}
       - ORCHA_DOMAIN=localhost
       - ORCHA_API_URI=http://localhost:${__DOCKER_ORCHA_BACKEND_PORT}
-      - ORCHA_API_WS_URI=ws://localhost:${__DOCKER_ORCHA_WS_BACKEND_PORT}
       - ORCHA_AI_URI=http://ai:${__DOCKER_ORCHA_AI_PORT}
       - ORCHA_WWW_URI=http://localhost:${__DOCKER_ORCHA_WWW_PORT}
       - UPLOADS_BUCKET=${__DOCKER_UPLOADS_BUCKET}
@@ -265,50 +261,6 @@ services:
         - action: rebuild
           path: ./ai/requirements.txt
 
-  hocuspocus:
-    container_name: orcha-hocuspocus
-    build:
-      context: ./backend
-      dockerfile: Dockerfile-dev
-      target: hocuspocus
-    depends_on:
-      - db
-      - redis
-    healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://localhost:${__DOCKER_ORCHA_WS_BACKEND_PORT}/ || exit 1
-      interval: 30s
-      timeout: 60s
-      retries: 5
-      start_period: 80s
-    environment:
-      - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
-      - NODE_ENV=development
-      - ORCHA_WS_BACKEND_PORT=${__DOCKER_ORCHA_WS_BACKEND_PORT}
-      - ORCHA_HOSTNAME=localhost
-      - ORCHA_SESSION_SECRET=${__DOCKER_ORCHA_SESSION_SECRET}
-      - ORCHA_DOMAIN=localhost
-      - ORCHA_API_WS_URI=ws://localhost:${__DOCKER_ORCHA_WS_BACKEND_PORT}
-      - REDIS_HOSTNAME=${__DOCKER_REDIS_HOSTNAME}
-      - VAPID_PUBLIC_KEY=${__DOCKER_VAPID_PUBLIC_KEY}
-      - VAPID_PRIVATE_KEY=${__DOCKER_VAPID_PRIVATE_KEY}
-    ports:
-      - 38268:38268
-    develop:
-      watch:
-        - action: sync
-          path: ./backend/src/hocuspocus
-          target: /orcha/src/hocuspocus
-        - action: sync
-          path: ./backend/templates
-          target: /orcha/templates
-        - action: sync
-          path: ./backend/assets
-          target: /orcha/assets
-        - action: rebuild
-          path: ./backend/yarn.lock
-        - action: rebuild
-          path: ./backend/prisma
-
   support:
     container_name: orcha-support
     build:
@@ -361,7 +313,6 @@ services:
       - NODE_ENV=development
       - VITE_WEBSITE_NAME=Orcha
       - VITE_API_URI=http://localhost:${__DOCKER_ORCHA_BACKEND_PORT}
-      - VITE_API_WS_URI=ws://localhost:${__DOCKER_ORCHA_WS_BACKEND_PORT}
       - VITE_GRAPHQL_URI=http://localhost:${__DOCKER_ORCHA_BACKEND_PORT}/graphql
       - VITE_UPLOADS_CDN_URL=${__DOCKER_UPLOADS_CDN_URL}
       - VITE_WEBSITE_DOMAIN=localhost
