@@ -260,9 +260,9 @@ Still-open work for production readiness:
 - **Frontend env baking.** The `build` target in `frontend/Dockerfile`
   takes API URLs as build ARGs. Pick a real production hostname strategy
   (build-time ARG vs runtime substitution).
-- **DNS + TLS + reverse proxy.** Five public-ish surfaces today: app,
-  api (HTTP), api (WS), support, upload CDN. Each needs a hostname, a
-  cert, and a CORS + session-cookie domain that all agree.
+- **DNS + TLS + reverse proxy.** Four public-ish surfaces today: app,
+  api (HTTP), support, upload CDN. Each needs a hostname, a cert, and a
+  CORS + session-cookie domain that all agree.
 - **Backups.** Postgres holds the entire product state. No automated
   backup job exists in this repo.
 - **Observability.** Dozzle is dev-only. Production logging, metrics,
