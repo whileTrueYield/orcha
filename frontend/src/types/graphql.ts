@@ -2463,7 +2463,6 @@ export type Query = {
   dependencies: DependencySet;
   documentation: Documentation;
   documentationPage: DocumentationPage;
-  documentationPageAccessToken?: Maybe<Scalars['String']['output']>;
   documentations: PaginatedDocumentations;
   drawing: Drawing;
   exportTickets: Array<TicketExport>;
@@ -2542,10 +2541,8 @@ export type Query = {
   productByCode: Product;
   products: PaginatedProducts;
   project: Project;
-  projectAccessToken?: Maybe<Scalars['String']['output']>;
   projectAnalytics?: Maybe<ProjectAnalytics>;
   projectGoalStats: Array<ProjectGoalStats>;
-  projectTextAccessToken?: Maybe<Scalars['String']['output']>;
   projectTickets: Array<ProjectTicket>;
   projectTicketsForCategory: PaginatedTickets;
   projectedGoalProgress: Array<ProjectGoalProgress>;
@@ -2580,7 +2577,6 @@ export type Query = {
   ticket: Ticket;
   ticketNotes: Array<TicketWorkflowStateNote>;
   ticketStatusHistogram: Array<OpenTicketsByWorkflow>;
-  ticketTextAccessToken?: Maybe<Scalars['String']['output']>;
   ticketWorkflowState: TicketWorkflowState;
   ticketWorkflowStateNote: TicketWorkflowStateNote;
   tickets: PaginatedTickets;
@@ -2655,11 +2651,6 @@ export type QueryDocumentationArgs = {
 
 
 export type QueryDocumentationPageArgs = {
-  id: Scalars['Int']['input'];
-};
-
-
-export type QueryDocumentationPageAccessTokenArgs = {
   id: Scalars['Int']['input'];
 };
 
@@ -2984,11 +2975,6 @@ export type QueryProjectArgs = {
 };
 
 
-export type QueryProjectAccessTokenArgs = {
-  id: Scalars['Int']['input'];
-};
-
-
 export type QueryProjectAnalyticsArgs = {
   projectId: Scalars['Int']['input'];
 };
@@ -2996,11 +2982,6 @@ export type QueryProjectAnalyticsArgs = {
 
 export type QueryProjectGoalStatsArgs = {
   projectId: Scalars['Int']['input'];
-};
-
-
-export type QueryProjectTextAccessTokenArgs = {
-  id: Scalars['Int']['input'];
 };
 
 
@@ -3213,11 +3194,6 @@ export type QueryTicketStatusHistogramArgs = {
   projectId: Scalars['Int']['input'];
   startDate: Scalars['DateTime']['input'];
   stopDate: Scalars['DateTime']['input'];
-};
-
-
-export type QueryTicketTextAccessTokenArgs = {
-  id: Scalars['Int']['input'];
 };
 
 
