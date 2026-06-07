@@ -12,7 +12,6 @@ Six components, monorepo with Yarn workspaces:
 | **frontend** | static site | React + Vite (CDN-served) | — | SPA |
 | **support** | static site | React + Vite (CDN-served) | — | Embedded support widget |
 | **api** | service | Express + GraphQL + REST | 4000 | Backend API |
-| **hocuspocus** | service | Hocuspocus (Yjs CRDT) | 38268 | Real-time collaboration via WebSocket |
 | **ai** | service | FastAPI (Python 3.12) | 8000 | MCTS scheduler — internal only |
 | **cron** | worker | BullMQ (same Docker image as api) | — | Background job processor |
 
@@ -23,7 +22,7 @@ Infrastructure: PostgreSQL 16, Redis 7, S3-compatible storage (MinIO locally, DO
 - `.do/app.yaml` — DigitalOcean App Platform spec
 - `docker-compose.yaml` — Local dev environment
 - `docker-compose.prod.yaml` — Self-hosted prod (Traefik + Let's Encrypt)
-- `backend/src/` — API, cron, hocuspocus source (TypeScript)
+- `backend/src/` — API and cron source (TypeScript)
 - `ai/app/` — MCTS scheduler source (Python)
 - `frontend/src/` — React SPA source
 - `backend/prisma/schema.prisma` — Database schema
