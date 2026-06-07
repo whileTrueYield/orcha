@@ -123,7 +123,6 @@ else
 
   # Service ports (defaults)
   assert_contains "backend port default" "^__DOCKER_ORCHA_BACKEND_PORT=4000$" "$ENV_FILE"
-  assert_contains "ws port default" "^__DOCKER_ORCHA_WS_BACKEND_PORT=38268$" "$ENV_FILE"
   assert_contains "support port default" "^__DOCKER_ORCHA_SUPPORT_PORT=3001$" "$ENV_FILE"
   assert_contains "ai port default" "^__DOCKER_ORCHA_AI_PORT=8000$" "$ENV_FILE"
 

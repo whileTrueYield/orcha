@@ -43,7 +43,7 @@ export const createDocumentationPage = async (
   const blocks = await generateBlocks();
   let index = 0;
   for (const block of blocks) {
-    // TODO: Create documentation data block schema, convert MD to YJS doc
+    // TODO: Create documentation data block schema, convert MD to data block
     // await prisma.documentationDataBlock.create({
     //   data: {
     //     documentationPageId: documentationPage.id,

@@ -75,7 +75,7 @@ architecture is documented in depth in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Other features
 
-- Collaborative rich-text editors (TipTap + Hocuspocus/CRDT)
+- Markdown rich-text editors (Milkdown Crepe) with 3-way-merge conflict handling
 - Per-product workflow pipelines with customizable states
 - Public documentation site builder (published to S3)
 - Embeddable support widget that creates tickets in your workspace
