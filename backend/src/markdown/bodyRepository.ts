@@ -25,7 +25,7 @@
 import { Prisma } from "@prisma/client";
 
 import prisma from "../prisma";
-import { merge, type ConflictHunk } from "./merge";
+import { merge, type ConflictHunk, type MergeRegionView } from "./merge";
 
 export type BodyType = "ticket" | "project" | "documentation";
 
@@ -44,6 +44,9 @@ export type SaveResult =
       // The whole body rewritten with git merge-file markers, for a caller that
       // wants to present the conflict as text rather than structured hunks.
       markered: string;
+      // The conflict as an ordered region list, for a caller that renders a
+      // structured picker instead of markered text.
+      regions: MergeRegionView[];
       // The current stored version the rejected writer must re-read and rebase
       // onto (the ETag a 409 returns).
       version: number;
@@ -185,6 +188,7 @@ export async function saveBody(
       ok: false,
       conflicts: reconciled.conflicts,
       markered: reconciled.markered,
+      regions: reconciled.regions,
       version: current.version,
     };
   }
