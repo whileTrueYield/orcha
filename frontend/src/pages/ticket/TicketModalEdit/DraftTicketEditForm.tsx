@@ -57,9 +57,8 @@ export const DraftTicketEditForm: FCWithFragments<Props> = (props) => {
       <DangerConfirm
         cta="Delete Ticket"
         title="Delete Ticket"
-        description="Are you sure you want to delete this product? All tickets under
-        this product will be permanantly destroyed. This action cannot
-        be undone."
+        description="Are you sure you want to delete this ticket? It will be
+        permanently destroyed. This action cannot be undone."
         visible={deleteTicketModalVisible}
         onClose={() => setDeleteTicketModalVisibility(false)}
         onConfirm={onDeleteTicket}
