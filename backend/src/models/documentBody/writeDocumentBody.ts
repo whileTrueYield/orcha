@@ -23,9 +23,11 @@ import { NotificationCategory, NotificationTarget } from "@prisma/client";
 import prisma from "../../prisma";
 import { analyze } from "../../markdown/analysis";
 import { getBody, saveBody, type BodyType } from "../../markdown/bodyRepository";
+import type { MergeRegionView } from "../../markdown/merge";
 import { resolveMentions, type MentionResolvers } from "../../markdown/resolve";
 import { createNotificationsForTarget } from "../notification/createNotification";
 import type {
+  ConflictRegionShape,
   MentionWarningShape,
   SaveDocumentBodyResultShape,
 } from "./entity";
@@ -94,6 +96,14 @@ function toWarning(warning: {
   };
 }
 
+// Flatten the merge's discriminated region view into the predictable GraphQL
+// shape (every field present; uppercase kind matching the enum's wire value).
+function toConflictRegion(view: MergeRegionView): ConflictRegionShape {
+  return view.kind === "conflict"
+    ? { kind: "CONFLICT", lines: [], ours: view.ours, theirs: view.theirs }
+    : { kind: "STABLE", lines: view.lines, ours: [], theirs: [] };
+}
+
 export async function writeDocumentBody({
   type,
   id,
@@ -114,7 +124,11 @@ export async function writeDocumentBody({
   if (!result.ok) {
     return {
       body: null,
-      conflict: { markdown: result.markered, version: result.version },
+      conflict: {
+        markdown: result.markered,
+        version: result.version,
+        regions: result.regions.map(toConflictRegion),
+      },
       warnings: [],
     };
   }

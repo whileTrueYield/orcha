@@ -3,7 +3,8 @@
  * body and its write result.
  *
  * Exports: DocumentBodyRef, DocumentBodyTypeEnum, DocumentBodyConflictRef,
- * MentionWarningRef, SaveDocumentBodyResultRef (+ their TS shapes).
+ * ConflictRegionRef, ConflictRegionKindEnum, MentionWarningRef,
+ * SaveDocumentBodyResultRef (+ their TS shapes).
  *
  * A body is the Markdown source of truth (ADR 0007) plus its optimistic-
  * concurrency version. It is shared by every document type (ticket, project,
@@ -38,10 +39,41 @@ export const DocumentBodyTypeEnum = builder.enumType("DocumentBodyType", {
   } as const,
 });
 
-// A conflict carries the git-markered Markdown (base/ours/theirs woven with
-// <<<<<<< ======= >>>>>>> markers) and the current stored version the writer
-// must rebase onto. Returned without writing.
-export type DocumentBodyConflictShape = { markdown: string; version: number };
+// A conflict carries the git-markered Markdown (kept for the REST 409 body) and
+// an ordered list of regions the UI renders as a side-by-side picker, plus the
+// current stored version the writer must rebase onto. Returned without writing.
+export type ConflictRegionShape = {
+  kind: "STABLE" | "CONFLICT";
+  lines: string[];
+  ours: string[];
+  theirs: string[];
+};
+
+export type DocumentBodyConflictShape = {
+  markdown: string;
+  version: number;
+  regions: ConflictRegionShape[];
+};
+
+// value === name, so no reverse-mapping is needed when resolving the field.
+export const ConflictRegionKindEnum = builder.enumType("ConflictRegionKind", {
+  values: ["STABLE", "CONFLICT"] as const,
+});
+
+export const ConflictRegionRef =
+  builder.objectRef<ConflictRegionShape>("ConflictRegion");
+
+builder.objectType(ConflictRegionRef, {
+  fields: (t) => ({
+    kind: t.field({ type: ConflictRegionKindEnum, resolve: (r) => r.kind }),
+    // Predictable shape: every field is always present. For a STABLE region
+    // `lines` holds the text and `ours`/`theirs` are empty; for a CONFLICT it's
+    // the reverse. An empty `ours`/`theirs` on a conflict means a deletion.
+    lines: t.stringList({ resolve: (r) => r.lines }),
+    ours: t.stringList({ resolve: (r) => r.ours }),
+    theirs: t.stringList({ resolve: (r) => r.theirs }),
+  }),
+});
 
 export const DocumentBodyConflictRef =
   builder.objectRef<DocumentBodyConflictShape>("DocumentBodyConflict");
@@ -50,6 +82,10 @@ builder.objectType(DocumentBodyConflictRef, {
   fields: (t) => ({
     markdown: t.exposeString("markdown"),
     version: t.exposeInt("version"),
+    regions: t.field({
+      type: [ConflictRegionRef],
+      resolve: (r) => r.regions,
+    }),
   }),
 });
 

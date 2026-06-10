@@ -33,7 +33,16 @@ const SAVE = /* GraphQL */ `
       baseVersion: $baseVersion
     ) {
       body { markdown version }
-      conflict { markdown version }
+      conflict {
+        markdown
+        version
+        regions {
+          kind
+          lines
+          ours
+          theirs
+        }
+      }
       warnings { kind reference matches }
     }
   }
@@ -127,6 +136,16 @@ describe("saveDocumentBody mutation", () => {
     expect(res.data.saveDocumentBody.body).toBeNull();
     expect(res.data.saveDocumentBody.conflict.version).toBe(2);
     expect(res.data.saveDocumentBody.conflict.markdown).toContain("<<<<<<<");
+
+    const regions = res.data.saveDocumentBody.conflict.regions;
+    // The structured regions reassemble (stable lines + one chosen side per
+    // conflict) without any markers — exactly what the picker renders.
+    expect(regions.some((r: { kind: string }) => r.kind === "CONFLICT")).toBe(true);
+    const conflictRegion = regions.find(
+      (r: { kind: string }) => r.kind === "CONFLICT",
+    );
+    expect(Array.isArray(conflictRegion.ours)).toBe(true);
+    expect(Array.isArray(conflictRegion.theirs)).toBe(true);
   });
 
   it("scopes writes to the caller's organization", async () => {
