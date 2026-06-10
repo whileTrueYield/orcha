@@ -3,7 +3,7 @@
  *
  * Public API:
  *   - merge(base, ours, theirs): MergeResult
- *   - types MergeResult, ConflictHunk
+ *   - types MergeResult, ConflictHunk, MergeRegionView
  *
  * This is the correctness core of the optimistic-concurrency model described in
  * ADR 0007: a writer sends the `base` revision it started editing from, and we
@@ -41,6 +41,18 @@ export type ConflictHunk = {
 };
 
 /**
+ * The conflict body as an ordered list of regions, the structured form a UI
+ * consumes to render a side-by-side picker (no git markers). A region is either
+ * unchanged text shared by both sides, or an overlap where each side proposed
+ * different lines (`ours`/`theirs`; an empty array means that side has nothing
+ * there, e.g. a deletion). Reassembling stable lines + one chosen side per
+ * conflict, joined by "\n", is the exact inverse of how merge split the body.
+ */
+export type MergeRegionView =
+  | { kind: "stable"; lines: string[] }
+  | { kind: "conflict"; ours: string[]; theirs: string[] };
+
+/**
  * Always the same shape regardless of outcome: branch on `clean`. A clean merge
  * carries the merged body; a conflict carries both the structured regions that
  * overlapped (`conflicts`) and the whole body rewritten with git merge-file
@@ -49,7 +61,12 @@ export type ConflictHunk = {
  */
 export type MergeResult =
   | { clean: true; merged: string }
-  | { clean: false; conflicts: ConflictHunk[]; markered: string };
+  | {
+      clean: false;
+      conflicts: ConflictHunk[];
+      markered: string;
+      regions: MergeRegionView[];
+    };
 
 export function merge(
   base: string,
@@ -75,7 +92,12 @@ export function merge(
   }));
 
   if (conflicts.length > 0) {
-    return { clean: false, conflicts, markered: renderMarkers(regions) };
+    return {
+      clean: false,
+      conflicts,
+      markered: renderMarkers(regions),
+      regions: toRegionViews(regions),
+    };
   }
 
   const merged = regions.flatMap((region) => region.ok ?? []).join("\n");
@@ -100,6 +122,16 @@ function renderMarkers(regions: MergeRegion<string>[]): string {
     }
   }
   return lines.join("\n");
+}
+
+// The same region list renderMarkers walks, as the structured view a UI picks
+// from. Built from the diff3 regions so it can never disagree with `markered`.
+function toRegionViews(regions: MergeRegion<string>[]): MergeRegionView[] {
+  return regions.map((region) =>
+    hasConflict(region)
+      ? { kind: "conflict", ours: region.conflict.a, theirs: region.conflict.b }
+      : { kind: "stable", lines: region.ok ?? [] },
+  );
 }
 
 // Narrow a diff3 region to the conflict case. node-diff3's MergeRegion carries

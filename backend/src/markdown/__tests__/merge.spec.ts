@@ -86,6 +86,49 @@ describe("3-way markdown merge", () => {
     ]);
   });
 
+  // Reassemble a region list by picking one side per conflict — the inverse of
+  // how merge() split the body. Mirrors the frontend resolver's reassembly.
+  const assemble = (
+    regions: { kind: string; lines?: string[]; ours?: string[]; theirs?: string[] }[],
+    pick: "ours" | "theirs",
+  ) =>
+    regions
+      .flatMap((r) => (r.kind === "stable" ? r.lines! : r[pick]!))
+      .join("\n");
+
+  it("exposes ordered regions that reassemble to each side", () => {
+    const base = "line one\nline two\nline three\n";
+    const ours = "line one, ours\nline two\nline three\n";
+    const theirs = "line one, theirs\nline two\nline three\n";
+
+    const result = merge(base, ours, theirs);
+
+    expect(result.clean).toBe(false);
+    if (result.clean) throw new Error("expected a conflict");
+    expect(result.regions).toEqual([
+      { kind: "conflict", ours: ["line one, ours"], theirs: ["line one, theirs"] },
+      { kind: "stable", lines: ["line two", "line three", ""] },
+    ]);
+    expect(assemble(result.regions, "ours")).toBe(ours);
+    expect(assemble(result.regions, "theirs")).toBe(theirs);
+  });
+
+  it("represents a one-sided deletion as a conflict region with an empty side", () => {
+    const base = "x\nb\ny\n";
+    const ours = "x\ny\n"; // we deleted b
+    const theirs = "x\nb edited\ny\n"; // they edited b
+
+    const result = merge(base, ours, theirs);
+
+    expect(result.clean).toBe(false);
+    if (result.clean) throw new Error("expected a conflict");
+    expect(result.regions).toEqual([
+      { kind: "stable", lines: ["x"] },
+      { kind: "conflict", ours: [], theirs: ["b edited"] },
+      { kind: "stable", lines: ["y", ""] },
+    ]);
+  });
+
   it("renders the conflict as git-style markered Markdown", () => {
     const base = "line one\nline two\nline three\n";
     const ours = "line one, ours\nline two\nline three\n";
