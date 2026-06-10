@@ -94,6 +94,68 @@ it("loads the body and saves with the loaded base version", async () => {
   expect(await screen.findByText("Saved")).toBeInTheDocument();
 });
 
+// A stale base is 3-way merged server-side, so the persisted body differs from
+// what we submitted. The editor must reseed to that merged result so the other
+// writer's folded-in changes are visible right after Save, not only on reload.
+const saveMergeMock = {
+  request: {
+    query: SAVE_DOCUMENT_BODY,
+    variables: {
+      documentType: DocumentBodyType.Ticket,
+      documentId: 7,
+      markdown: "hello\n",
+      baseVersion: 2,
+    },
+  },
+  result: {
+    data: {
+      saveDocumentBody: {
+        __typename: "SaveDocumentBodyResult",
+        body: {
+          __typename: "DocumentBody",
+          markdown: "hello\ntheirs\n",
+          version: 3,
+        },
+        conflict: null,
+        warnings: [],
+      },
+    },
+  },
+};
+
+it("reseeds the editor with the merged body after a server-side merge", async () => {
+  render(
+    <MockedProvider mocks={[loadMock, saveMergeMock]}>
+      <TicketBody ticketId={7} />
+    </MockedProvider>,
+  );
+
+  expect(await screen.findByTestId("seed")).toHaveTextContent("hello");
+
+  fireEvent.click(screen.getByText("edit"));
+  fireEvent.click(screen.getByText("Save"));
+
+  expect(await screen.findByText("Saved")).toBeInTheDocument();
+  // The merged-in "theirs" line is now visible in the editor.
+  expect(screen.getByTestId("seed")).toHaveTextContent("theirs");
+});
+
+it("saves on Cmd/Ctrl+S", async () => {
+  render(
+    <MockedProvider mocks={[loadMock, saveOkMock]}>
+      <TicketBody ticketId={7} />
+    </MockedProvider>,
+  );
+
+  expect(await screen.findByTestId("seed")).toHaveTextContent("hello");
+
+  fireEvent.click(screen.getByText("edit"));
+  // The shortcut fires from inside the editor and bubbles to the body wrapper.
+  fireEvent.keyDown(screen.getByTestId("seed"), { key: "s", metaKey: true });
+
+  expect(await screen.findByText("Saved")).toBeInTheDocument();
+});
+
 const saveConflictMock = {
   request: {
     query: SAVE_DOCUMENT_BODY,
