@@ -61,10 +61,10 @@ type DocumentBodyConflict {
 }
 ```
 
-`regions` becomes the canonical ordered representation. `markered` is derived from it (still
-needed by the `/v1` REST surface for its `409` body). The internal **`conflicts` array on the
-merge/save result is removed** — `regions.filter(kind === CONFLICT)` subsumes it — *pending
-confirmation it is unused outside tests*.
+`regions` is added as the canonical ordered representation; `markered` stays (the `/v1` REST
+surface still uses it for its `409` body). The internal **`conflicts` array is kept** — it is
+asserted directly by `merge.spec`, so removing it would churn working tests for no gain. The
+GraphQL surface exposes only `regions` (+ `markdown`/`version`); `conflicts` stays internal.
 
 **Plumbing:** `markdown/merge.ts` (return `regions`) → `markdown/bodyRepository.ts`
 (`SaveResult` conflict branch) → `models/documentBody/writeDocumentBody.ts` (map onto the
