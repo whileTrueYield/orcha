@@ -52,6 +52,12 @@ export const SAVE_DOCUMENT_BODY = gql`
       conflict {
         markdown
         version
+        regions {
+          kind
+          lines
+          ours
+          theirs
+        }
       }
       warnings {
         kind

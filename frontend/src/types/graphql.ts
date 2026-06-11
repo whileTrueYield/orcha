@@ -135,6 +135,19 @@ export type CommentReply = {
   updatedAt: Scalars['DateTime']['output'];
 };
 
+export type ConflictRegion = {
+  __typename?: 'ConflictRegion';
+  kind: ConflictRegionKind;
+  lines: Array<Scalars['String']['output']>;
+  ours: Array<Scalars['String']['output']>;
+  theirs: Array<Scalars['String']['output']>;
+};
+
+export enum ConflictRegionKind {
+  Conflict = 'CONFLICT',
+  Stable = 'STABLE'
+}
+
 export type CreateApiTokenInput = {
   expiresInDays?: InputMaybe<Scalars['Int']['input']>;
   name: Scalars['String']['input'];
@@ -364,6 +377,7 @@ export type DocumentBody = {
 export type DocumentBodyConflict = {
   __typename?: 'DocumentBodyConflict';
   markdown: Scalars['String']['output'];
+  regions: Array<ConflictRegion>;
   version: Scalars['Int']['output'];
 };
 
