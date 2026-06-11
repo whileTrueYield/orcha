@@ -64,6 +64,7 @@
     "prettier-plugin-tailwindcss": "^0.2.1",
     "randomcolor": "^0.6.2",
     "react": "^18.2.0",
+    "react-diff-viewer-continued": "^4.2.2",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.51.2",
     "react-popper": "^2.3.0",

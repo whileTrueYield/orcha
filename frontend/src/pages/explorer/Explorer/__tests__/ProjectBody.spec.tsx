@@ -35,6 +35,24 @@ jest.mock("components/Markdown/MarkdownEditor", () => {
   };
 });
 
+// react-diff-viewer-continued drives a web worker + ResizeObserver + layout
+// measurement jsdom can't run (the same untestable boundary as Crepe). Mock it
+// to a flat element exposing the titles and both sides as text.
+jest.mock("react-diff-viewer-continued", () => {
+  const React = require("react");
+  return {
+    __esModule: true,
+    DiffMethod: { WORDS: "diffWords" },
+    default: ({ oldValue, newValue, leftTitle, rightTitle }: any) =>
+      React.createElement("div", { "data-testid": "diff" }, [
+        React.createElement("span", { key: "lt" }, leftTitle),
+        React.createElement("span", { key: "rt" }, rightTitle),
+        React.createElement("span", { key: "ov" }, oldValue),
+        React.createElement("span", { key: "nv" }, newValue),
+      ]),
+  };
+});
+
 const loadMock = {
   request: { query: GET_PROJECT_BODY, variables: { id: 7 } },
   result: {

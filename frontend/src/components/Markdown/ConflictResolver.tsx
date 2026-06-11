@@ -2,16 +2,20 @@
  * ConflictResolver — the side-by-side picker shown when saveDocumentBody returns
  * a 409. It renders the server's structured conflict regions (NOT git-markered
  * Markdown, which a WYSIWYG editor mis-parses): unchanged text as muted context,
- * and each overlap as "Your version" / "Their version" monospace panels with
- * Keep yours / Keep theirs / Keep both. Once every clash has a choice, it
+ * and each overlap as a word-level split diff (Their version | Your version) with
+ * Keep theirs / Keep both / Keep yours. Once every clash has a choice, it
  * reassembles clean Markdown and hands it to `onResolve` to save.
  *
- * Exports: ConflictResolver (default), reassembleBody, serverVersion.
+ * The diff is rendered by react-diff-viewer-continued so the two near-identical
+ * sides show only what actually changed, word by word. That library pulls in a
+ * web worker / ResizeObserver / layout measurement, so jsdom tests mock it (the
+ * same "untestable visual boundary" treatment the Crepe editor gets); the real
+ * diff is verified by eye in the running app.
  *
- * No editor dependency, so it is fully testable in jsdom.
+ * Exports: ConflictResolver (default), reassembleBody, serverVersion.
  */
 import { useState } from "react";
-import cn from "classnames";
+import DiffViewer, { DiffMethod } from "react-diff-viewer-continued";
 import { ConflictRegion, ConflictRegionKind } from "types/graphql";
 import { Button } from "components/fields/Button";
 
@@ -64,8 +68,43 @@ interface Props {
   onCancel: () => void;
 }
 
-const renderLines = (lines: string[]) =>
-  lines.length ? lines.join("\n") : "(removed)";
+// Tune the diff viewer to the app's palette: white surface, gray gutters, and
+// Tailwind green/red for added (yours) / removed (theirs), so it sits inside the
+// neutral conflict card without fighting it.
+const diffStyles = {
+  variables: {
+    light: {
+      diffViewerBackground: "#ffffff",
+      diffViewerColor: "#1f2937", // gray-800
+      addedBackground: "#f0fdf4", // green-50
+      addedColor: "#166534", // green-800
+      removedBackground: "#fef2f2", // red-50
+      removedColor: "#991b1b", // red-800
+      wordAddedBackground: "#bbf7d0", // green-200
+      wordRemovedBackground: "#fecaca", // red-200
+      addedGutterBackground: "#dcfce7", // green-100
+      removedGutterBackground: "#fee2e2", // red-100
+      gutterBackground: "#f9fafb", // gray-50
+      gutterColor: "#9ca3af", // gray-400
+      diffViewerTitleBackground: "#f9fafb",
+      diffViewerTitleColor: "#6b7280", // gray-500
+      diffViewerTitleBorderColor: "#e5e7eb", // gray-200
+    },
+  },
+  // The library floors the split table at minWidth:1000px and only releases it
+  // under a 768px *viewport* media query — so inside a card narrower than 1000px
+  // on a wide screen the table overflows and the card clips it. Drop the floor so
+  // the fixed-layout table fits the card and the two columns wrap evenly.
+  diffContainer: { minWidth: "unset" },
+  contentText: { fontSize: "0.8125rem", lineHeight: "1.45" },
+  lineNumber: { fontSize: "0.6875rem" },
+  titleBlock: {
+    fontSize: "0.6875rem",
+    fontWeight: 600,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+  },
+};
 
 const ConflictResolver: React.FC<Props> = ({
   regions,
@@ -85,14 +124,14 @@ const ConflictResolver: React.FC<Props> = ({
   );
 
   return (
-    <div className="space-y-3 p-4">
+    <div className="space-y-4 p-4">
       {regions.map((region, index) => {
         if (region.kind === ConflictRegionKind.Stable) {
           const text = region.lines.join("\n");
           return text.trim() ? (
             <p
               key={index}
-              className="whitespace-pre-wrap text-sm text-gray-500"
+              className="whitespace-pre-wrap px-1 text-sm text-gray-500"
             >
               {text}
             </p>
@@ -101,44 +140,56 @@ const ConflictResolver: React.FC<Props> = ({
 
         const choice = choices[index];
         return (
+          // Neutral card — amber is reserved for the top-level "edited elsewhere"
+          // banner, so the card doesn't read as a callout-inside-a-callout.
           <div
             key={index}
-            className="rounded-md border border-amber-200 bg-amber-50/40 p-3"
+            className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
           >
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-amber-700">
+            <div className="border-b border-gray-100 px-4 py-2 text-xs font-medium uppercase tracking-wide text-amber-600">
               You both edited this
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <ConflictPanel
-                label="Your version"
-                keepLabel="Keep yours"
-                lines={region.ours}
-                selected={choice === "ours"}
-                onSelect={() => choose(index, "ours")}
-              />
-              <ConflictPanel
-                label="Their version"
-                keepLabel="Keep theirs"
-                lines={region.theirs}
+            </div>
+            <DiffViewer
+              // left = current server text, right = your edit; word-level so the
+              // single changed word stands out instead of a wall of identical text.
+              oldValue={region.theirs.join("\n")}
+              newValue={region.ours.join("\n")}
+              splitView
+              compareMethod={DiffMethod.WORDS}
+              leftTitle="Their version"
+              rightTitle="Your version"
+              hideSummary
+              // The worker bundle is brittle across bundlers; these bodies are
+              // tiny, so the synchronous fallback is more than fast enough.
+              disableWorker
+              styles={diffStyles}
+            />
+            {/* Buttons sit under the column they keep: theirs (left) … yours (right). */}
+            <div className="flex items-center justify-between border-t border-gray-100 px-4 py-3">
+              <ChoiceButton
                 selected={choice === "theirs"}
                 onSelect={() => choose(index, "theirs")}
-              />
-            </div>
-            <div className="mt-2 flex justify-center">
-              <Button
-                type="button"
-                btnSize="xsmall"
-                btnType={choice === "both" ? "primary" : "secondaryWhite"}
-                onClick={() => choose(index, "both")}
+              >
+                Keep theirs
+              </ChoiceButton>
+              <ChoiceButton
+                selected={choice === "both"}
+                onSelect={() => choose(index, "both")}
               >
                 Keep both
-              </Button>
+              </ChoiceButton>
+              <ChoiceButton
+                selected={choice === "ours"}
+                onSelect={() => choose(index, "ours")}
+              >
+                Keep yours
+              </ChoiceButton>
             </div>
           </div>
         );
       })}
 
-      <div className="flex items-center justify-end gap-x-2 pt-2">
+      <div className="flex items-center justify-end gap-x-2 pt-1">
         <Button
           type="button"
           btnType="secondaryWhite"
@@ -162,32 +213,21 @@ const ConflictResolver: React.FC<Props> = ({
   );
 };
 
-const ConflictPanel: React.FC<{
-  label: string;
-  keepLabel: string;
-  lines: string[];
+// A per-side keep button: a real outlined button when unselected (white), filled
+// brand when selected — so the picks read as buttons, not links.
+const ChoiceButton: React.FC<{
   selected: boolean;
   onSelect: () => void;
-}> = ({ label, keepLabel, lines, selected, onSelect }) => (
-  <div
-    className={cn(
-      "rounded border p-2",
-      selected ? "border-brand-500 ring-1 ring-brand-400" : "border-gray-200",
-    )}
+  children: React.ReactNode;
+}> = ({ selected, onSelect, children }) => (
+  <Button
+    type="button"
+    btnSize="small"
+    btnType={selected ? "primary" : "white"}
+    onClick={onSelect}
   >
-    <div className="mb-1 text-xs font-medium text-gray-600">{label}</div>
-    <pre className="mb-2 whitespace-pre-wrap break-words font-mono text-xs text-gray-800">
-      {renderLines(lines)}
-    </pre>
-    <Button
-      type="button"
-      btnSize="xsmall"
-      btnType={selected ? "primary" : "secondaryWhite"}
-      onClick={onSelect}
-    >
-      {selected ? "Selected" : keepLabel}
-    </Button>
-  </div>
+    {selected ? `✓ ${children}` : children}
+  </Button>
 );
 
 export default ConflictResolver;
