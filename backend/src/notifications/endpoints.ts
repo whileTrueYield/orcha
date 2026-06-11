@@ -13,11 +13,10 @@ const vapidPublicKey = isTest
   ? "BJbpmG1IMHkEG7jr-u-sJfuJF9pqjZ2SDpC4A19UovAwXGu8ApWmZgmLkdxY7ppEmXpzzwcSO1PiFtZMSO2S9Fg"
   : process.env.VAPID_PUBLIC_KEY;
 
-// This needs to be called by hocuspocus and graphql backend
-// therefore we can't import config from one or the other
-// and just expect these env variable to be defined.
+// Reads env directly (not ./config) so this module can be imported
+// without the full config bootstrap and its env-var guards.
 if (!hostname) {
-  throw Error("VAPID_PUBLIC_KEY env variable is undefined");
+  throw Error("ORCHA_HOSTNAME env variable is undefined");
 }
 
 if (!vapidPrivateKey) {
@@ -25,7 +24,7 @@ if (!vapidPrivateKey) {
 }
 
 if (!vapidPublicKey) {
-  throw Error("ORCHA_HOSTNAME env variable is undefined");
+  throw Error("VAPID_PUBLIC_KEY env variable is undefined");
 }
 
 // configure notification VAPID keys

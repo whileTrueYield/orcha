@@ -31,11 +31,14 @@ import { errorEnvelope } from "./errorEnvelope";
 
 // The bearer middleware attaches the resolved role context here so route
 // handlers and the executor can read a single, transport-agnostic identity.
+// `tokenReadOnly` is the presented PAT's capability flag: a read-only token may
+// list and read but never write — write routes refuse it (see router.ts).
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       me?: AuthRoleContext;
+      tokenReadOnly?: boolean;
     }
   }
 }
@@ -65,13 +68,14 @@ export async function bearerAuth(
   }
 
   try {
-    const role = await verifyAndResolve(plaintext);
+    const { role, readOnly } = await verifyAndResolve(plaintext);
     req.me = buildRoleContext({
       userId: role.userId,
       roleId: role.id,
       organizationId: role.organizationId,
       roleType: role.type,
     });
+    req.tokenReadOnly = readOnly;
     next();
   } catch (error) {
     if (error instanceof InvalidTokenError) {

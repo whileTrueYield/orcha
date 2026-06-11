@@ -19,8 +19,6 @@ interface Config {
   webAppUri: string;
   supportUri: string;
   apiUri: string;
-  apiWsUri: string;
-  apiWsPort: number;
   aiUri: string;
   uploadS3Bucket: string;
   documentationS3Bucket: string;
@@ -65,14 +63,12 @@ const isDemo = process.env.DEMO_MODE === "true";
 const isStaging = process.env.ENV_NAME === "staging";
 
 const testEnv = {
-  ORCHA_WS_BACKEND_PORT: "38268",
   ORCHA_BACKEND_PORT: "4000",
   ORCHA_HOSTNAME: "example.com",
   ORCHA_WEBAPP_URI: "http://app.example.com:3000",
   ORCHA_SUPPORT_URI: "http://support.example.com:3000",
   ORCHA_SESSION_SECRET: "what-evs",
   ORCHA_DOMAIN: "example.com",
-  ORCHA_API_WS_URI: "ws://api.example.com:38268",
   ORCHA_API_URI: "http://api.example.com:4000",
   ORCHA_AI_URI: "http://api.example.com:8000",
   ORCHA_WWW_URI: "http://www.example.com:3030",
@@ -90,14 +86,12 @@ const env = isTest
   ? testEnv
   : {
       ORCHA_BACKEND_PORT: process.env.ORCHA_BACKEND_PORT || "4000",
-      ORCHA_WS_BACKEND_PORT: process.env.ORCHA_WS_BACKEND_PORT || "38268",
       ORCHA_HOSTNAME: process.env.ORCHA_HOSTNAME,
       ORCHA_WEBAPP_URI: process.env.ORCHA_WEBAPP_URI,
       ORCHA_SUPPORT_URI: process.env.ORCHA_SUPPORT_URI,
       ORCHA_SESSION_SECRET: process.env.ORCHA_SESSION_SECRET,
       ORCHA_DOMAIN: process.env.ORCHA_DOMAIN,
       ORCHA_API_URI: process.env.ORCHA_API_URI,
-      ORCHA_API_WS_URI: process.env.ORCHA_API_WS_URI,
       ORCHA_AI_URI: process.env.ORCHA_AI_URI,
       ORCHA_WWW_URI: process.env.ORCHA_WWW_URI,
       UPLOADS_BUCKET: process.env.UPLOADS_BUCKET,
@@ -132,14 +126,6 @@ if (!env.ORCHA_DOMAIN) {
 
 if (!env.ORCHA_API_URI) {
   throw Error("ORCHA_API_URI env variable is undefined");
-}
-
-if (!env.ORCHA_WS_BACKEND_PORT) {
-  throw Error("ORCHA_WS_BACKEND_PORT env variable is undefined");
-}
-
-if (!env.ORCHA_API_WS_URI) {
-  throw Error("ORCHA_API_WS_URI env variable is undefined");
 }
 
 if (!env.ORCHA_AI_URI) {
@@ -183,8 +169,6 @@ export const config: Config = {
   wwwUri: env.ORCHA_WWW_URI,
   aiUri: env.ORCHA_AI_URI,
   apiUri: env.ORCHA_API_URI,
-  apiWsUri: env.ORCHA_API_WS_URI,
-  apiWsPort: parseInt(env.ORCHA_WS_BACKEND_PORT),
   uploadS3Bucket: env.UPLOADS_BUCKET,
   documentationS3Bucket: env.DOCS_BUCKET,
   documentationDistributionId: env.DOCUMENTATION_DISTRIBUTION_ID || undefined,

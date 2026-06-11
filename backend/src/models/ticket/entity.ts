@@ -49,8 +49,9 @@ export const TicketRef = builder.prismaObject("Ticket", {
     deletedAt: t.expose("deletedAt", { type: "DateTime", nullable: true }),
     status: t.expose("status", { type: TicketStatusEnum }),
     stage: t.expose("stage", { type: ModelStageEnum }),
-    // description is defined as a computed field in ticket.resolver.ts
-    // (reconstructed from the Yjs ticketText document)
+    // The legacy `description` computed field (backed by Yjs ticketText) was
+    // retired in #45 — the body now lives in TicketText.markdown, exposed via
+    // ticketBody.resolver.ts.
     difficulty: t.exposeInt("difficulty", { nullable: true }),
     closingNote: t.exposeString("closingNote", { nullable: true }),
     foreignId: t.exposeString("foreignId", { nullable: true }),
@@ -70,7 +71,8 @@ export const TicketRef = builder.prismaObject("Ticket", {
     organization: t.relation("organization"),
     ancestors: t.relation("ancestors"),
     successors: t.relation("successors"),
-    // ticketText is internal (Yjs bytes) — description is a computed field in ticket.resolver.ts
+    // ticketText is internal — its Markdown body is exposed through
+    // ticketBody.resolver.ts, not as a relation here.
     //
     // `comments` is a *paginated* field (not a flat relation): the legacy
     // schema exposed it as PaginatedComments with first/last/offset/search

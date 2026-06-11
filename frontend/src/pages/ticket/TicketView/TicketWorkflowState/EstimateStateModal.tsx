@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useState } from "react";
 import { Modal, ModalProps } from "components/modals/Modal";
 import {
   TicketWorkflowState,
@@ -21,11 +21,9 @@ import { timeFormater } from "./timeParser";
 import { FormCheckboxGroup } from "components/fields/Checkbox";
 import { Dialog } from "@headlessui/react";
 import { GroupTag } from "components/tags/GroupTag";
-import cn from "classnames";
 import { urlResolver } from "utils/navigation";
 import { Link, useParams } from "react-router-dom";
 import { useBlockingMutation } from "utils/graphql";
-import Tiptap from "components/TipTap/TipTap";
 
 interface Props extends ModalProps {
   ticketWorkflowState: TicketWorkflowState;
@@ -73,14 +71,6 @@ type FormSchema = yup.InferType<typeof schema>;
 export const EstimateStateModal: FCWithFragments<Props> = (props) => {
   const { orgId } = useParams<{ orgId: string }>();
   const { ticketWorkflowState, ticket, ...modalProps } = props;
-  const [showDescription, setShowDescription] = useState(false);
-
-  useEffect(() => {
-    if (!modalProps.visible) {
-      setShowDescription(false);
-    }
-  }, [modalProps.visible]);
-
   const formMethods = useForm<FormSchema>({
     resolver: yupResolver(schema),
     defaultValues: {
@@ -123,38 +113,6 @@ export const EstimateStateModal: FCWithFragments<Props> = (props) => {
       });
     }
   };
-
-  const renderShowDescriptionButton = useMemo(() => {
-    const descriptionClass = cn(
-      "group relative transition-all duration-500 px-2",
-      {
-        "max-h-[24rem] overflow-y-auto": showDescription,
-        "max-h-[10rem] overflow-hidden": !showDescription,
-      }
-    );
-
-    const overlayClass = cn(
-      "absolute inset-0 flex items-center justify-center",
-      {
-        "bg-gradient-to-b from-transparent to-gray-100": !showDescription,
-        hidden: showDescription,
-      }
-    );
-
-    return (
-      <div
-        className={descriptionClass}
-        onClick={() => !showDescription && setShowDescription(true)}
-      >
-        <Tiptap readonly content={ticket.description} />
-        <div className={overlayClass}>
-          <div className="mt-4 cursor-pointer rounded-lg bg-brand-400 px-4 py-2 text-sm font-medium text-white opacity-0 shadow transition-opacity group-hover:opacity-100">
-            Click to expand
-          </div>
-        </div>
-      </div>
-    );
-  }, [showDescription, ticket.description]);
 
   const position = ticketWorkflowState.position;
   const renderMap = () => {
@@ -235,15 +193,6 @@ export const EstimateStateModal: FCWithFragments<Props> = (props) => {
                 <span className="text-lg font-semibold text-gray-700">
                   {ticket.title}
                 </span>
-              </div>
-              <div className="rounded-md bg-gray-100 p-2 text-left">
-                {ticket.description ? (
-                  renderShowDescriptionButton
-                ) : (
-                  <div className="py-1 text-center text-gray-500">
-                    no description
-                  </div>
-                )}
               </div>
             </div>
             {renderMap()}

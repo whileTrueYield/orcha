@@ -4,7 +4,7 @@ import { Ticket, TicketStatus } from "types/graphql";
 import { ExclamationIcon } from "@heroicons/react/solid";
 import { CheckCircleIcon } from "@heroicons/react/outline";
 import cn from "classnames";
-import Tiptap from "components/TipTap/TipTap";
+import MarkdownView from "components/Markdown/MarkdownView";
 
 interface Props {
   ticket: Ticket;
@@ -34,11 +34,7 @@ export const TicketClosingNote: FCWithFragments<Props> = (props) => {
               </h3>
             </div>
             <div className="mt-2 sm:ml-8">
-              <Tiptap
-                readonly
-                content={ticket.closingNote}
-                className="min-w-none"
-              />
+              <MarkdownView variant="light" value={ticket.closingNote} />
             </div>
           </div>
         </div>
@@ -62,11 +58,7 @@ export const TicketClosingNote: FCWithFragments<Props> = (props) => {
               </h3>
             </div>
             <div className="mt-2 sm:ml-8">
-              <Tiptap
-                readonly
-                content={ticket.closingNote}
-                className="max-w-none"
-              />
+              <MarkdownView variant="light" value={ticket.closingNote} />
             </div>
           </div>
         </div>

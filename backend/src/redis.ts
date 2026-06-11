@@ -1,8 +1,8 @@
 import IORedis from "ioredis";
 
-// Shared Redis connection config for all consumers (session store, BullMQ,
-// Hocuspocus). Supports REDIS_URL (DO Managed Redis — includes TLS via
-// rediss:// and password) or REDIS_HOSTNAME/REDIS_PORT for self-hosted.
+// Shared Redis connection config for all consumers (session store, BullMQ).
+// Supports REDIS_URL (DO Managed Redis — includes TLS via rediss:// and
+// password) or REDIS_HOSTNAME/REDIS_PORT for self-hosted.
 function parseRedisConfig() {
   if (process.env.REDIS_URL) {
     // TODO: remove after DO deployment is verified

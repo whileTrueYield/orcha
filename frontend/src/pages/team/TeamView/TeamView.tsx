@@ -16,7 +16,7 @@ import { Paginator } from "components/views/Paginator";
 import { Legend } from "components/fields/Legend";
 import { SearchIcon } from "@heroicons/react/outline";
 import { QueryReturnValue } from "types/queryTypes";
-import Tiptap from "components/TipTap/TipTap";
+import PlainTextView from "components/PlainText/PlainTextView";
 
 type Props = RouteComponentProps<{ teamId: string }>;
 
@@ -176,7 +176,7 @@ export const TeamView: React.FC<Props> = (props) => {
                   Description
                 </dt>
                 <dd className="mt-1 text-sm leading-5 text-gray-900 sm:col-span-2 sm:mt-0">
-                  <Tiptap readonly content={team.description} />
+                  <PlainTextView content={team.description} />
                 </dd>
               </div>
             ) : null}

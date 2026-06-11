@@ -31,20 +31,17 @@ RUN touch .env
 # For a production build, override with --build-arg, for example:
 #   docker build --target build \
 #     --build-arg orcha_api_uri=https://api.your-domain.com \
-#     --build-arg orcha_api_ws_uri=wss://api.your-domain.com \
 #     --build-arg orcha_upload_cdn_uri=https://upload.your-domain.com \
 #     --build-arg orcha_support_uri=https://support.your-domain.com \
 #     --build-arg orcha_hostname=app.your-domain.com \
 #     ./frontend
 ARG orcha_api_uri="http://localhost:4000"
-ARG orcha_api_ws_uri="ws://localhost:38268"
 ARG orcha_upload_cdn_uri="http://localhost:9000"
 ARG orcha_support_uri="http://localhost:3001"
 ARG orcha_hostname="localhost"
 ARG image_tag="latest"
 
 ENV ORCHA_API_URI $orcha_api_uri
-ENV ORCHA_API_WS_URI $orcha_api_ws_uri
 ENV ORCHA_UPLOAD_CDN_URI $orcha_upload_cdn_uri
 ENV ORCHA_SUPPORT_URI $orcha_support_uri
 ENV ORCHA_HOSTNAME $orcha_hostname

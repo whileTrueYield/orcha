@@ -10,7 +10,7 @@ import {
   TicketWorkflowStateNote,
   TicketWorkflowStateNoteCategory,
 } from "types/graphql";
-import Tiptap from "components/TipTap/TipTap";
+import MarkdownView from "components/Markdown/MarkdownView";
 
 interface Props {
   ticketId: number;
@@ -109,7 +109,7 @@ export const TicketNote: React.FC<Props> = (props) => {
               </div>
             </div>
             <div className="text-sm sm:ml-12">
-              <Tiptap readonly content={note.body} className="max-w-none" />
+              <MarkdownView variant="light" value={note.body} />
             </div>
           </div>
         </div>

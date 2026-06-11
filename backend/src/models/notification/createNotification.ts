@@ -1,9 +1,7 @@
 import { difference, map, without } from "lodash";
 import { pushNotifyRole } from "../../notifications/endpoints";
 import prisma from "../../prisma";
-import { getMentions } from "../../utils/tiptap";
 import { NotificationCategory, NotificationTarget } from "@prisma/client";
-import { logger } from "../../logger";
 
 type NotificationAncestry = { [objectType: string]: number };
 
@@ -103,52 +101,4 @@ export async function createNotificationsForTarget(
   }
 
   return notifiedRoleIds;
-}
-
-// notify users mentioned in the ticket's description
-export async function notifyMentionedUsersInTicket(
-  ticketId: number,
-  organizationId: number,
-  authorId: number,
-  document: string | {},
-) {
-  const mentions = getMentions(document);
-  logger.info(
-    `mentions: ${JSON.stringify(mentions)} - ticket ${ticketId} ${JSON.stringify(document, null, 2)}`,
-  );
-  await createNotificationsForTarget(
-    organizationId,
-    NotificationCategory.MENTION,
-    NotificationTarget.TICKET,
-    ticketId,
-    mentions,
-    authorId,
-    `{} mentioned you in a ticket`,
-  );
-
-  return [];
-}
-
-// notify users mentioned in the ticket's description
-export async function notifyMentionedUsersInProject(
-  projectId: number,
-  organizationId: number,
-  authorId: number,
-  document: string | {},
-) {
-  const mentions = getMentions(document);
-  logger.info(
-    `mentions: ${JSON.stringify(mentions)} - project ${projectId} ${JSON.stringify(document, null, 2)}`,
-  );
-  await createNotificationsForTarget(
-    organizationId,
-    NotificationCategory.MENTION,
-    NotificationTarget.PROJECT,
-    projectId,
-    mentions,
-    authorId,
-    `{} mentioned you in a project`,
-  );
-
-  return [];
 }

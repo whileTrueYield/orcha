@@ -12,9 +12,9 @@
     "@excalidraw/excalidraw": "^0.16.0",
     "@headlessui/react": "1.7.18",
     "@heroicons/react": "^1.0.1",
-    "@hocuspocus/provider": "^2.6.1",
     "@hookform/error-message": "^2.0.1",
     "@hookform/resolvers": "^2.9.10",
+    "@milkdown/crepe": "^7.21.1",
     "@nivo/bar": "^0.85.1",
     "@nivo/bump": "^0.85.1",
     "@nivo/calendar": "^0.85.1",
@@ -31,23 +31,6 @@
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^14.3.1",
     "@testing-library/user-event": "^14.4.3",
-    "@tiptap/core": "^2.2.4",
-    "@tiptap/extension-code-block-lowlight": "^2.2.4",
-    "@tiptap/extension-collaboration": "^2.2.4",
-    "@tiptap/extension-collaboration-cursor": "^2.2.4",
-    "@tiptap/extension-color": "^2.2.4",
-    "@tiptap/extension-image": "^2.2.4",
-    "@tiptap/extension-link": "^2.2.4",
-    "@tiptap/extension-mention": "^2.2.4",
-    "@tiptap/extension-placeholder": "^2.2.4",
-    "@tiptap/extension-task-item": "^2.2.4",
-    "@tiptap/extension-task-list": "^2.2.4",
-    "@tiptap/extension-text-align": "^2.2.4",
-    "@tiptap/extension-text-style": "^2.2.4",
-    "@tiptap/pm": "^2.2.4",
-    "@tiptap/react": "^2.2.4",
-    "@tiptap/starter-kit": "^2.2.4",
-    "@tiptap/suggestion": "^2.2.4",
     "@types/classnames": "^2.3.1",
     "@types/highlight.js": "^10.1.0",
     "@types/jest": "^29.5.12",
@@ -81,6 +64,7 @@
     "prettier-plugin-tailwindcss": "^0.2.1",
     "randomcolor": "^0.6.2",
     "react": "^18.2.0",
+    "react-diff-viewer-continued": "^4.2.2",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.51.2",
     "react-popper": "^2.3.0",
@@ -89,6 +73,8 @@
     "react-use-measure": "^2.1.1",
     "redux": "^5.0.1",
     "redux-logger": "^3.0.6",
+    "remark-breaks": "^4.0.0",
+    "remark-directive": "^4.0.0",
     "source-map-explorer": "^2.5.3",
     "tailwindcss": "^3.4.3",
     "tippy.js": "^6.3.7",
@@ -96,8 +82,6 @@
     "vite": "^5.2.7",
     "vite-tsconfig-paths": "^4.3.2",
     "web-vitals": "^3.1.0",
-    "y-prosemirror": "1.2.3",
-    "yjs": "^13.6.14",
     "yup": "^0.32.11"
   },
   "scripts": {
@@ -120,6 +104,12 @@
       "react-app",
       "react-app/jest"
     ]
+  },
+  "resolutions": {
+    "prosemirror-model": "^1.25.4",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.41.3",
+    "prosemirror-transform": "^1.10.5"
   },
   "jest": {
     "preset": "ts-jest/presets/js-with-ts",
@@ -158,7 +148,6 @@
     "jest-environment-jsdom": "^29.7.0",
     "react-test-renderer": "^18.2.0",
     "ts-jest": "^29.1.2",
-    "ts-prune": "^0.10.3",
-    "y-protocols": "^1.0.1"
+    "ts-prune": "^0.10.3"
   }
 }

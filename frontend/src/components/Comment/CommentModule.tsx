@@ -18,9 +18,8 @@ import { useNotificationUrl } from "components/taskManager/hooks";
 import { NotificationTarget } from "types/graphql";
 import { CommentNotificationDecorator } from "./CommentNotificationDecorator";
 import { Tag } from "components/tags/Tag";
-import TiptapForm from "components/TipTap/TipTapForm";
-import Tiptap from "components/TipTap/TipTap";
-import { TipTapDecoration } from "components/TipTap/TipTapDecoration";
+import PlainTextForm from "components/PlainText/PlainTextForm";
+import MarkdownView from "components/Markdown/MarkdownView";
 
 interface Props {
   author: {
@@ -131,16 +130,14 @@ export const CommentModule: React.FC<Props> = (props) => {
       return (
         <FormProvider {...formMethods}>
           <form onSubmit={formMethods.handleSubmit(onSubmit)}>
-            <TipTapDecoration>
-              <TiptapForm
-                autoFocus="end"
-                name="content"
-                aria-invalid={errors["content"] ? "true" : "false"}
-                aria-describedby={`content-field-error`}
-                className="bg-white h-36 max-w-none rounded-t-md border border-gray-300 p-4"
-                placeholder="Post a comment, use :emoji, mention @people and link #ticket"
-              />
-            </TipTapDecoration>
+            <PlainTextForm
+              autoFocus="end"
+              name="content"
+              aria-invalid={errors["content"] ? "true" : "false"}
+              aria-describedby={`content-field-error`}
+              className="bg-white h-36 w-full max-w-none rounded-md border border-gray-300 p-4"
+              placeholder="Post a comment"
+            />
 
             <div className="mt-2 flex flex-col justify-end sm:flex-row sm:items-center">
               <Button
@@ -173,7 +170,7 @@ export const CommentModule: React.FC<Props> = (props) => {
 
     return (
       <div onDoubleClick={() => props.onChange && setEditMode(true)}>
-        <Tiptap content={content} readonly className="max-w-none" />
+        <MarkdownView variant="light" value={content} />
       </div>
     );
   };

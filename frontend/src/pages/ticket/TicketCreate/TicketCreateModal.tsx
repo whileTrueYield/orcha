@@ -52,13 +52,10 @@ import { useAppDispatch } from "store";
 import { showTicketEditModal } from "actions";
 import { ticketFormFields } from "../formFields";
 import { MutationReturnValue, QueryReturnValue } from "types/queryTypes";
-import TiptapForm from "components/TipTap/TipTapForm";
-import { TipTapDecoration } from "components/TipTap/TipTapDecoration";
 
 const schema = yup
   .object({
     title: ticketFormFields.title.required(),
-    description: ticketFormFields.description,
     workflowId: ticketFormFields.workflowId.required(),
     productId: ticketFormFields.productId.required(),
     projectId: ticketFormFields.projectId.required(),
@@ -74,7 +71,6 @@ interface Props extends ModalProps {
   defaultProjectId?: number;
   defaultProductId?: number;
   defaultWorkflowId?: number;
-  defaultDescription?: string;
   refetchQueries?: DocumentNode[];
   onCreate?: (ticketId: number) => void;
   onChange?: (ticket: Partial<Ticket>) => void;
@@ -85,7 +81,6 @@ export const TicketCreateModal: React.FC<Props> = (props) => {
     defaultProductId,
     defaultWorkflowId,
     defaultTitle,
-    defaultDescription,
     defaultProjectId,
     onChange,
   } = props;
@@ -113,7 +108,6 @@ export const TicketCreateModal: React.FC<Props> = (props) => {
       productId: defaultProductId,
       workflowId: defaultWorkflowId,
       title: defaultTitle,
-      description: defaultDescription,
       projectId: defaultProjectId,
     },
   });
@@ -169,7 +163,6 @@ export const TicketCreateModal: React.FC<Props> = (props) => {
           productId: createTicket.product?.id,
           workflowId: createTicket.workflow?.id,
           title: "",
-          description: "",
           batchCreate,
         });
 
@@ -195,9 +188,6 @@ export const TicketCreateModal: React.FC<Props> = (props) => {
           productId: formData.productId,
           workflowId: formData.workflowId,
           title: formData.title,
-          // here the description is a tiptap JSON documnent,
-          // the backend will convert it to a YJS document
-          description: formData.description,
           projectId: formData.projectId,
           stage: ModelStage.Published,
         },
@@ -569,19 +559,6 @@ export const TicketCreateModal: React.FC<Props> = (props) => {
                 ? renderProductSuggestion(habits?.productWorkflows)
                 : null}
 
-              <div className="col-span-4">
-                <Label htmlFor="ticket-description" className="mb-1" optional>
-                  Description
-                </Label>
-                <TipTapDecoration>
-                  <TiptapForm
-                    name="description"
-                    placeholder="Describe the task, use :emoji, mention @people and link #ticket"
-                    showToolbar="minimal"
-                    className="max-h-80 overflow-y-auto rounded-t-md border border-gray-300 p-2"
-                  />
-                </TipTapDecoration>
-              </div>
             </div>
             <div className="mt-5 flex flex-col justify-between sm:mt-4 sm:flex-row sm:items-center ">
               <div className="flex-0 mb-4 sm:mb-0">

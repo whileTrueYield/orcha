@@ -54,12 +54,3 @@ RUN yarn tailwindcss -i ./templates/input.css -o ./templates/css/style.css
 
 CMD ["yarn", "run", "nodemon", "src/cron.ts"]
 
-
-FROM prisma AS hocuspocus
-ADD nodemon.json nodemon.json
-ADD tsconfig.json tsconfig.json
-COPY src src/
-
-EXPOSE 38268
-
-CMD ["yarn", "run", "nodemon", "src/hocuspocus/server.ts"]

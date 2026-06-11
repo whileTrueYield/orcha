@@ -18,7 +18,6 @@ import {
   TicketStatus,
   ModelStage,
   RoleStatus,
-  TicketText,
 } from "@prisma/client";
 import { GetPageArgsFor, paginateNodes } from "../../utils/pagination";
 import {
@@ -28,10 +27,6 @@ import {
 import { Prisma, ScheduleItem, TicketWorkflowState } from "@prisma/client";
 import { getProjectDescendantIds } from "../project/helper";
 import { subDays } from "date-fns";
-import { encodeStateAsUpdate } from "yjs";
-import { getTextFromTipTapJson } from "../../hocuspocus/getText";
-import { logger } from "../../logger";
-import { tiptapToYdoc } from "../../utils/tiptap";
 
 interface GetPageArgs extends GetPageArgsFor<Ticket> {
   allUntagged?: boolean;
@@ -1007,37 +1002,4 @@ export async function isTicketBlocked(
   });
 
   return some(ticket.ticketWorkflowStates, "isBlocked");
-}
-
-export function getIndexableContentFromTipTapJson(json: string | null): string {
-  if (!json) {
-    return "";
-  }
-
-  const content = JSON.parse(json);
-  try {
-    return getTextFromTipTapJson({ default: content });
-  } catch (error) {
-    logger.error(error);
-  }
-
-  return "";
-}
-
-export async function createTicketText(
-  ticketId: number,
-  json: string | null,
-): Promise<TicketText | null> {
-  if (!json) {
-    return null;
-  }
-
-  const doc = tiptapToYdoc(JSON.parse(json));
-
-  return prisma.ticketText.create({
-    data: {
-      ticket: { connect: { id: ticketId } },
-      bytes: Buffer.from(encodeStateAsUpdate(doc)),
-    },
-  });
 }

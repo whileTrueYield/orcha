@@ -13,7 +13,7 @@ import { afterItem } from "utils";
 import { TicketChangeAssigneeModal } from "../TicketChangeAssigneeAndStartModal";
 import cn from "classnames";
 import { onMutationComplete } from "utils/GQLClient";
-import { TipTapTextModal } from "components/modals/TipTapTextModal";
+import { PlainTextModal } from "components/modals/PlainTextModal";
 interface Props {
   ticketWorkflowStates: TicketWorkflowState[];
   ticketWorkflowState: TicketWorkflowState;
@@ -166,7 +166,7 @@ export const WorkflowStateStartButton: React.FC<Props> = (props) => {
         ticket={ticket}
         cta="Change Assignee"
       />
-      <TipTapTextModal
+      <PlainTextModal
         cta="Change State"
         description="Leave a note for the next assignee. This note will be displayed publicly below the description of the ticket"
         placeholder="Leave a note, use :emoji, mention @people and link #ticket"
@@ -176,7 +176,7 @@ export const WorkflowStateStartButton: React.FC<Props> = (props) => {
         visible={!!nextTicketWorkflowStateId}
         onSubmit={(value) => goToNextState(value)}
       />
-      <TipTapTextModal
+      <PlainTextModal
         title="Unblock ticket"
         description="Once unblocked assignees will be able to resume work on this ticket."
         placeholder="Leave a note, use :emoji, mention @people and link #ticket"
@@ -198,7 +198,7 @@ export const WorkflowStateStartButton: React.FC<Props> = (props) => {
           });
         }}
       />
-      <TipTapTextModal
+      <PlainTextModal
         title="Mark ticket as done"
         description="Once closed, the ticket will no longer be part of the schedule. Make sure the ticket is completed before closing it."
         placeholder="Leave a note, use :emoji, mention @people and link #ticket"

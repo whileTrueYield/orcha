@@ -258,7 +258,7 @@ export const ScheduleTickets: React.FC = () => {
 
       if (scheduleSearch) {
         const results = fuzzysort.go(scheduleSearch, tickets, {
-          keys: ["title", "description"],
+          keys: ["title"],
           limit: 10,
           threshold: -Infinity,
         });
@@ -724,7 +724,6 @@ const GET_SCHEDULED_TICKET_QUERY = gql`
       title
       createdAt
       updatedAt
-      description
       workflowId
       productId
       projectId
@@ -786,7 +785,6 @@ const GET_UNSCHEDULED_TICKET_QUERY = gql`
         projectId
         createdAt
         updatedAt
-        description
         milestone
         ...ScheduledTicketListFragment
         ...ScheduleUnscheduledTicketListFragment

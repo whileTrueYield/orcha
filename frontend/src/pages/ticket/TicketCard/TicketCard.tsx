@@ -62,7 +62,7 @@ export const TicketCard: FCWithFragments<Props> = (props) => {
 
   const containerClassName = cn(
     "relative group bg-white overflow-hidden rounded-md py-2 text-gray-600 shadow-sm border",
-    className
+    className,
   );
 
   const renderOnDelete = () => {
@@ -89,14 +89,14 @@ export const TicketCard: FCWithFragments<Props> = (props) => {
         <Link
           to={urlResolver.ticket.view(
             ticket.organizationId.toString(),
-            ticket.id
+            ticket.id,
           )}
           title={ticket.title}
           className={cn(
             "mb-1 inline-block w-full pl-4 pr-8 text-sm font-medium text-gray-800 hover:text-gray-600 hover:underline",
             {
               truncate: !fullTitle,
-            }
+            },
           )}
         >
           {ticket.title}
@@ -110,7 +110,7 @@ export const TicketCard: FCWithFragments<Props> = (props) => {
             "mb-1 inline-block w-full pl-4 pr-8 text-sm font-medium text-gray-800",
             {
               truncate: !fullTitle,
-            }
+            },
           )}
         >
           {ticket.title}

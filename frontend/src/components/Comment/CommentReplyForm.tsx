@@ -12,8 +12,7 @@ import { onGraphQLError, onMutationComplete } from "utils/GQLClient";
 import { MutationAddReplyArgs, Ticket } from "types/graphql";
 import { Tag } from "components/tags/Tag";
 import { useBlockingMutation } from "utils/graphql";
-import { TipTapDecoration } from "components/TipTap/TipTapDecoration";
-import TiptapForm from "components/TipTap/TipTapForm";
+import PlainTextForm from "components/PlainText/PlainTextForm";
 
 interface Props {
   commentId: number;
@@ -125,17 +124,14 @@ export const CommentReplyFormModule: FCWithFragments<Props> = (props) => {
     return (
       <FormProvider {...formMethods}>
         <form onSubmit={formMethods.handleSubmit(onSubmit)}>
-          <TipTapDecoration>
-            <TiptapForm
-              autoFocus="end"
-              className="h-36 max-w-none rounded-t-md border border-gray-300 p-4"
-              name="content"
-              // value={content}
-              aria-invalid={errors["content"] ? "true" : "false"}
-              aria-describedby={`content-field-error`}
-              placeholder="Leave a reply, use :emoji, mention @people and link #ticket"
-            />
-          </TipTapDecoration>
+          <PlainTextForm
+            autoFocus="end"
+            className="h-36 w-full max-w-none rounded-md border border-gray-300 p-4"
+            name="content"
+            aria-invalid={errors["content"] ? "true" : "false"}
+            aria-describedby={`content-field-error`}
+            placeholder="Leave a reply"
+          />
 
           <div className="mt-2 flex flex-col justify-end sm:flex-row sm:items-center">
             <Button

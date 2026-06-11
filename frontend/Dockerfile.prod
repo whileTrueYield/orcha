@@ -27,7 +27,6 @@ COPY frontend/public public/
 COPY frontend/vite.config.ts frontend/tsconfig.json frontend/postcss.config.js frontend/tailwind.config.js frontend/vite-env.d.ts frontend/apollo.config.js frontend/index.html ./
 
 ARG VITE_API_URI
-ARG VITE_API_WS_URI
 ARG VITE_GRAPHQL_URI
 ARG VITE_UPLOAD_CDN_URI
 ARG VITE_SUPPORT_URI
@@ -38,7 +37,6 @@ ARG VITE_DEMO_MODE=false
 ARG IMAGE_TAG=latest
 
 ENV VITE_API_URI=$VITE_API_URI \
-    VITE_API_WS_URI=$VITE_API_WS_URI \
     VITE_GRAPHQL_URI=$VITE_GRAPHQL_URI \
     VITE_UPLOAD_CDN_URI=$VITE_UPLOAD_CDN_URI \
     VITE_SUPPORT_URI=$VITE_SUPPORT_URI \

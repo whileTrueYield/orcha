@@ -25,7 +25,7 @@ import { TicketTagInput } from "../TicketView/TicketTagInput";
 import { TicketIdTag } from "components/tags/TicketIdTag";
 import { useAppDispatch } from "store";
 import { hideTicketEditModal } from "actions";
-import Tiptap from "components/TipTap/TipTap";
+import MarkdownView from "components/Markdown/MarkdownView";
 
 interface Props {
   ticket: Ticket;
@@ -83,14 +83,12 @@ export const TicketEditForm: FCWithFragments<Props> = (props) => {
               </span>
             </h3>
 
-            <div className="max-h-96 overflow-y-auto px-4 sm:px-6">
-              <Tiptap
-                content={ticket.description}
-                readonly
-                className="mx-auto"
-              />
-            </div>
           </div>
+          <MarkdownView
+            variant="full"
+            value={ticket.body.markdown}
+            className="px-4 py-2 text-gray-800 sm:px-6"
+          />
           <div className="rounded-b-md px-4 py-3 sm:px-6">
             <div className="flex flex-col space-y-4 sm:flex-row-reverse sm:justify-between sm:space-y-0">
               <Button
@@ -141,10 +139,12 @@ TicketEditForm.fragments = {
       localId
       title
       stage
-      description
       difficulty
       status
       milestone
+      body {
+        markdown
+      }
       product {
         id
         name

@@ -38,13 +38,6 @@ ingress:
         authority:
           exact: api.orcha.run
         path:
-          prefix: /ws
-      component:
-        name: hocuspocus
-    - match:
-        authority:
-          exact: api.orcha.run
-        path:
           prefix: /
       component:
         name: api
@@ -128,9 +121,6 @@ services:
       - key: ORCHA_BACKEND_PORT
         scope: RUN_TIME
         value: "4000"
-      - key: ORCHA_WS_BACKEND_PORT
-        scope: RUN_TIME
-        value: "38268"
       - key: ORCHA_HOSTNAME
         scope: RUN_TIME
         value: orcha.run
@@ -146,9 +136,6 @@ services:
       - key: ORCHA_API_URI
         scope: RUN_TIME
         value: https://api.orcha.run
-      - key: ORCHA_API_WS_URI
-        scope: RUN_TIME
-        value: wss://api.orcha.run/ws
       - key: ORCHA_SUPPORT_URI
         scope: RUN_TIME
         value: https://support.orcha.run
@@ -161,41 +148,6 @@ services:
       - key: ORCHA_AI_URI
         scope: RUN_TIME
         value: "${ai.PRIVATE_URL}"
-      - key: REDIS_URL
-        scope: RUN_TIME
-        value: "${orcha-redis.REDIS_URL}"
-
-  # -- Hocuspocus (WebSocket CRDT collaboration) --
-  - name: hocuspocus
-    github:
-      repo: whileTrueYield/orcha
-      branch: main
-      deploy_on_push: true
-    source_dir: backend
-    dockerfile_path: backend/Dockerfile
-    http_port: 38268
-    instance_size_slug: basic-xxs
-    instance_count: 1
-    run_command: node dist/hocuspocus/server.js
-    envs:
-      - key: DATABASE_URL
-        scope: RUN_TIME
-        value: "${orcha-db.DATABASE_URL}"
-      - key: NODE_ENV
-        scope: RUN_TIME
-        value: production
-      - key: ORCHA_WS_BACKEND_PORT
-        scope: RUN_TIME
-        value: "38268"
-      - key: ORCHA_HOSTNAME
-        scope: RUN_TIME
-        value: orcha.run
-      - key: ORCHA_DOMAIN
-        scope: RUN_TIME
-        value: orcha.run
-      - key: ORCHA_API_WS_URI
-        scope: RUN_TIME
-        value: wss://api.orcha.run/ws
       - key: REDIS_URL
         scope: RUN_TIME
         value: "${orcha-redis.REDIS_URL}"
@@ -230,9 +182,6 @@ static_sites:
       - key: VITE_API_URI
         scope: BUILD_TIME
         value: https://api.orcha.run
-      - key: VITE_API_WS_URI
-        scope: BUILD_TIME
-        value: wss://api.orcha.run/ws
       - key: VITE_GRAPHQL_URI
         scope: BUILD_TIME
         value: https://api.orcha.run/graphql
@@ -306,9 +255,6 @@ workers:
       - key: ORCHA_BACKEND_PORT
         scope: RUN_TIME
         value: "4000"
-      - key: ORCHA_WS_BACKEND_PORT
-        scope: RUN_TIME
-        value: "38268"
       - key: ORCHA_HOSTNAME
         scope: RUN_TIME
         value: orcha.run
@@ -324,9 +270,6 @@ workers:
       - key: ORCHA_API_URI
         scope: RUN_TIME
         value: https://api.orcha.run
-      - key: ORCHA_API_WS_URI
-        scope: RUN_TIME
-        value: wss://api.orcha.run/ws
       - key: ORCHA_SUPPORT_URI
         scope: RUN_TIME
         value: https://support.orcha.run

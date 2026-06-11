@@ -15,10 +15,6 @@ export const ticketFormFields = {
   difficulty: yup.number().label("Complexity"),
   estimate: yup.number().label("Estimate"),
   title: yup.string().max(128).label("Ticket title"),
-  description: yup
-    .string()
-    .max(1024 * 40)
-    .label("Ticket Description"),
   features: yup.string().notRequired().max(2048),
   createdAt: yup.date().notRequired(),
   updatedAt: yup.date().notRequired(),

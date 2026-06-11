@@ -18,7 +18,7 @@ import { GraphQLError } from "graphql";
 import { NotificationCategory, NotificationTarget } from "@prisma/client";
 import builder from "../../../schema/builder";
 import { AuthRoleContext } from "../../../types";
-import { getMentions } from "../../../utils/tiptap";
+import { analyze } from "../../../markdown/analysis";
 import { logger } from "../../../logger";
 import { createNotificationsForTarget } from "../../notification/createNotification";
 import { isAuthorOrAdmin } from "../../../utils/rbac";
@@ -98,7 +98,7 @@ builder.mutationField("addReply", (t) =>
         },
       });
 
-      const mentions = getMentions(reply.body);
+      const mentions = analyze(reply.body).mentions;
       logger.info(JSON.stringify({ mentions }));
       let notifiedRolesForAction: number[] = [];
 
@@ -246,7 +246,7 @@ builder.mutationField("updateReply", (t) =>
       }
 
       // Create notifications for mentions if necessary
-      const mentions = getMentions(args.input.body);
+      const mentions = analyze(args.input.body).mentions;
       logger.info(JSON.stringify({ mentions }));
       await createNotificationsForTarget(
         me.organizationId,

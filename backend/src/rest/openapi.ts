@@ -6,8 +6,8 @@
  * is deliberately small and curated, and a hand-written spec reads as the
  * promise we make to integrators rather than a mechanical dump of the schema.
  *
- * As each slice (#26–#28) adds endpoints, document them here alongside their
- * operation in operations.ts — the two evolve together.
+ * As each slice adds endpoints, document them here alongside their operation in
+ * operations.ts — the two evolve together. (#26 reads; #40 body read/write.)
  *
  * Exports:
  *  - openApiSpec: the spec object, served verbatim at GET /v1/openapi.json.
@@ -121,13 +121,68 @@ export const openApiSpec = {
           estimateMaximum: { type: "integer", nullable: true },
         },
       },
+      DocumentBody: {
+        type: "object",
+        description:
+          "A document body as Markdown (ADR 0007). `version` is the optimistic-" +
+          "concurrency token, returned as the ETag on the dedicated body " +
+          "endpoints.",
+        required: ["markdown", "version"],
+        properties: {
+          markdown: { type: "string" },
+          version: { type: "integer" },
+        },
+      },
+      BodyRead: {
+        type: "object",
+        description: "A body read; the version travels in the ETag header.",
+        required: ["markdown"],
+        properties: { markdown: { type: "string" } },
+      },
+      BodyWrite: {
+        type: "object",
+        description: "A body write payload.",
+        required: ["markdown"],
+        properties: { markdown: { type: "string" } },
+      },
+      BodyWriteResult: {
+        type: "object",
+        description:
+          "The result of a body write. On success `markdown` is the stored " +
+          "(canonical, mention-resolved) body and the new version is the ETag. " +
+          "On a 409 the markdown is the same body rewritten with git conflict " +
+          "markers and the ETag is the current version to rebase onto.",
+        required: ["markdown", "warnings"],
+        properties: {
+          markdown: { type: "string" },
+          warnings: {
+            type: "array",
+            description:
+              "Loose @-mentions / #-references that could not be resolved, " +
+              "surfaced rather than guessed.",
+            items: { $ref: "#/components/schemas/MentionWarning" },
+          },
+        },
+      },
+      MentionWarning: {
+        type: "object",
+        required: ["kind", "reference"],
+        properties: {
+          kind: { type: "string", enum: ["unknown", "ambiguous"] },
+          reference: { type: "string", example: "@nobody" },
+          matches: {
+            type: "integer",
+            nullable: true,
+            description: "Number of matches for an ambiguous reference.",
+          },
+        },
+      },
       Ticket: {
         type: "object",
-        // The body is omitted until the Markdown read/write format is decided
-        // (see operations.ts). Structured fields only for now.
         properties: {
           id: { type: "integer" },
           title: { type: "string" },
+          body: { $ref: "#/components/schemas/DocumentBody" },
           estimate: { type: "integer" },
           eta: { type: "string", format: "date-time", nullable: true },
           status: { type: "string" },
@@ -235,6 +290,15 @@ export const openApiSpec = {
         required: false,
         description: "Opaque cursor from a previous page's `nextCursor`.",
         schema: { type: "string" },
+      },
+      ifMatch: {
+        name: "If-Match",
+        in: "header",
+        required: true,
+        description:
+          "The body version you read (the ETag), e.g. `\"3\"`. The write " +
+          "rebases onto it; omit it and the write is refused with 428.",
+        schema: { type: "string", example: '"3"' },
       },
     },
   },
@@ -393,6 +457,118 @@ export const openApiSpec = {
         },
       },
     },
+    "/v1/tickets/{id}/body": {
+      get: {
+        summary: "Read a ticket's Markdown body",
+        operationId: "getTicketBody",
+        security: bearerAuthRequirement,
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "integer" } },
+        ],
+        responses: {
+          "200": {
+            description:
+              "The body Markdown. The current version is in the ETag header; " +
+              "send it back as If-Match to write safely.",
+            headers: {
+              ETag: {
+                description: "The body's current version.",
+                schema: { type: "string", example: '"3"' },
+              },
+            },
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/BodyRead" },
+              },
+            },
+          },
+          "404": {
+            description: "No such ticket in the caller's organization.",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Error" } },
+            },
+          },
+        },
+      },
+      put: {
+        summary: "Write a ticket's Markdown body (optimistic concurrency)",
+        operationId: "putTicketBody",
+        description:
+          "Write the body, sending the version you read as If-Match. A matching " +
+          "version fast-forwards; a stale version auto-merges concurrent edits; " +
+          "a genuine overlap returns 409 with the conflict-markered Markdown.",
+        security: bearerAuthRequirement,
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "integer" } },
+          { $ref: "#/components/parameters/ifMatch" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/BodyWrite" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "The body was written. The ETag is the new version.",
+            headers: {
+              ETag: {
+                description: "The new body version.",
+                schema: { type: "string", example: '"4"' },
+              },
+            },
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/BodyWriteResult" },
+              },
+            },
+          },
+          "400": {
+            description: "Body is not JSON with a string `markdown` field.",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Error" } },
+            },
+          },
+          "403": {
+            description: "The document is archived (read-only).",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Error" } },
+            },
+          },
+          "404": {
+            description: "No such ticket in the caller's organization.",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Error" } },
+            },
+          },
+          "409": {
+            description:
+              "The edits genuinely overlap. The response is the body rewritten " +
+              "with git conflict markers; the ETag is the current version to " +
+              "re-read and rebase onto. Nothing was written.",
+            headers: {
+              ETag: {
+                description: "The current version to rebase onto.",
+                schema: { type: "string", example: '"4"' },
+              },
+            },
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/BodyWriteResult" },
+              },
+            },
+          },
+          "428": {
+            description: "Missing If-Match header (required for a write).",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Error" } },
+            },
+          },
+        },
+      },
+    },
     "/v1/projects": {
       get: {
         summary: "List projects in the caller's organization",
@@ -473,6 +649,116 @@ export const openApiSpec = {
               "application/json": {
                 schema: { $ref: "#/components/schemas/Error" },
               },
+            },
+          },
+        },
+      },
+    },
+    "/v1/projects/{id}/body": {
+      get: {
+        summary: "Read a project's Markdown body",
+        operationId: "getProjectBody",
+        security: bearerAuthRequirement,
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "integer" } },
+        ],
+        responses: {
+          "200": {
+            description:
+              "The body Markdown; the current version is in the ETag header.",
+            headers: {
+              ETag: {
+                description: "The body's current version.",
+                schema: { type: "string", example: '"3"' },
+              },
+            },
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/BodyRead" },
+              },
+            },
+          },
+          "404": {
+            description: "No such project in the caller's organization.",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Error" } },
+            },
+          },
+        },
+      },
+      put: {
+        summary: "Write a project's Markdown body (optimistic concurrency)",
+        operationId: "putProjectBody",
+        description:
+          "Identical semantics to PUT /v1/tickets/{id}/body: If-Match, " +
+          "fast-forward / auto-merge / 409 conflict.",
+        security: bearerAuthRequirement,
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "integer" } },
+          { $ref: "#/components/parameters/ifMatch" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/BodyWrite" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "The body was written. The ETag is the new version.",
+            headers: {
+              ETag: {
+                description: "The new body version.",
+                schema: { type: "string", example: '"4"' },
+              },
+            },
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/BodyWriteResult" },
+              },
+            },
+          },
+          "400": {
+            description: "Body is not JSON with a string `markdown` field.",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Error" } },
+            },
+          },
+          "403": {
+            description: "The document is archived (read-only).",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Error" } },
+            },
+          },
+          "404": {
+            description: "No such project in the caller's organization.",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Error" } },
+            },
+          },
+          "409": {
+            description:
+              "The edits genuinely overlap; the response is the conflict-" +
+              "markered body and the ETag is the current version. Nothing was " +
+              "written.",
+            headers: {
+              ETag: {
+                description: "The current version to rebase onto.",
+                schema: { type: "string", example: '"4"' },
+              },
+            },
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/BodyWriteResult" },
+              },
+            },
+          },
+          "428": {
+            description: "Missing If-Match header (required for a write).",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Error" } },
             },
           },
         },

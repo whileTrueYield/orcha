@@ -29,10 +29,9 @@ import prisma from "../../../prisma";
 import { DEFAULT_WORK_WEEK } from "../../entities";
 import initialWorkflows from "./initialWorkflows.json";
 import initialTags from "./initialTags.json";
-import gettingStartedProject from "./GettingStartedProject.json";
-import * as Y from "yjs";
-import { tiptapToYdoc } from "../../../utils/tiptap";
 import { AuthUserContext } from "../../../types";
+import { writeDocumentBody } from "../../documentBody/writeDocumentBody";
+import { GETTING_STARTED_BODY } from "../gettingStartedBody";
 
 // ---------------------------------------------------------------------------
 // Input type
@@ -210,12 +209,16 @@ export async function createGettingStartedProject(
 
   await Promise.all(roleUpdates);
 
-  const doc = tiptapToYdoc(gettingStartedProject);
-  await prisma.projectText.create({
-    data: {
-      projectId: project.id,
-      bytes: Buffer.from(Y.encodeStateAsUpdate(doc)),
-    },
+  // Seed the project body as Markdown (ADR 0007) through the shared write
+  // service, so the seed populates `indexableContent` for search exactly like a
+  // user edit would. base 0: the body is unwritten, so this is a fast-forward.
+  await writeDocumentBody({
+    type: "project",
+    id: project.id,
+    markdown: GETTING_STARTED_BODY,
+    baseVersion: 0,
+    organizationId: organization.id,
+    actorRoleId: roles[0].id,
   });
 
   return project;

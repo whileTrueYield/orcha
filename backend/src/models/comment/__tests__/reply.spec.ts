@@ -4,7 +4,7 @@ import {
   createRandomTicket,
 } from "../../../utils/testing";
 import { faker } from "@faker-js/faker";
-import { RoleType } from "@prisma/client";
+import { NotificationCategory, RoleType } from "@prisma/client";
 import prisma from "../../../prisma";
 import expect from "expect";
 import { GraphQLError } from "graphql";
@@ -17,6 +17,15 @@ mutation AddReply($commentId: Int!, $input: AddReplyInput!) {
     author {
       id
     }
+  }
+}
+`;
+
+const updateReplyMutation = `
+mutation UpdateReply($commentReplyId: Int!, $input: UpdateReplyInput!) {
+  updateReply(commentReplyId: $commentReplyId, input: $input) {
+    id
+    body
   }
 }
 `;
@@ -91,6 +100,95 @@ describe("comment replies", () => {
         },
       },
     });
+  });
+
+  it("notifies a role mentioned via a Markdown :mention directive in a reply", async () => {
+    const { session, role: author, organization } =
+      await getTestSessionWithRole(RoleType.MEMBER);
+
+    // Separate role, neither owner nor watcher; the author both comments and
+    // replies, so the mention is the only notification this role can receive.
+    const { role: mentioned } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+      undefined,
+      organization
+    );
+
+    const { ticket } = await createRandomTicket(organization, author);
+
+    const comment = await prisma.comment.create({
+      data: {
+        body: "parent comment",
+        ticketId: ticket.id,
+        organizationId: organization.id,
+        authorId: author.id,
+      },
+    });
+
+    await graphqlRequest({
+      source: addReplyMutation,
+      variableValues: {
+        commentId: comment.id,
+        input: {
+          body: `:mention[someone]{type=user id=${mentioned.id}} take a look`,
+        },
+      },
+      session,
+    });
+
+    const notifications = await prisma.notification.findMany({
+      where: { roleId: mentioned.id, category: NotificationCategory.MENTION },
+    });
+
+    expect(notifications.length).toBe(1);
+  });
+
+  it("notifies a role newly mentioned via a Markdown :mention directive when editing a reply", async () => {
+    const { session, role: author, organization } =
+      await getTestSessionWithRole(RoleType.MEMBER);
+
+    const { role: mentioned } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+      undefined,
+      organization
+    );
+
+    const { ticket } = await createRandomTicket(organization, author);
+
+    const comment = await prisma.comment.create({
+      data: {
+        body: "parent comment",
+        ticketId: ticket.id,
+        organizationId: organization.id,
+        authorId: author.id,
+      },
+    });
+
+    const reply = await prisma.commentReply.create({
+      data: {
+        body: "nothing here yet",
+        commentId: comment.id,
+        authorId: author.id,
+        organizationId: organization.id,
+      },
+    });
+
+    await graphqlRequest({
+      source: updateReplyMutation,
+      variableValues: {
+        commentReplyId: reply.id,
+        input: {
+          body: `:mention[someone]{type=user id=${mentioned.id}} please review`,
+        },
+      },
+      session,
+    });
+
+    const notifications = await prisma.notification.findMany({
+      where: { roleId: mentioned.id, category: NotificationCategory.MENTION },
+    });
+
+    expect(notifications.length).toBe(1);
   });
 
   it("should delete a reply", async () => {

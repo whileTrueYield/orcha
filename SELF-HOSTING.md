@@ -181,7 +181,6 @@ not exposed to the host.
 Internet --> Traefik (ports 80/443, automatic TLS)
                |-- /          -->  Frontend (nginx, React SPA)
                |-- /api       -->  Backend (Node.js, GraphQL API)
-               |-- /ws        -->  Hocuspocus (WebSocket collaboration)
                |-- /uploads   -->  MinIO (S3-compatible file storage)
                |-- /support   -->  Support (embeddable widget)
 ```
@@ -192,7 +191,6 @@ Internet --> Traefik (ports 80/443, automatic TLS)
 | Backend    | GraphQL API, authentication, business logic                  |
 | Cron       | Background jobs: scheduling runs, email notifications        |
 | AI         | MCTS scheduling engine (Python/FastAPI, stateless)           |
-| Hocuspocus | Real-time collaborative editing via WebSockets               |
 | Support    | Embeddable support widget                                    |
 | Traefik    | Reverse proxy, TLS termination, path-based routing           |
 | Postgres   | Primary database (persistent, volume-backed)                 |
@@ -220,7 +218,6 @@ fill with a random secret, **No** = safe default.
 | Variable                         | Default | Description               |
 |----------------------------------|---------|---------------------------|
 | `__DOCKER_ORCHA_BACKEND_PORT`    | `4000`  | Backend HTTP              |
-| `__DOCKER_ORCHA_WS_BACKEND_PORT` | `38268` | Hocuspocus WebSocket     |
 | `__DOCKER_ORCHA_SUPPORT_PORT`    | `3001`  | Support widget            |
 | `__DOCKER_ORCHA_AI_PORT`         | `8000`  | AI scheduling engine      |
 

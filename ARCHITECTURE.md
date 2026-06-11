@@ -22,13 +22,12 @@ start when a task crosses service boundaries.
                                        ┌────────────────────────┐
         browser ──── HTTPS ──────────► │  frontend (Vite)       │ ── nginx in prod
                                        └──────────┬─────────────┘
-                                                  │ GraphQL + WS
+                                                  │ GraphQL
                                                   ▼
    ┌────────────────────────┐   HTTP   ┌──────────────────────────┐
    │ support                │ ───────► │  backend                 │
    │ (embed.js + iframe)    │          │  - Apollo / Express      │
    └────────────────────────┘          │  - cron (BullMQ)         │
-                                       │  - hocuspocus (WS, CRDT) │
                                        └─┬──────────┬─────────────┘
                                          │          │
                             Prisma       │          │  HTTP
@@ -39,7 +38,7 @@ start when a task crosses service boundaries.
                                        ▲        └──────────────────┘
                                        │
                                     ┌────────┐
-                                    │ Redis  │  (sessions, BullMQ, hocuspocus pubsub)
+                                    │ Redis  │  (sessions, BullMQ)
                                     └────────┘
 ```
 
@@ -58,10 +57,6 @@ Three runtime targets share this codebase (see `backend/Dockerfile`):
   `onDemandEstimateTickets`, `autoResolveIssues`, `buildDemo`, plus
   several second-resolution repeating jobs (`autoClockOut`, `workDayEmail`,
   `startReminder`, `autoResumeTask` — see `src/cron/queues.ts`).
-- **hocuspocus** — Yjs/CRDT WebSocket server on port 38268, backs the
-  TipTap collaborative editors used for ticket descriptions, project notes,
-  and documentation pages. Entry: `src/hocuspocus/server.ts`.
-
 The schema is in `backend/prisma/schema.prisma` (~1900 lines). The domain
 is organized as **Organization → User/Role → Project → Ticket**, with
 `ScheduleItem` (one slot of work), `Workflow`/`WorkflowState` (per-product
@@ -109,7 +104,7 @@ backend orchestrates *when* to call it via the cron jobs above.
 
 Vite + React 18 + TypeScript. Apollo Client for data, Redux Toolkit for
 local UI state (one folder per slice in `src/actions/` + `src/reducers/`),
-TipTap for rich text, Hocuspocus provider for live collaboration, Nivo for
+Milkdown Crepe for rich-text editing (bodies are Markdown per ADR 0007), Nivo for
 the charts in `pages/report/`, Excalidraw for drawings,
 @headlessui/react + Tailwind for primitives.
 
@@ -187,7 +182,6 @@ Useful URLs once up:
 
 - App:            http://localhost:3000
 - API:            http://localhost:4000  (`/graphql`, `/alive`)
-- Hocuspocus:     ws://localhost:38268
 - Support iframe: http://localhost:3001
 - AI:             http://ai:8000 *(only from inside the docker network)*
 - MinIO Console:  http://localhost:9001  (S3 bucket browser)
@@ -221,8 +215,8 @@ service:
 4. It POSTs that to the AI's `/scheduler/estimate`. MCTS runs.
 5. The AI returns per-task `ScheduleSnapshot`s. The backend writes them as
    `ScheduleItem` rows and bumps `Ticket.scheduledAt` / `eta`.
-6. The frontend's open queries auto-refresh; if a doc is open the
-   hocuspocus channel pushes the change to other viewers.
+6. The frontend reflects the new `ScheduleItem`s / `eta`s the next time it
+   queries them (on navigation or an Apollo refetch — there is no live push).
 
 If a ticket has a deactivated assignee or is blocked,
 `Organization.scheduleStatus` flips to `ASSIGNEE_DEACTIVATED` or `BLOCKED`
@@ -266,9 +260,9 @@ Still-open work for production readiness:
 - **Frontend env baking.** The `build` target in `frontend/Dockerfile`
   takes API URLs as build ARGs. Pick a real production hostname strategy
   (build-time ARG vs runtime substitution).
-- **DNS + TLS + reverse proxy.** Five public-ish surfaces today: app,
-  api (HTTP), api (WS), support, upload CDN. Each needs a hostname, a
-  cert, and a CORS + session-cookie domain that all agree.
+- **DNS + TLS + reverse proxy.** Four public-ish surfaces today: app,
+  api (HTTP), support, upload CDN. Each needs a hostname, a cert, and a
+  CORS + session-cookie domain that all agree.
 - **Backups.** Postgres holds the entire product state. No automated
   backup job exists in this repo.
 - **Observability.** Dozzle is dev-only. Production logging, metrics,

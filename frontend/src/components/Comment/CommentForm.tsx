@@ -12,9 +12,8 @@ import { onGraphQLError, onMutationComplete } from "utils/GQLClient";
 import { MutationCreateCommentArgs, Ticket } from "types/graphql";
 import { Tag } from "components/tags/Tag";
 import { useBlockingMutation } from "utils/graphql";
-import TiptapForm from "components/TipTap/TipTapForm";
+import PlainTextForm from "components/PlainText/PlainTextForm";
 import { PlusIcon } from "@heroicons/react/solid";
-import { TipTapDecoration } from "components/TipTap/TipTapDecoration";
 
 interface Props {
   ticketId: number;
@@ -134,16 +133,14 @@ export const CommentFormModule: FCWithFragments<Props> = (props) => {
         <div className={bubbleClass}>
           <FormProvider {...formMethods}>
             <form onSubmit={formMethods.handleSubmit(onSubmit)}>
-              <TipTapDecoration>
-                <TiptapForm
-                  autoFocus="end"
-                  className="h-36 max-w-none rounded-t-md border border-gray-300 p-4"
-                  name="content"
-                  aria-invalid={errors["content"] ? "true" : "false"}
-                  aria-describedby={`content-field-error`}
-                  placeholder="Post a comment, use :emoji, mention @people and link #ticket"
-                />
-              </TipTapDecoration>
+              <PlainTextForm
+                autoFocus="end"
+                className="h-36 w-full max-w-none rounded-md border border-gray-300 p-4"
+                name="content"
+                aria-invalid={errors["content"] ? "true" : "false"}
+                aria-describedby={`content-field-error`}
+                placeholder="Post a comment"
+              />
               <div className="mt-2 flex flex-col justify-end sm:flex-row sm:items-center">
                 <Button
                   type="button"

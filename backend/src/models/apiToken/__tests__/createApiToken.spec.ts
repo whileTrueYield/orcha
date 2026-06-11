@@ -45,7 +45,7 @@ describe("createApiToken", () => {
 
     // The returned plaintext is a working credential that resolves to this Role.
     const resolved = await verifyAndResolve(result.plaintext);
-    expect(resolved.id).toBe(role.id);
+    expect(resolved.role.id).toBe(role.id);
 
     // It is persisted under the caller's Role, not floating free.
     const persisted = await prisma.personalAccessToken.findFirstOrThrow({

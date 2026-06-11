@@ -20,7 +20,7 @@ import { useBlockingMutation } from "utils/graphql";
 import { TicketInfo } from "../TicketView/TicketInfo";
 import { hideTicketEditModal } from "actions";
 import { useAppDispatch } from "store";
-import Tiptap from "components/TipTap/TipTap";
+import MarkdownView from "components/Markdown/MarkdownView";
 
 interface Props {
   ticket: Ticket;
@@ -57,9 +57,8 @@ export const DraftTicketEditForm: FCWithFragments<Props> = (props) => {
       <DangerConfirm
         cta="Delete Ticket"
         title="Delete Ticket"
-        description="Are you sure you want to delete this product? All tickets under
-        this product will be permanantly destroyed. This action cannot
-        be undone."
+        description="Are you sure you want to delete this ticket? It will be
+        permanently destroyed. This action cannot be undone."
         visible={deleteTicketModalVisible}
         onClose={() => setDeleteTicketModalVisibility(false)}
         onConfirm={onDeleteTicket}
@@ -77,14 +76,12 @@ export const DraftTicketEditForm: FCWithFragments<Props> = (props) => {
               </span>
             </h3>
 
-            <span className="max-h-96 overflow-y-auto px-4 sm:px-6">
-              <Tiptap
-                content={ticket.description}
-                readonly
-                className="mx-auto p-4"
-              />
-            </span>
           </div>
+          <MarkdownView
+            variant="full"
+            value={ticket.body.markdown}
+            className="px-4 pb-4 text-gray-800 sm:px-6"
+          />
           <div className="rounded-b-md border-t border-gray-100 bg-gray-50 px-4 py-3 sm:px-6">
             <div className="flex flex-col space-y-4 sm:flex-row-reverse sm:justify-between sm:space-y-0">
               <Button
@@ -129,11 +126,13 @@ DraftTicketEditForm.fragments = {
     fragment DraftTicketEditFormFragment on Ticket {
       id
       title
-      description
       difficulty
       estimate
       stage
       milestone
+      body {
+        markdown
+      }
       workflow {
         id
         name

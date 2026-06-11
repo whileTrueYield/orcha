@@ -1,13 +1,12 @@
 # Production Dockerfile for the Orcha backend.
 #
-# Shared by four DO App Platform components — api, cron, hocuspocus, and
-# the pre-deploy migration job. Each overrides CMD via run_command in the
+# Shared by three DO App Platform components — api, cron, and the
+# pre-deploy migration job. Each overrides CMD via run_command in the
 # app spec:
 #
-#   api:        node dist/server.js
-#   cron:       node dist/cron.js
-#   hocuspocus: node dist/hocuspocus/server.js
-#   migrate:    npx prisma migrate deploy
+#   api:     node dist/server.js
+#   cron:    node dist/cron.js
+#   migrate: npx prisma migrate deploy
 
 # Cache bust: 2026-05-24
 FROM node:22-alpine
@@ -25,7 +24,7 @@ COPY prisma prisma/
 ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN yarn prisma generate
 
-COPY tsconfig.json ./
+COPY tsconfig.json tsconfig.build.json ./
 COPY assets assets/
 COPY src src/
 
@@ -33,6 +32,8 @@ COPY templates templates/
 COPY tailwind.config.js ./
 RUN yarn tailwindcss -i ./templates/input.css -o ./templates/css/style.css
 
-RUN yarn tsc
+# Emit CommonJS to dist/ via the build config (tsconfig.json itself is
+# `module: preserve`, for type resolution only — see tsconfig.build.json).
+RUN yarn tsc -p tsconfig.build.json
 
 ENV NODE_ENV=production

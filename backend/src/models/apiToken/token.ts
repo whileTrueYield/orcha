@@ -10,7 +10,8 @@
  *  - generateToken(): mint a new token — returns the one-time plaintext plus the
  *    hash + display prefix to persist.
  *  - hashToken(plaintext): the SHA-256 hex used for storage and lookup.
- *  - verifyAndResolve(plaintext): resolve a presented token to its Role.
+ *  - verifyAndResolve(plaintext): resolve a presented token to the Role it grants
+ *    plus its capability flags (currently `readOnly`).
  *
  * Only the hash and prefix are ever stored; the plaintext is unrecoverable once
  * generateToken returns it.
@@ -58,7 +59,20 @@ export function hashToken(plaintext: string): string {
   return createHash("sha256").update(plaintext).digest("hex");
 }
 
-export async function verifyAndResolve(plaintext: string): Promise<Role> {
+/**
+ * The identity and capabilities a presented PAT grants: the Role it is bound to,
+ * and whether it is `readOnly` (may only perform reads — the transport layer
+ * refuses writes). Returning both keeps the credential's authority in one place
+ * rather than re-reading the token downstream.
+ */
+export interface ResolvedToken {
+  role: Role;
+  readOnly: boolean;
+}
+
+export async function verifyAndResolve(
+  plaintext: string,
+): Promise<ResolvedToken> {
   const token = await prisma.personalAccessToken.findUnique({
     where: { tokenHash: hashToken(plaintext) },
     include: { role: true },
@@ -76,5 +90,5 @@ export async function verifyAndResolve(plaintext: string): Promise<Role> {
     throw new InvalidTokenError("EXPIRED");
   }
 
-  return token.role;
+  return { role: token.role, readOnly: token.readOnly };
 }

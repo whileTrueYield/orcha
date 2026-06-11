@@ -135,6 +135,19 @@ export type CommentReply = {
   updatedAt: Scalars['DateTime']['output'];
 };
 
+export type ConflictRegion = {
+  __typename?: 'ConflictRegion';
+  kind: ConflictRegionKind;
+  lines: Array<Scalars['String']['output']>;
+  ours: Array<Scalars['String']['output']>;
+  theirs: Array<Scalars['String']['output']>;
+};
+
+export enum ConflictRegionKind {
+  Conflict = 'CONFLICT',
+  Stable = 'STABLE'
+}
+
 export type CreateApiTokenInput = {
   expiresInDays?: InputMaybe<Scalars['Int']['input']>;
   name: Scalars['String']['input'];
@@ -290,7 +303,6 @@ export type CreateTeamInput = {
 };
 
 export type CreateTicketInput = {
-  description?: InputMaybe<Scalars['String']['input']>;
   productId?: InputMaybe<Scalars['Int']['input']>;
   projectId: Scalars['Int']['input'];
   stage?: InputMaybe<ModelStage>;
@@ -355,6 +367,25 @@ export type DependencySet = {
   projects: Array<ProjectDependency>;
   tickets: Array<TicketDependency>;
 };
+
+export type DocumentBody = {
+  __typename?: 'DocumentBody';
+  markdown: Scalars['String']['output'];
+  version: Scalars['Int']['output'];
+};
+
+export type DocumentBodyConflict = {
+  __typename?: 'DocumentBodyConflict';
+  markdown: Scalars['String']['output'];
+  regions: Array<ConflictRegion>;
+  version: Scalars['Int']['output'];
+};
+
+export enum DocumentBodyType {
+  Documentation = 'DOCUMENTATION',
+  Project = 'PROJECT',
+  Ticket = 'TICKET'
+}
 
 export type Documentation = {
   __typename?: 'Documentation';
@@ -646,6 +677,13 @@ export type Me = {
   user?: Maybe<User>;
 };
 
+export type MentionWarning = {
+  __typename?: 'MentionWarning';
+  kind: Scalars['String']['output'];
+  matches?: Maybe<Scalars['Int']['output']>;
+  reference: Scalars['String']['output'];
+};
+
 export type MiniDocumentationPage = {
   __typename?: 'MiniDocumentationPage';
   id: Scalars['Int']['output'];
@@ -831,6 +869,7 @@ export type Mutation = {
   resendInvite: Role;
   resumeLastScheduleItem: ScheduleItem;
   revokeApiToken: PersonalAccessToken;
+  saveDocumentBody: SaveDocumentBodyResult;
   scheduleTicket: Ticket;
   sendConfirmationEmail: Scalars['Boolean']['output'];
   setChecklist: TicketWorkflowState;
@@ -1510,6 +1549,14 @@ export type MutationResendInviteArgs = {
 
 export type MutationRevokeApiTokenArgs = {
   id: Scalars['Int']['input'];
+};
+
+
+export type MutationSaveDocumentBodyArgs = {
+  baseVersion: Scalars['Int']['input'];
+  documentId: Scalars['Int']['input'];
+  documentType: DocumentBodyType;
+  markdown: Scalars['String']['input'];
 };
 
 
@@ -2328,6 +2375,7 @@ export type Project = {
   ancestors: Array<Project>;
   author?: Maybe<Role>;
   authorId?: Maybe<Scalars['Int']['output']>;
+  body: DocumentBody;
   checklist: Array<ChecklistItem>;
   children: Array<Project>;
   createdAt: Scalars['DateTime']['output'];
@@ -2429,7 +2477,6 @@ export type Query = {
   dependencies: DependencySet;
   documentation: Documentation;
   documentationPage: DocumentationPage;
-  documentationPageAccessToken?: Maybe<Scalars['String']['output']>;
   documentations: PaginatedDocumentations;
   drawing: Drawing;
   exportTickets: Array<TicketExport>;
@@ -2508,10 +2555,8 @@ export type Query = {
   productByCode: Product;
   products: PaginatedProducts;
   project: Project;
-  projectAccessToken?: Maybe<Scalars['String']['output']>;
   projectAnalytics?: Maybe<ProjectAnalytics>;
   projectGoalStats: Array<ProjectGoalStats>;
-  projectTextAccessToken?: Maybe<Scalars['String']['output']>;
   projectTickets: Array<ProjectTicket>;
   projectTicketsForCategory: PaginatedTickets;
   projectedGoalProgress: Array<ProjectGoalProgress>;
@@ -2546,7 +2591,6 @@ export type Query = {
   ticket: Ticket;
   ticketNotes: Array<TicketWorkflowStateNote>;
   ticketStatusHistogram: Array<OpenTicketsByWorkflow>;
-  ticketTextAccessToken?: Maybe<Scalars['String']['output']>;
   ticketWorkflowState: TicketWorkflowState;
   ticketWorkflowStateNote: TicketWorkflowStateNote;
   tickets: PaginatedTickets;
@@ -2621,11 +2665,6 @@ export type QueryDocumentationArgs = {
 
 
 export type QueryDocumentationPageArgs = {
-  id: Scalars['Int']['input'];
-};
-
-
-export type QueryDocumentationPageAccessTokenArgs = {
   id: Scalars['Int']['input'];
 };
 
@@ -2950,11 +2989,6 @@ export type QueryProjectArgs = {
 };
 
 
-export type QueryProjectAccessTokenArgs = {
-  id: Scalars['Int']['input'];
-};
-
-
 export type QueryProjectAnalyticsArgs = {
   projectId: Scalars['Int']['input'];
 };
@@ -2962,11 +2996,6 @@ export type QueryProjectAnalyticsArgs = {
 
 export type QueryProjectGoalStatsArgs = {
   projectId: Scalars['Int']['input'];
-};
-
-
-export type QueryProjectTextAccessTokenArgs = {
-  id: Scalars['Int']['input'];
 };
 
 
@@ -3179,11 +3208,6 @@ export type QueryTicketStatusHistogramArgs = {
   projectId: Scalars['Int']['input'];
   startDate: Scalars['DateTime']['input'];
   stopDate: Scalars['DateTime']['input'];
-};
-
-
-export type QueryTicketTextAccessTokenArgs = {
-  id: Scalars['Int']['input'];
 };
 
 
@@ -3569,6 +3593,13 @@ export type RoleWorkload = {
   role: Role;
 };
 
+export type SaveDocumentBodyResult = {
+  __typename?: 'SaveDocumentBodyResult';
+  body?: Maybe<DocumentBody>;
+  conflict?: Maybe<DocumentBodyConflict>;
+  warnings: Array<MentionWarning>;
+};
+
 export type ScheduleConfig = {
   __typename?: 'ScheduleConfig';
   createdAt: Scalars['DateTime']['output'];
@@ -3729,13 +3760,13 @@ export type Ticket = {
   archivedAt?: Maybe<Scalars['DateTime']['output']>;
   author?: Maybe<Role>;
   authorId?: Maybe<Scalars['Int']['output']>;
+  body: DocumentBody;
   cases: Array<Issue>;
   closedAt?: Maybe<Scalars['DateTime']['output']>;
   closingNote?: Maybe<Scalars['String']['output']>;
   comments: PaginatedComments;
   createdAt: Scalars['DateTime']['output'];
   deletedAt?: Maybe<Scalars['DateTime']['output']>;
-  description?: Maybe<Scalars['String']['output']>;
   difficulty?: Maybe<Scalars['Int']['output']>;
   estimate: Scalars['Int']['output'];
   estimating: Scalars['Boolean']['output'];

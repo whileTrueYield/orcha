@@ -33,7 +33,29 @@ describe("personal access token", () => {
 
     const resolved = await verifyAndResolve(plaintext);
 
-    expect(resolved.id).toBe(role.id);
+    expect(resolved.role.id).toBe(role.id);
+    // A token defaults to read-write; the capability flag travels with the role.
+    expect(resolved.readOnly).toBe(false);
+  });
+
+  it("resolves a read-only token's capability flag", async () => {
+    const { role, organization } = await createRandomOrgAndUser();
+    const { plaintext, hash, prefix } = generateToken();
+    await prisma.personalAccessToken.create({
+      data: {
+        name: "ci reader",
+        tokenHash: hash,
+        tokenPrefix: prefix,
+        roleId: role.id,
+        organizationId: organization.id,
+        readOnly: true,
+      },
+    });
+
+    const resolved = await verifyAndResolve(plaintext);
+
+    expect(resolved.role.id).toBe(role.id);
+    expect(resolved.readOnly).toBe(true);
   });
 
   it("persists the hash and a non-secret prefix, never the plaintext", async () => {
@@ -145,6 +167,6 @@ describe("personal access token", () => {
 
     const resolved = await verifyAndResolve(plaintext);
 
-    expect(resolved.id).toBe(role.id);
+    expect(resolved.role.id).toBe(role.id);
   });
 });

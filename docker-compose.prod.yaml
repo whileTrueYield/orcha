@@ -9,7 +9,6 @@
 # Path-based routing on a single domain ($ORCHA_DOMAIN):
 #   /          -> frontend  (nginx serving static SPA)
 #   /api       -> backend   (Node.js on port 4000)
-#   /ws        -> hocuspocus (WebSocket collaboration server on port 38268)
 #   /uploads   -> minio     (S3-compatible object storage on port 9000)
 #
 # Prerequisites:
@@ -21,9 +20,9 @@
 #   # or manually:
 #   docker compose -f docker-compose.prod.yaml --env-file .env.prod up -d --build
 #
-# Services (11 containers + Traefik):
+# Services (10 containers + Traefik):
 #   Infrastructure: db, redis, minio, minio-init, traefik
-#   Application:    db-migrate, backend, cron, ai, hocuspocus, support, frontend
+#   Application:    db-migrate, backend, cron, ai, support, frontend
 #
 # Excluded from production (security risks):
 #   - studio  (Prisma Studio — direct DB admin UI)
@@ -188,7 +187,6 @@ services:
       - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
       - NODE_ENV=production
       - APOLLO_GRAPH_REF=orcha@current
-      - ORCHA_WS_BACKEND_PORT=${__DOCKER_ORCHA_WS_BACKEND_PORT}
       - ORCHA_BACKEND_PORT=${__DOCKER_ORCHA_BACKEND_PORT}
       - ORCHA_HOSTNAME=${ORCHA_DOMAIN}
       - ORCHA_WEBAPP_URI=https://${ORCHA_DOMAIN}
@@ -197,7 +195,6 @@ services:
       - ORCHA_TEST_INTERFACE=false
       - ORCHA_DOMAIN=${ORCHA_DOMAIN}
       - ORCHA_API_URI=https://${ORCHA_DOMAIN}/api
-      - ORCHA_API_WS_URI=wss://${ORCHA_DOMAIN}/ws
       - ORCHA_AI_URI=http://ai:${__DOCKER_ORCHA_AI_PORT}
       - ORCHA_WWW_URI=https://${ORCHA_DOMAIN}
       - UPLOADS_BUCKET=${__DOCKER_UPLOADS_BUCKET}
@@ -252,7 +249,6 @@ services:
       - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
       - NODE_ENV=production
       - APOLLO_GRAPH_REF=orcha@current
-      - ORCHA_WS_BACKEND_PORT=${__DOCKER_ORCHA_WS_BACKEND_PORT}
       - ORCHA_BACKEND_PORT=${__DOCKER_ORCHA_BACKEND_PORT}
       - ORCHA_HOSTNAME=${ORCHA_DOMAIN}
       - ORCHA_WEBAPP_URI=https://${ORCHA_DOMAIN}
@@ -261,7 +257,6 @@ services:
       - ORCHA_TEST_INTERFACE=false
       - ORCHA_DOMAIN=${ORCHA_DOMAIN}
       - ORCHA_API_URI=https://${ORCHA_DOMAIN}/api
-      - ORCHA_API_WS_URI=wss://${ORCHA_DOMAIN}/ws
       - ORCHA_AI_URI=http://ai:${__DOCKER_ORCHA_AI_PORT}
       - ORCHA_WWW_URI=https://${ORCHA_DOMAIN}
       - UPLOADS_BUCKET=${__DOCKER_UPLOADS_BUCKET}
@@ -291,46 +286,6 @@ services:
       start_period: 80s
     expose:
       - ${__DOCKER_ORCHA_AI_PORT}
-
-  hocuspocus:
-    container_name: orcha-hocuspocus
-    build:
-      context: ./backend
-      dockerfile: Dockerfile-dev
-      target: hocuspocus
-    restart: unless-stopped
-    depends_on:
-      - db
-      - redis
-    healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://localhost:${__DOCKER_ORCHA_WS_BACKEND_PORT}/ || exit 1
-      interval: 30s
-      timeout: 60s
-      retries: 5
-      start_period: 80s
-    environment:
-      - DATABASE_URL=postgresql://${__DOCKER_POSTGRES_USER}:${__DOCKER_POSTGRES_PASSWORD}@db:5432/${__DOCKER_POSTGRES_DB}?connection_limit=5
-      - NODE_ENV=production
-      - ORCHA_WS_BACKEND_PORT=${__DOCKER_ORCHA_WS_BACKEND_PORT}
-      - ORCHA_HOSTNAME=${ORCHA_DOMAIN}
-      - ORCHA_SESSION_SECRET=${__DOCKER_ORCHA_SESSION_SECRET}
-      - ORCHA_DOMAIN=${ORCHA_DOMAIN}
-      - ORCHA_API_WS_URI=wss://${ORCHA_DOMAIN}/ws
-      - REDIS_HOSTNAME=${__DOCKER_REDIS_HOSTNAME}
-      - VAPID_PUBLIC_KEY=${__DOCKER_VAPID_PUBLIC_KEY}
-      - VAPID_PRIVATE_KEY=${__DOCKER_VAPID_PRIVATE_KEY}
-    expose:
-      - ${__DOCKER_ORCHA_WS_BACKEND_PORT}
-    labels:
-      - "traefik.enable=true"
-      # Route /ws/* to hocuspocus — strip the /ws prefix before forwarding
-      - "traefik.http.routers.hocuspocus.rule=Host(`${ORCHA_DOMAIN}`) && PathPrefix(`/ws`)"
-      - "traefik.http.routers.hocuspocus.entrypoints=websecure"
-      - "traefik.http.routers.hocuspocus.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.hocuspocus.priority=50"
-      - "traefik.http.routers.hocuspocus.middlewares=hocuspocus-stripprefix"
-      - "traefik.http.middlewares.hocuspocus-stripprefix.stripprefix.prefixes=/ws"
-      - "traefik.http.services.hocuspocus.loadbalancer.server.port=${__DOCKER_ORCHA_WS_BACKEND_PORT}"
 
   support:
     container_name: orcha-support
@@ -372,7 +327,6 @@ services:
       target: production
       args:
         - orcha_api_uri=https://${ORCHA_DOMAIN}/api
-        - orcha_api_ws_uri=wss://${ORCHA_DOMAIN}/ws
         - orcha_upload_cdn_uri=https://${ORCHA_DOMAIN}/uploads
         - orcha_support_uri=https://${ORCHA_DOMAIN}/support
         - orcha_hostname=${ORCHA_DOMAIN}

@@ -4,7 +4,7 @@ import {
   createRandomTicket,
 } from "../../../utils/testing";
 import { faker } from "@faker-js/faker";
-import { RoleType } from "@prisma/client";
+import { NotificationCategory, RoleType } from "@prisma/client";
 import expect from "expect";
 import prisma from "../../../prisma";
 
@@ -135,7 +135,7 @@ describe("create comment", () => {
 
     // create a comment tagging jeff
     const comment = {
-      body: `[jeff](@role/${jeff.id}) faker.lorem.paragraph()`,
+      body: `:mention[jeff]{type=user id=${jeff.id}} faker.lorem.paragraph()`,
     };
 
     // ted creates a comment on it
@@ -186,7 +186,7 @@ describe("create comment", () => {
 
     // create a comment tagging john on it (not the owner)
     const comment = {
-      body: `[john](@role/${john.id}) faker.lorem.paragraph()`,
+      body: `:mention[john]{type=user id=${john.id}} faker.lorem.paragraph()`,
     };
 
     // ted creates a comment on it
@@ -209,6 +209,74 @@ describe("create comment", () => {
     // while the comment is created on a ticket Jeff owns and Jeff is
     // tagged on it, we should only get one notification from it
     expect(notifications.length).toBe(1);
+  });
+
+  it("notifies a role mentioned via a Markdown :mention directive", async () => {
+    const { session, role: author, organization } =
+      await getTestSessionWithRole(RoleType.MEMBER);
+
+    // A second role who is neither the ticket owner nor a watcher, so the only
+    // notification they can possibly receive is the mention itself.
+    const { role: mentioned } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+      undefined,
+      organization
+    );
+
+    // createRandomTicket leaves owner and watchers unset by default.
+    const { ticket } = await createRandomTicket(organization, author);
+
+    // Canonical Markdown mention directive (ADR 0007), the resolved form the
+    // Crepe mention picker emits — the Markdown replacement for the old TipTap
+    // `mentionRole` node.
+    const comment = {
+      body: `:mention[someone]{type=user id=${mentioned.id}} please take a look`,
+    };
+
+    await graphqlRequest({
+      source: createCommentMutation,
+      variableValues: { input: comment, ticketId: ticket.id },
+      session,
+    });
+
+    const notifications = await prisma.notification.findMany({
+      where: { roleId: mentioned.id, category: NotificationCategory.MENTION },
+    });
+
+    expect(notifications.length).toBe(1);
+  });
+
+  it("does not notify for a loose @name that is not a resolved :mention directive", async () => {
+    const { session, role: author, organization } =
+      await getTestSessionWithRole(RoleType.MEMBER);
+
+    // A role referenced only by a loose "@name" the author typed. Comments do
+    // not run write-side mention resolution (see the resolver), so an unresolved
+    // reference must never produce a notification — it is plain text, not a
+    // mention.
+    const { role: other } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+      undefined,
+      organization
+    );
+
+    const { ticket } = await createRandomTicket(organization, author);
+
+    const comment = {
+      body: `hey @${other.name} can you look at this`,
+    };
+
+    await graphqlRequest({
+      source: createCommentMutation,
+      variableValues: { input: comment, ticketId: ticket.id },
+      session,
+    });
+
+    const notifications = await prisma.notification.findMany({
+      where: { roleId: other.id },
+    });
+
+    expect(notifications.length).toBe(0);
   });
 
   it("creates a new reply creates only one notification", async () => {
@@ -245,7 +313,7 @@ describe("create comment", () => {
       source: addReplyMutation,
       variableValues: {
         input: {
-          body: `[jeff](@role/${jeff.id}) the reply`,
+          body: `:mention[jeff]{type=user id=${jeff.id}} the reply`,
         },
         commentId: comment.id,
       },
