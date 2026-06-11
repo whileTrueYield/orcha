@@ -103,6 +103,13 @@ ssh-frontend:
 types:
 	yarn --cwd backend types
 
+# Type-check the backend with the `bundler` config — the resolution mode that
+# matches our runtime (CommonJS emit + Node 22 require(esm) for ESM-only deps),
+# so packages that ship types via `exports` (node-diff3, remark/unified) resolve.
+# This is the real type gate; the prod build (tsconfig.build.json) is emit-only.
+typecheck:
+	yarn --cwd backend typecheck
+
 migrate:
 	yarn --cwd backend dev:db:migrate
 

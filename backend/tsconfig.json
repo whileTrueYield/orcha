@@ -17,6 +17,11 @@
     "resolveJsonModule": true,
     "types": ["node", "mocha"],
     "removeComments": true,
+    // Skip type-checking the contents of declaration files in node_modules. We
+    // still typecheck our own code against their types; we just don't validate
+    // the libs' internals (e.g. @types/react's stale `scheduler/tracing` ref).
+    // Standard for app code, and it keeps `yarn typecheck` a meaningful gate.
+    "skipLibCheck": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
     "strictFunctionTypes": true,

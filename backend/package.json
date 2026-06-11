@@ -92,6 +92,7 @@
   "scripts": {
     "prebuild": "prisma generate && prisma migrate deploy",
     "find-deadcode": "ts-prune",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "dev:build": "dotenv -e .env.development -- yarn tsc",
     "dev:generate": "dotenv -e .env.development -- yarn prisma generate",

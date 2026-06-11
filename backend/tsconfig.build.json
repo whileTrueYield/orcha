@@ -7,11 +7,19 @@
   // `bundler` can't pair with a CommonJS module target; the ESM-only deps
   // (node-diff3, remark/unified) still emit to plain require() calls that Node
   // 22's require(esm) loader resolves at runtime — exactly as the test/dev path
-  // already does. `noEmitOnError` stays off (the repo carries known type errors),
-  // so type-resolution gaps under classic `node` here never block the emit.
+  // already does.
+  //
+  // `noCheck` makes this an EMIT-ONLY step: classic `node` resolution can't read
+  // the `exports.types` that node-diff3 and the remark/unified stack ship their
+  // types through, so it reports them as untyped — and `tsc` exits non-zero on
+  // any type error regardless of `noEmitOnError`, which fails the Docker build.
+  // The emit itself is unaffected (it's pure syntax → require() calls), so we
+  // skip the type pass here and let type-checking live where it can actually
+  // resolve those packages: the `bundler` base config used by the IDE and dev.
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "commonjs",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "noCheck": true
   }
 }
