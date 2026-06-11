@@ -43,7 +43,6 @@ import {
 import { WorkWeekTime } from "../../models/entities";
 import { createRandomComments } from "./createRandomComments";
 import { config } from "../../config";
-import { markdownToTipTapDoc } from "./markdownToDoc";
 import { logger } from "../../logger";
 import { saveBody } from "../../markdown/bodyRepository";
 import { waitFor } from "../../utils";
@@ -353,11 +352,7 @@ export async function generateDemo() {
     data: {
       status: TicketStatus.CANCELLED,
       closedAt: new Date(),
-      closingNote: JSON.stringify(
-        markdownToTipTapDoc(
-          "We canceled this ticket because it was not needed anymore",
-        ),
-      ),
+      closingNote: "We canceled this ticket because it was not needed anymore",
     },
   });
   logger.info("DONE! (Canceling 2 tickets)");

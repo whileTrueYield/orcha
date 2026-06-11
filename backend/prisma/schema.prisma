@@ -135,8 +135,6 @@ model DocumentationPageData {
   documentationPageId Int               @unique
   documentationPage   DocumentationPage @relation(fields: [documentationPageId], references: [id], onDelete: Cascade)
 
-  bytes Bytes?
-
   // timestamps
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
@@ -1157,8 +1155,6 @@ model ProjectData {
 
   projectId Int     @unique
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  bytes Bytes?
 
   // timestamps
   createdAt DateTime @default(now()) @db.Timestamptz(6)

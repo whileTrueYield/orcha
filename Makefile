@@ -103,7 +103,7 @@ ssh-frontend:
 types:
 	yarn --cwd backend types
 
-migrate:main
+migrate:
 	yarn --cwd backend dev:db:migrate
 
 generate:

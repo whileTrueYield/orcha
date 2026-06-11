@@ -11,7 +11,6 @@ import { RoleWorkDayShape as RoleWorkDay, WorkWeekTime } from "../models/entitie
 import { config } from "../config";
 import { logger } from "../logger";
 import { subDays } from "date-fns";
-import { markdownToTipTapDoc } from "./demo/markdownToDoc";
 
 interface ContextWorkWeek {
   monday?: [string, string][];
@@ -419,7 +418,7 @@ export async function runSimulation(
             ticketWorkflowStateId: nextEventId,
             fromTicketWorkflowStateId: ticketWorkflowState.id,
             authorId: event.roleId,
-            body: JSON.stringify(markdownToTipTapDoc(getTransitionNote())),
+            body: getTransitionNote(),
             createdAt: stopTime || undefined,
           },
         });
@@ -431,9 +430,7 @@ export async function runSimulation(
           data: {
             status: TicketStatus.DONE,
             closedAt: stopTime,
-            closingNote: JSON.stringify(
-              markdownToTipTapDoc(getTransitionNote()),
-            ),
+            closingNote: getTransitionNote(),
           },
         });
       }
