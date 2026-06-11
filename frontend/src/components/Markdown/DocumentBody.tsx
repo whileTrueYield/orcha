@@ -17,7 +17,13 @@
 import { gql, useMutation } from "@apollo/client";
 import { useRef, useState } from "react";
 import { onGraphQLError } from "utils/GQLClient";
-import { DocumentBodyType, MentionWarning, Mutation } from "types/graphql";
+import {
+  ConflictRegion,
+  DocumentBodyConflict,
+  DocumentBodyType,
+  MentionWarning,
+  Mutation,
+} from "types/graphql";
 // Imported eagerly (not React.lazy): Vite's dep scanner skips dynamic imports
 // behind React.lazy, so Crepe's ProseMirror was pre-bundled in a separate pass
 // and loaded twice, triggering "Adding different instances of a keyed plugin".
@@ -31,6 +37,9 @@ import {
   writeBodyDraft,
   clearBodyDraft,
 } from "components/Markdown/bodyDraftStorage";
+import ConflictResolver, {
+  serverVersion,
+} from "components/Markdown/ConflictResolver";
 
 export const SAVE_DOCUMENT_BODY = gql`
   mutation SaveDocumentBody(
@@ -119,13 +128,54 @@ export const DocumentBody: React.FC<Props> = ({
   const [status, setStatus] = useState(
     hasRestoredDraft ? "Unsaved draft restored" : "",
   );
-  const [conflict, setConflict] = useState(false);
+  // Non-null while resolving a 409: the server's structured regions, rendered as
+  // the side-by-side picker in place of the editor.
+  const [conflictRegions, setConflictRegions] = useState<
+    ConflictRegion[] | null
+  >(null);
   const [warnings, setWarnings] = useState<MentionWarning[]>([]);
 
   const [save, { loading }] = useMutation<Pick<Mutation, "saveDocumentBody">>(
     SAVE_DOCUMENT_BODY,
     { onError: onGraphQLError({ title: saveErrorTitle }) },
   );
+
+  // Enter conflict mode: hide the editor and show the resolver built from the
+  // server's regions. The markered string is never fed to Crepe.
+  const enterConflict = (c: DocumentBodyConflict) => {
+    clearBodyDraft(documentType, documentId);
+    baseVersionRef.current = c.version;
+    setConflictRegions(c.regions);
+    setWarnings([]);
+    setDirty(false);
+    setStatus("");
+    // Remount the resolver on every (re-)entry so a back-to-back 409 starts with
+    // an empty choice map — ConflictResolver keys choices by region index, and a
+    // stale choice from the previous conflict would otherwise mis-resolve the new
+    // one. Reuses the same seedId remount primitive the editor uses.
+    setSeedId((n) => n + 1);
+  };
+
+  // Apply a clean (written) save. `reseed` remounts the editor with the persisted
+  // body — required when the editor was hidden (conflict just resolved) or the
+  // stored content diverged from our submission (server merge / mention resolve).
+  const applyCleanSave = (
+    body: { markdown: string; version: number },
+    warns: MentionWarning[],
+    reseed: boolean,
+  ) => {
+    clearBodyDraft(documentType, documentId);
+    lastSavedRef.current = body.markdown;
+    baseVersionRef.current = body.version;
+    if (reseed) {
+      setSeed(body.markdown);
+      setSeedId((n) => n + 1);
+    }
+    setConflictRegions(null);
+    setWarnings(warns);
+    setDirty(false);
+    setStatus("Saved");
+  };
 
   const onSave = async () => {
     const markdown = editorRef.current?.getMarkdown() ?? "";
@@ -139,41 +189,48 @@ export const DocumentBody: React.FC<Props> = ({
     });
     const result = data?.saveDocumentBody;
     if (!result) return;
+    if (result.conflict) return enterConflict(result.conflict);
+    // The stored body can differ from what we sent (server-side merge or mention
+    // resolution); reseed only then so a plain fast-forward keeps the cursor.
+    applyCleanSave(
+      result.body!,
+      result.warnings,
+      result.body!.markdown !== markdown,
+    );
+  };
 
-    if (result.conflict) {
-      // The cached draft is superseded by the conflict-markered text we're about
-      // to seed, so drop it; edits to the resolution will cache a fresh one.
-      clearBodyDraft(documentType, documentId);
-      lastSavedRef.current = result.conflict.markdown;
-      setSeed(result.conflict.markdown);
-      setSeedId((n) => n + 1);
-      baseVersionRef.current = result.conflict.version;
-      setConflict(true);
-      setWarnings([]);
-      setDirty(false);
-      setStatus("");
-      return;
-    }
+  // Save the user's per-region choices, then leave conflict mode. A fresh 409
+  // (yet another writer landed) simply re-enters the resolver with new regions.
+  const onResolveConflict = async (resolved: string) => {
+    const { data } = await save({
+      variables: {
+        documentType,
+        documentId,
+        markdown: resolved,
+        baseVersion: baseVersionRef.current,
+      },
+    });
+    const result = data?.saveDocumentBody;
+    if (!result) return;
+    if (result.conflict) return enterConflict(result.conflict);
+    applyCleanSave(result.body!, result.warnings, true); // editor was hidden
+  };
 
-    // Persisted to the server — the local draft has done its job.
+  // Abandon my edits and keep the current server version (the "theirs" side),
+  // with no extra round-trip — we already have it in the regions.
+  const onCancelConflict = () => {
+    if (!conflictRegions) return;
+    const current = serverVersion(conflictRegions);
     clearBodyDraft(documentType, documentId);
-    // The stored content can differ from what we submitted: a stale base is
-    // 3-way merged server-side, and loose @mentions/#refs are resolved to
-    // id-bearing directives. When it diverges, reseed the editor so it shows
-    // exactly what was persisted (e.g. another writer's merged-in changes)
-    // instead of our now-superseded submission. An identical result skips the
-    // remount, so the common fast-forward save keeps the cursor in place.
-    const persisted = result.body!.markdown;
-    lastSavedRef.current = persisted;
-    baseVersionRef.current = result.body!.version;
-    if (persisted !== markdown) {
-      setSeed(persisted);
-      setSeedId((n) => n + 1);
-    }
-    setWarnings(result.warnings);
-    setConflict(false);
+    // baseVersionRef already points at the conflict version (set by enterConflict),
+    // so a subsequent save rebases on it — leave it as-is.
+    lastSavedRef.current = current;
+    setSeed(current);
+    setSeedId((n) => n + 1);
+    setConflictRegions(null);
+    setWarnings([]);
     setDirty(false);
-    setStatus("Saved");
+    setStatus("");
   };
 
   // Revert unsaved edits: remount the editor (bumped key + reseeded value) with
@@ -183,7 +240,7 @@ export const DocumentBody: React.FC<Props> = ({
     clearBodyDraft(documentType, documentId);
     setSeed(lastSavedRef.current);
     setSeedId((n) => n + 1);
-    setConflict(false);
+    setConflictRegions(null);
     setWarnings([]);
     setDirty(false);
     setStatus("");
@@ -197,6 +254,7 @@ export const DocumentBody: React.FC<Props> = ({
   // through untouched.
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (readOnly) return;
+    if (conflictRegions) return; // the resolver owns saving during a conflict
     const isSaveShortcut =
       (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s";
     if (!isSaveShortcut) return;
@@ -206,14 +264,12 @@ export const DocumentBody: React.FC<Props> = ({
 
   return (
     <div className="text-gray-800" onKeyDown={onKeyDown}>
-      {conflict && (
+      {conflictRegions && (
         <div
           role="alert"
           className="m-2 rounded bg-amber-50 p-2 text-amber-800"
         >
-          This body was edited elsewhere. Resolve the conflict markers
-          (&lt;&lt;&lt;&lt;&lt;&lt;&lt; … &gt;&gt;&gt;&gt;&gt;&gt;&gt;) and save
-          again.
+          This body was edited elsewhere. Choose which version to keep below.
         </div>
       )}
       {warnings.length > 0 && (
@@ -222,46 +278,61 @@ export const DocumentBody: React.FC<Props> = ({
           {warnings.map((w) => w.reference).join(", ")}
         </div>
       )}
-      <EditorErrorBoundary resetKey={documentId}>
-        <MarkdownEditor
+      {/* IDEA: extract the editor + footer subtree below into a <BodyEditor>
+          presentational component to drop this file back under the size budget
+          and make the conflict/editor switch a clean two-line ternary. */}
+      {conflictRegions ? (
+        <ConflictResolver
           key={seedId}
-          ref={editorRef}
-          value={seed}
-          readOnly={readOnly}
-          onDirty={() => {
-            setDirty(true);
-            setStatus("");
-            writeBodyDraft(documentType, documentId, {
-              markdown: editorRef.current?.getMarkdown() ?? "",
-              baseVersion: baseVersionRef.current,
-            });
-          }}
+          regions={conflictRegions}
+          saving={loading}
+          onResolve={onResolveConflict}
+          onCancel={onCancelConflict}
         />
-      </EditorErrorBoundary>
-      {!readOnly && (
-        <div className="flex items-center justify-end gap-x-2 py-2 px-4">
-          {status && (
-            <span className="mr-auto text-sm text-gray-500">{status}</span>
+      ) : (
+        <>
+          <EditorErrorBoundary resetKey={documentId}>
+            <MarkdownEditor
+              key={seedId}
+              ref={editorRef}
+              value={seed}
+              readOnly={readOnly}
+              onDirty={() => {
+                setDirty(true);
+                setStatus("");
+                writeBodyDraft(documentType, documentId, {
+                  markdown: editorRef.current?.getMarkdown() ?? "",
+                  baseVersion: baseVersionRef.current,
+                });
+              }}
+            />
+          </EditorErrorBoundary>
+          {!readOnly && (
+            <div className="flex items-center justify-end gap-x-2 py-2 px-4">
+              {status && (
+                <span className="mr-auto text-sm text-gray-500">{status}</span>
+              )}
+              <Button
+                type="button"
+                btnType="secondaryWhite"
+                btnSize="small"
+                disabled={!dirty || loading}
+                onClick={onDiscard}
+              >
+                Discard
+              </Button>
+              <Button
+                type="button"
+                btnType="primary"
+                btnSize="small"
+                disabled={!dirty || loading}
+                onClick={onSave}
+              >
+                {loading ? "Saving…" : "Save"}
+              </Button>
+            </div>
           )}
-          <Button
-            type="button"
-            btnType="secondaryWhite"
-            btnSize="small"
-            disabled={!dirty || loading}
-            onClick={onDiscard}
-          >
-            Discard
-          </Button>
-          <Button
-            type="button"
-            btnType="primary"
-            btnSize="small"
-            disabled={!dirty || loading}
-            onClick={onSave}
-          >
-            {loading ? "Saving…" : "Save"}
-          </Button>
-        </div>
+        </>
       )}
     </div>
   );
