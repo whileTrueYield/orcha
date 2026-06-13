@@ -40,6 +40,7 @@ import { bearerAuth } from "./bearerAuth";
 import { execute } from "./executor";
 import {
   ME_OPERATION,
+  NEXT_TICKETS_OPERATION,
   TICKETS_OPERATION,
   TICKET_OPERATION,
   TICKET_BODY_OPERATION,
@@ -48,6 +49,12 @@ import {
   PROJECTS_OPERATION,
   PROJECT_OPERATION,
   SCHEDULE_OPERATION,
+  CREATE_TICKET_OPERATION,
+  UPDATE_TICKET_OPERATION,
+  SCHEDULE_TICKET_OPERATION,
+  START_TICKET_STAGE_OPERATION,
+  ADVANCE_TICKET_STATE_OPERATION,
+  UPDATE_TICKET_STATUS_OPERATION,
 } from "./operations";
 import { toEnvelope, errorEnvelope } from "./errorEnvelope";
 import {
@@ -131,6 +138,39 @@ function route(
     },
   ];
 }
+
+// Build a GraphQL input object from ONLY the keys actually present in a JSON
+// request body — a PATCH that omits a field must leave it untouched, not send
+// `undefined` (or worse, `null`) the resolver would read as "clear it". Mirrors
+// how the GET list omits absent filter variables. `allowed` is the whitelist of
+// input fields, so an unknown body key is silently ignored rather than passed
+// through. Returns a plain object; the caller decides what an empty one means.
+function pickPresent(
+  body: Record<string, unknown>,
+  allowed: readonly string[],
+): Record<string, unknown> {
+  const input: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (body[key] !== undefined) {
+      input[key] = body[key];
+    }
+  }
+  return input;
+}
+
+// The fields PATCH /v1/tickets/:id accepts, matching UpdateTicketInput. Listed
+// here so the route reads as "these are the patchable fields" and an unknown
+// body key never leaks into the mutation.
+const UPDATE_TICKET_FIELDS = [
+  "title",
+  "ownerId",
+  "projectId",
+  "difficulty",
+  "estimating",
+  "milestone",
+  "productId",
+  "workflowId",
+] as const;
 
 // Parse an If-Match value (`"3"`) into the base version a write rebases onto.
 // Returns null when the header is absent or malformed, so the caller can demand
@@ -241,6 +281,18 @@ v1Router.get(
   }),
 );
 
+// GET /v1/me/next-tickets — the MCTS work queue: the caller's Role's next
+// Tickets in scheduler order, each with the workflow state up next. No
+// parameters — the priority order is scheduler-derived. A pure read, so a
+// read-only token is welcome.
+v1Router.get(
+  "/me/next-tickets",
+  route(async (req, res) => {
+    const data = await executeAs(res, NEXT_TICKETS_OPERATION, {}, req.me!);
+    if (data) res.json({ data: data.myNextTickets });
+  }),
+);
+
 // GET /v1/tickets — tenant-scoped, filterable, cursor-paginated list.
 v1Router.get(
   "/tickets",
@@ -262,6 +314,50 @@ v1Router.get(
   }),
 );
 
+// POST /v1/tickets — create a ticket. We validate the two required fields here
+// rather than relying on the executor: a missing GraphQL variable is a
+// query-validation error with no mapped status (it would surface as a 500), so
+// a clean 400 has to come from the REST layer. Everything else is the
+// mutation's job. 201 on success with the shared write shape.
+v1Router.post(
+  "/tickets",
+  route(async (req, res) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const { title, projectId } = body;
+
+    if (typeof title !== "string" || title.length === 0) {
+      res
+        .status(400)
+        .json(errorEnvelope("BAD_USER_INPUT", "`title` is required."));
+      return;
+    }
+    if (typeof projectId !== "number") {
+      res
+        .status(400)
+        .json(
+          errorEnvelope("BAD_USER_INPUT", "`projectId` (integer) is required."),
+        );
+      return;
+    }
+
+    const input = pickPresent(body, [
+      "title",
+      "projectId",
+      "productId",
+      "workflowId",
+      "stage",
+    ]);
+
+    const data = await executeAs(
+      res,
+      CREATE_TICKET_OPERATION,
+      { input },
+      req.me!,
+    );
+    if (data) res.status(201).json(data.createTicket);
+  }, { write: true }),
+);
+
 // GET /v1/tickets/:id — a single ticket's detail, scoped to the caller's org.
 v1Router.get(
   "/tickets/:id",
@@ -274,6 +370,145 @@ v1Router.get(
     );
     if (data) res.json(data.ticket);
   }),
+);
+
+// PATCH /v1/tickets/:id — partial update. Build the input from only the fields
+// present in the body (so an omitted field is left untouched), and reject an
+// empty patch here: updateTicket's own empty-input guard throws without a mapped
+// code, so we turn "nothing to update" into a clean 400 before executing.
+v1Router.patch(
+  "/tickets/:id",
+  route(async (req, res) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const input = pickPresent(body, UPDATE_TICKET_FIELDS);
+
+    if (Object.keys(input).length === 0) {
+      res
+        .status(400)
+        .json(
+          errorEnvelope(
+            "BAD_USER_INPUT",
+            "Provide at least one field to update.",
+          ),
+        );
+      return;
+    }
+
+    const data = await executeAs(
+      res,
+      UPDATE_TICKET_OPERATION,
+      { ticketId: parseInt(req.params.id, 10), input },
+      req.me!,
+    );
+    if (data) res.json(data.updateTicket);
+  }, { write: true }),
+);
+
+// POST /v1/tickets/:id/transition — the ticket's state machine over HTTP. One
+// endpoint dispatches on the body's `action` to the matching GraphQL mutation,
+// so a client drives a ticket's lifecycle without learning five separate
+// routes. The request contract per action:
+//   schedule          — UNSCHEDULED → SCHEDULED. No extra fields.
+//   start  { stageId } — open work on that stage. stageId REQUIRED.
+//   advance { toStageId?, note? } — next (or explicit) stage; may complete it.
+//   close  { note }    — → DONE.      note REQUIRED (the API demands a reason).
+//   cancel { note }    — → CANCELLED. note REQUIRED.
+// schedule/advance/close/cancel answer with the resulting ticket (shared write
+// shape); start answers with the ScheduleItem it created.
+v1Router.post(
+  "/tickets/:id/transition",
+  route(async (req, res) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const ticketId = parseInt(req.params.id, 10);
+    const action = body.action;
+
+    if (action === "schedule") {
+      const data = await executeAs(
+        res,
+        SCHEDULE_TICKET_OPERATION,
+        { ticketId },
+        req.me!,
+      );
+      if (data) res.json(data.scheduleTicket);
+      return;
+    }
+
+    if (action === "start") {
+      const stageId = body.stageId;
+      if (typeof stageId !== "number") {
+        res
+          .status(400)
+          .json(
+            errorEnvelope(
+              "BAD_USER_INPUT",
+              "`stageId` (the workflow state to start) is required for action `start`.",
+            ),
+          );
+        return;
+      }
+      const data = await executeAs(
+        res,
+        START_TICKET_STAGE_OPERATION,
+        { input: { ticketId, ticketWorkflowStateId: stageId } },
+        req.me!,
+      );
+      if (data) res.json(data.createScheduleItem);
+      return;
+    }
+
+    if (action === "advance") {
+      const data = await executeAs(
+        res,
+        ADVANCE_TICKET_STATE_OPERATION,
+        {
+          ticketId,
+          // Omit when absent so the resolver picks the next stage by position.
+          toTicketWorkflowStateId:
+            typeof body.toStageId === "number" ? body.toStageId : undefined,
+          note: typeof body.note === "string" ? body.note : undefined,
+        },
+        req.me!,
+      );
+      if (data) res.json(data.advanceTicketWorkflowState);
+      return;
+    }
+
+    // close → DONE, cancel → CANCELLED. Both require a note by REST contract
+    // even though the GraphQL arg is optional: a lifecycle-ending decision
+    // should always carry its reason.
+    if (action === "close" || action === "cancel") {
+      const note = body.note;
+      if (typeof note !== "string" || note.trim().length === 0) {
+        res
+          .status(400)
+          .json(
+            errorEnvelope(
+              "BAD_USER_INPUT",
+              `A non-empty \`note\` is required for action \`${action}\`.`,
+            ),
+          );
+        return;
+      }
+      const status = action === "close" ? "DONE" : "CANCELLED";
+      const data = await executeAs(
+        res,
+        UPDATE_TICKET_STATUS_OPERATION,
+        { ticketId, status, note },
+        req.me!,
+      );
+      if (data) res.json(data.updateTicketStatus);
+      return;
+    }
+
+    res
+      .status(400)
+      .json(
+        errorEnvelope(
+          "BAD_USER_INPUT",
+          "Unknown `action`. Valid actions: schedule, start, advance, close, cancel.",
+        ),
+      );
+  }, { write: true }),
 );
 
 // GET /v1/tickets/:id/body — the ticket's Markdown body. The version is

@@ -52,14 +52,16 @@ const UpdateScheduleItemInput = builder.inputType("UpdateScheduleItemInput", {
 // Any schedule item closure should go through here for safety.
 // ---------------------------------------------------------------------------
 
-interface CloseScheduleItemArgs {
+export interface CloseScheduleItemArgs {
   stoppedAt?: string | null;
   done?: boolean | null;
   note?: string | null;
   nextTicketWorkflowStateId?: number | null;
 }
 
-async function _closeScheduleItem(
+// Exported so workflow-advance mutations route DONE/handoff/note logic through
+// the exact same closure path — keeping the lifecycle from diverging.
+export async function _closeScheduleItem(
   ctx: any,
   scheduleItem: any,
   input: CloseScheduleItemArgs,

@@ -2,6 +2,7 @@
  * Ticket resolver registrations — side-effect imports.
  */
 
+import "./advanceWorkflowState.resolver";
 import "./createTicket.resolver";
 import "./dependency.resolver";
 import "./nextTickets.resolver";

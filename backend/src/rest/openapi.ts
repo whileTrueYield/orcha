@@ -7,7 +7,8 @@
  * promise we make to integrators rather than a mechanical dump of the schema.
  *
  * As each slice adds endpoints, document them here alongside their operation in
- * operations.ts — the two evolve together. (#26 reads; #40 body read/write.)
+ * operations.ts — the two evolve together. (#26 reads; #40 body read/write;
+ * #28 ticket writes: create / patch / transition.)
  *
  * Exports:
  *  - openApiSpec: the spec object, served verbatim at GET /v1/openapi.json.
@@ -107,6 +108,105 @@ export const openApiSpec = {
           estimate: { type: "integer" },
           eta: { type: "string", format: "date-time", nullable: true },
           projectId: { type: "integer" },
+        },
+      },
+      TicketWrite: {
+        type: "object",
+        description:
+          "The compact ticket shape returned by the write endpoints (create, " +
+          "patch, transition). Lighter than the read detail: it confirms the " +
+          "mutated scalars; re-read GET /v1/tickets/{id} for body and edges.",
+        properties: {
+          id: { type: "integer" },
+          title: { type: "string" },
+          status: {
+            type: "string",
+            enum: ["UNSCHEDULED", "SCHEDULED", "DONE", "CANCELLED"],
+          },
+          stage: { type: "string", enum: ["DRAFT", "PUBLISHED", "ARCHIVED"] },
+          projectId: { type: "integer" },
+          estimate: { type: "integer" },
+          eta: { type: "string", format: "date-time", nullable: true },
+        },
+      },
+      CreateTicket: {
+        type: "object",
+        description: "The body for POST /v1/tickets.",
+        required: ["title", "projectId"],
+        properties: {
+          title: { type: "string" },
+          projectId: { type: "integer" },
+          productId: { type: "integer" },
+          workflowId: { type: "integer" },
+          stage: { type: "string", enum: ["DRAFT", "PUBLISHED", "ARCHIVED"] },
+        },
+      },
+      UpdateTicket: {
+        type: "object",
+        description:
+          "The body for PATCH /v1/tickets/{id}. A partial update: send only " +
+          "the fields to change. An empty body is rejected with 400.",
+        properties: {
+          title: { type: "string" },
+          ownerId: { type: "integer" },
+          projectId: { type: "integer" },
+          difficulty: { type: "integer" },
+          estimating: { type: "boolean" },
+          milestone: { type: "boolean" },
+          productId: { type: "integer" },
+          workflowId: { type: "integer" },
+        },
+      },
+      TicketTransition: {
+        type: "object",
+        description:
+          "The body for POST /v1/tickets/{id}/transition. `action` selects the " +
+          "lifecycle move; the other fields depend on the action:\n" +
+          "- `schedule`: UNSCHEDULED → SCHEDULED. No other fields.\n" +
+          "- `start`: open work on a stage. `stageId` REQUIRED.\n" +
+          "- `advance`: move to the next (or `toStageId`) stage; `note` " +
+          "optional. Advancing past the last stage completes the ticket (DONE).\n" +
+          "- `close`: → DONE. `note` REQUIRED.\n" +
+          "- `cancel`: → CANCELLED. `note` REQUIRED.",
+        required: ["action"],
+        properties: {
+          action: {
+            type: "string",
+            enum: ["schedule", "start", "advance", "close", "cancel"],
+          },
+          stageId: {
+            type: "integer",
+            description: "The workflow state to start (action `start`).",
+          },
+          toStageId: {
+            type: "integer",
+            description:
+              "An explicit target stage to advance to (action `advance`); " +
+              "omit to advance to the next stage by position.",
+          },
+          note: {
+            type: "string",
+            description:
+              "Required for `close` and `cancel` (the recorded reason); " +
+              "optional for `advance`.",
+          },
+        },
+      },
+      NextTicket: {
+        type: "object",
+        description:
+          "A ticket the scheduler ranks for the caller to work on next, paired " +
+          "with the workflow state that is up next on it.",
+        properties: {
+          ticket: { $ref: "#/components/schemas/TicketSummary" },
+          nextState: {
+            type: "object",
+            properties: {
+              id: { type: "integer" },
+              name: { type: "string" },
+              position: { type: "integer" },
+            },
+          },
         },
       },
       WorkflowState: {
@@ -329,6 +429,44 @@ export const openApiSpec = {
         },
       },
     },
+    "/v1/me/next-tickets": {
+      get: {
+        summary: "The caller's MCTS-prioritized work queue",
+        operationId: "getNextTickets",
+        description:
+          "The Tickets the scheduler ranks for the caller's Role to work on " +
+          "next, in scheduler order, each paired with the workflow state up " +
+          "next. No parameters: order and membership are scheduler-derived. A " +
+          "read, so a read-only token works.",
+        security: bearerAuthRequirement,
+        responses: {
+          "200": {
+            description: "The scheduler-ordered next tickets.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    data: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/NextTicket" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing, malformed, or invalid bearer token.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Error" },
+              },
+            },
+          },
+        },
+      },
+    },
     "/v1/tickets": {
       get: {
         summary: "List tickets in the caller's organization",
@@ -423,6 +561,50 @@ export const openApiSpec = {
           },
         },
       },
+      post: {
+        summary: "Create a ticket",
+        operationId: "createTicket",
+        description:
+          "Create a ticket in the caller's organization. `title` and " +
+          "`projectId` are required. A read-only token is refused with 403.",
+        security: bearerAuthRequirement,
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateTicket" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "The created ticket.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/TicketWrite" },
+              },
+            },
+          },
+          "400": {
+            description:
+              "Missing a required field, or the mutation rejected the input " +
+              "(e.g. the project is not published).",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Error" },
+              },
+            },
+          },
+          "403": {
+            description: "The token is read-only and cannot write.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Error" },
+              },
+            },
+          },
+        },
+      },
     },
     "/v1/tickets/{id}": {
       get: {
@@ -443,6 +625,129 @@ export const openApiSpec = {
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/Ticket" },
+              },
+            },
+          },
+          "404": {
+            description: "No such ticket in the caller's organization.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Error" },
+              },
+            },
+          },
+        },
+      },
+      patch: {
+        summary: "Update a ticket (partial)",
+        operationId: "updateTicket",
+        description:
+          "Update only the fields you send. An empty body is rejected with " +
+          "400. A read-only token is refused with 403.",
+        security: bearerAuthRequirement,
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "integer" } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/UpdateTicket" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "The updated ticket.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/TicketWrite" },
+              },
+            },
+          },
+          "400": {
+            description:
+              "Empty body (nothing to update), or the mutation rejected the " +
+              "change.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Error" },
+              },
+            },
+          },
+          "403": {
+            description: "The token is read-only and cannot write.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Error" },
+              },
+            },
+          },
+          "404": {
+            description: "No such ticket in the caller's organization.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Error" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/v1/tickets/{id}/transition": {
+      post: {
+        summary: "Drive a ticket through its lifecycle",
+        operationId: "transitionTicket",
+        description:
+          "Dispatch on `action` to move a ticket: schedule, start, advance, " +
+          "close, or cancel (see the TicketTransition schema for each action's " +
+          "fields). `schedule` is the only path to SCHEDULED. `close` and " +
+          "`cancel` require a `note`. A read-only token is refused with 403.",
+        security: bearerAuthRequirement,
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "integer" } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/TicketTransition" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description:
+              "The transition was applied. For schedule/advance/close/cancel " +
+              "the body is the resulting ticket (TicketWrite); for `start` it " +
+              "is the created ScheduleItem.",
+            content: {
+              "application/json": {
+                schema: {
+                  oneOf: [
+                    { $ref: "#/components/schemas/TicketWrite" },
+                    { $ref: "#/components/schemas/ScheduleItem" },
+                  ],
+                },
+              },
+            },
+          },
+          "400": {
+            description:
+              "Unknown or missing `action`, a missing required field for the " +
+              "action (e.g. `stageId` for start, `note` for close/cancel), or " +
+              "the mutation rejected the move.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Error" },
+              },
+            },
+          },
+          "403": {
+            description: "The token is read-only and cannot write.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Error" },
               },
             },
           },

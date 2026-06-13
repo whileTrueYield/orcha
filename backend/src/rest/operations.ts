@@ -9,10 +9,29 @@
  * to update — instead of silently changing the JSON contract clients depend
  * on. Treat each operation as the wire contract for its endpoint.
  *
- * Exports: ME_OPERATION, TICKETS_OPERATION, TICKET_OPERATION,
- * TICKET_BODY_OPERATION, SAVE_DOCUMENT_BODY_OPERATION, PROJECTS_OPERATION,
- * PROJECT_OPERATION, PROJECT_BODY_OPERATION, SCHEDULE_OPERATION.
+ * Exports: ME_OPERATION, NEXT_TICKETS_OPERATION, TICKETS_OPERATION,
+ * TICKET_OPERATION, TICKET_BODY_OPERATION, SAVE_DOCUMENT_BODY_OPERATION,
+ * PROJECTS_OPERATION, PROJECT_OPERATION, PROJECT_BODY_OPERATION,
+ * SCHEDULE_OPERATION, CREATE_TICKET_OPERATION, UPDATE_TICKET_OPERATION,
+ * SCHEDULE_TICKET_OPERATION, START_TICKET_STAGE_OPERATION,
+ * ADVANCE_TICKET_STATE_OPERATION, UPDATE_TICKET_STATUS_OPERATION.
  */
+
+// The write endpoints (#28) return a compact, shared ticket shape. Create,
+// patch, and every status-changing transition answer with the SAME selection so
+// a client writes one ticket parser regardless of which verb it called. It is
+// deliberately lighter than TICKET_OPERATION (no body/edges) — a write confirms
+// the mutated scalars; a client that wants the full detail re-reads GET
+// /v1/tickets/:id.
+const TICKET_WRITE_SELECTION = /* GraphQL */ `
+  id
+  title
+  status
+  stage
+  projectId
+  estimate
+  eta
+`;
 
 // GET /v1/me — the token's Role, the User behind it, and the Organization it
 // belongs to. Field selection here IS the response shape clients receive.
@@ -32,6 +51,32 @@ export const ME_OPERATION = /* GraphQL */ `
       organization {
         id
         name
+      }
+    }
+  }
+`;
+
+// GET /v1/me/next-tickets — the MCTS work queue. `myNextTickets` returns, in
+// scheduler order, the Tickets the caller's Role should work on next, each
+// paired with the workflow state that is up next. The query takes no arguments:
+// the order and membership are scheduler-derived, not client-specified. The
+// ticket field selection mirrors the list-node shape used by /v1/tickets.
+export const NEXT_TICKETS_OPERATION = /* GraphQL */ `
+  query RestNextTickets {
+    myNextTickets {
+      ticket {
+        id
+        title
+        status
+        stage
+        estimate
+        eta
+        projectId
+      }
+      nextState {
+        id
+        name
+        position
       }
     }
   }
@@ -264,6 +309,91 @@ export const SCHEDULE_OPERATION = /* GraphQL */ `
         name
         position
       }
+    }
+  }
+`;
+
+// POST /v1/tickets — create a ticket. The REST layer validates the required
+// title/projectId before executing (a missing GraphQL variable surfaces as a
+// query-validation error with no clean status, so we never let it reach here);
+// the mutation owns the rest of the business rules (project must be published,
+// etc.) and any violation maps through the standard envelope.
+export const CREATE_TICKET_OPERATION = /* GraphQL */ `
+  mutation RestCreateTicket($input: CreateTicketInput!) {
+    createTicket(input: $input) {
+      ${TICKET_WRITE_SELECTION}
+    }
+  }
+`;
+
+// PATCH /v1/tickets/:id — partial update. The REST layer builds the input from
+// only the fields present in the JSON body and rejects an empty body itself
+// (updateTicket's own empty-input guard throws without a mapped code), so this
+// document is only ever executed with at least one field set.
+export const UPDATE_TICKET_OPERATION = /* GraphQL */ `
+  mutation RestUpdateTicket($ticketId: Int!, $input: UpdateTicketInput!) {
+    updateTicket(ticketId: $ticketId, input: $input) {
+      ${TICKET_WRITE_SELECTION}
+    }
+  }
+`;
+
+// POST /v1/tickets/:id/transition action="schedule" — UNSCHEDULED → SCHEDULED.
+// This is the ONLY path to SCHEDULED: updateTicketStatus rejects status=SCHEDULED
+// ("Use scheduleTicket"), so the transition dispatcher must route here.
+export const SCHEDULE_TICKET_OPERATION = /* GraphQL */ `
+  mutation RestScheduleTicket($ticketId: Int!) {
+    scheduleTicket(ticketId: $ticketId) {
+      ${TICKET_WRITE_SELECTION}
+    }
+  }
+`;
+
+// POST /v1/tickets/:id/transition action="start" — open a unit of work on a
+// specific stage. Returns the created ScheduleItem (not the ticket), since the
+// thing the caller just brought into being is the schedule item.
+export const START_TICKET_STAGE_OPERATION = /* GraphQL */ `
+  mutation RestStartTicketStage($input: CreateScheduleItemInput!) {
+    createScheduleItem(input: $input) {
+      id
+      startedAt
+      ticketId
+      ticketWorkflowStateId
+    }
+  }
+`;
+
+// POST /v1/tickets/:id/transition action="advance" — move to the next stage (or
+// an explicit one), closing the current work. Advancing past the last stage
+// completes the ticket (status DONE), which the shared selection surfaces.
+export const ADVANCE_TICKET_STATE_OPERATION = /* GraphQL */ `
+  mutation RestAdvanceTicketState(
+    $ticketId: Int!
+    $toTicketWorkflowStateId: Int
+    $note: String
+  ) {
+    advanceTicketWorkflowState(
+      ticketId: $ticketId
+      toTicketWorkflowStateId: $toTicketWorkflowStateId
+      note: $note
+    ) {
+      ${TICKET_WRITE_SELECTION}
+    }
+  }
+`;
+
+// POST /v1/tickets/:id/transition action="close"|"cancel" — set DONE or
+// CANCELLED. The GraphQL `note` arg is optional, but the REST contract REQUIRES
+// it for both (a closing decision should be recorded), enforced in the router
+// before this runs.
+export const UPDATE_TICKET_STATUS_OPERATION = /* GraphQL */ `
+  mutation RestUpdateTicketStatus(
+    $ticketId: Int!
+    $status: TicketStatus!
+    $note: String
+  ) {
+    updateTicketStatus(ticketId: $ticketId, status: $status, note: $note) {
+      ${TICKET_WRITE_SELECTION}
     }
   }
 `;

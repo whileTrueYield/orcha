@@ -4,6 +4,7 @@ import { faker } from "@faker-js/faker";
 import { hash } from "bcrypt";
 import { v4 as uuid } from "uuid";
 import {
+  EstimateType,
   ModelStage,
   Prisma,
   Project,
@@ -502,6 +503,69 @@ export const createRandomTicket = async (
   );
 
   return { ticket, product, workflow, states, ticketWorkflowStates };
+};
+
+/**
+ * Seed a ticket that surfaces in the caller's `myNextTickets` (the MCTS work
+ * queue) without standing up the real scheduler.
+ *
+ * getMyNextTickets keys off the latest Estimate epoch for the organization: a
+ * SCHEDULED ticket only appears when its first active workflow state has an
+ * Estimate row at that epoch assigned to the role, and the queue is ordered by
+ * each estimate's `start`. This builds exactly that — a scheduled ticket plus
+ * the one Estimate that makes it "next".
+ *
+ * Pass distinct `start` values across tickets in one test to fix their relative
+ * order; keep `epoch` constant within a test so all seeded tickets share the
+ * latest epoch (it is per-organization, and each token gets its own org).
+ */
+export const seedNextTicket = async (
+  organization: Organization,
+  role: Role,
+  values: Partial<{ epoch: number; start: number }> = {},
+): Promise<{ ticket: Ticket; ticketWorkflowState: TicketWorkflowState }> => {
+  const { ticket, ticketWorkflowStates } = await createRandomTicket(
+    organization,
+    role,
+    undefined,
+    { status: TicketStatus.SCHEDULED },
+  );
+  // The first active state (lowest position) is the one getMyNextTickets ranks
+  // for an untouched ticket; its id IS the Estimate's id (the AI keys estimates
+  // by the record they describe).
+  const firstState = ticketWorkflowStates[0];
+  const epoch = values.epoch ?? 1_700_000_000;
+  const start = values.start ?? 0;
+  const end = start + 3600;
+
+  await prisma.estimate.create({
+    data: {
+      id: firstState.id,
+      organizationId: organization.id,
+      type: EstimateType.TicketWorkflowState,
+      epoch,
+      updatedEpoch: epoch,
+      assigneeId: role.id,
+      start,
+      start_min: start,
+      start_max: start,
+      start_p50: start,
+      start_p70: start,
+      start_p80: start,
+      start_p90: start,
+      start_p95: start,
+      end,
+      end_min: end,
+      end_max: end,
+      end_p50: end,
+      end_p70: end,
+      end_p80: end,
+      end_p90: end,
+      end_p95: end,
+    },
+  });
+
+  return { ticket, ticketWorkflowState: firstState };
 };
 
 export const getRandomCode = (length: number = 5): string => {
