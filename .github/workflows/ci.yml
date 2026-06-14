@@ -69,10 +69,13 @@ jobs:
         run: yarn --cwd backend install --frozen-lockfile
       - name: Generate Prisma client
         run: yarn --cwd backend prisma generate
-      - name: Push schema to test database
-        # test:db:push runs `dotenv -e .env.test -- prisma db push`, so it picks
-        # up the test DATABASE_URL automatically.
-        run: yarn --cwd backend test:db:push
+      - name: Apply migrations to test database
+        # Must be `migrate deploy`, not `db push`: some tables carry Postgres
+        # trigger functions defined only in the migration SQL (e.g. the
+        # ancestorIsArchived trigger). `db push` syncs the schema but skips
+        # those triggers, so trigger-dependent specs (archiveProject) would
+        # fail. test:db:deploy runs `prisma migrate deploy` against .env.test.
+        run: yarn --cwd backend test:db:deploy
       - name: Run tests
         run: yarn --cwd backend test
 
