@@ -346,7 +346,7 @@ export const createRandomProduct = (
 
 export const createRandomProject = (
   organization: Organization,
-  values: Partial<Prisma.ProjectUncheckedCreateInput> = {},
+  values: Partial<Prisma.ProjectCreateInput> = {},
 ): Promise<Project> => {
   let newProject: Prisma.ProjectCreateInput;
 

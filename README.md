@@ -105,15 +105,26 @@ header. For a Claude Code / Cursor-style `mcp.json`:
 }
 ```
 
-Once connected, two read tools are available:
+Once connected, the read surface an agent uses to orient itself and understand
+its work is available:
 
 - **`whoami`** — your role, the user and organization you act for, and whether
   your token is read-only.
 - **`next_tickets`** — your work queue in scheduler (MCTS) priority order, each
   ticket paired with the next workflow state to advance it into.
+- **`list_tickets`** — find tickets by project, status, stage, assignee, or
+  search, paginated.
+- **`get_ticket`** — a single ticket's full detail: estimate/ETA, workflow
+  states with three-point estimates, dependency edges, and the Markdown body.
+- **`get_ticket_body`** / **`get_project_body`** — just the Markdown body and
+  its version (the version a later body write conditions on).
+- **`list_projects`** — find projects by search or parent, paginated.
+- **`get_project`** — a single project's detail and its parent/children edges.
+- **`get_schedule`** — your own outstanding scheduled work and its ETAs.
 
-A read-only token can call both. The connection is refused outright if the token
-is missing, malformed, or invalid.
+Every tool is tenant-scoped to the token's role and returns LLM-shaped flat JSON.
+A read-only token can call all of them. The connection is refused outright if the
+token is missing, malformed, or invalid.
 
 ## Development
 
