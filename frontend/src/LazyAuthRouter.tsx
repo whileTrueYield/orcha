@@ -16,6 +16,7 @@ import { ReportRouter } from "pages/report/Router";
 import { SearchRouter } from "pages/search/Router";
 import { TicketRouter } from "pages/ticket/Router";
 import { MeEdit } from "pages/user/MeEdit/MeEdit";
+import { ApiTokens } from "pages/user/ApiTokens/ApiTokens";
 import { Route } from "react-router-dom";
 import { urlResolver } from "utils/navigation";
 
@@ -42,6 +43,7 @@ const LazyAuthRouter: React.FC = () => {
         <ExplorerRouter />
         <ScheduleRouter />
         <Route path={urlResolver.user.paths.editMe} component={MeEdit} />
+        <Route path={urlResolver.user.paths.tokens} component={ApiTokens} />
         <Route path="/" exact component={Home} />
       </Sidebar>
     </RoleLoader>

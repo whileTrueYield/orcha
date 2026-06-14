@@ -21,6 +21,9 @@ export const ApiTokenRef = builder.prismaObject("PersonalAccessToken", {
     revokedAt: t.expose("revokedAt", { type: "DateTime", nullable: true }),
     createdAt: t.expose("createdAt", { type: "DateTime" }),
     roleId: t.exposeInt("roleId"),
+    // The owning Role is exposed so the Organization-admin token view can name
+    // who minted each token (offboarding needs a person, not a bare roleId).
+    role: t.relation("role"),
     // tokenHash is intentionally never exposed.
   }),
 });
