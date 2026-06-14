@@ -24,6 +24,7 @@ import {
   CalendarIcon,
   SearchIcon,
   FolderIcon,
+  KeyIcon,
 } from "@heroicons/react/outline";
 import {
   SwitchHorizontalIcon,
@@ -213,6 +214,12 @@ export const Sidebar: React.FC<Props> = ({ children }) => {
       label: "Edit Profile",
       to: urlResolver.user.editMe(orgId),
       icon: (className) => <UserCircleIcon className={className} />,
+    },
+    {
+      type: "link",
+      label: "API Tokens",
+      to: urlResolver.user.tokens(orgId),
+      icon: (className) => <KeyIcon className={className} />,
     },
     {
       type: "link",

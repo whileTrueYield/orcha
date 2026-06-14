@@ -763,6 +763,8 @@ export type Mutation = {
   addToRecentSearchHit: Role;
   addWorkflowState: Workflow;
   addWorkflows: Product;
+  /** Advance a scheduled ticket to its next (or an explicit) workflow stage in one call, recording the handoff and an optional note. */
+  advanceTicketWorkflowState: Ticket;
   archiveProject: Project;
   batchUpdateTicketTags: Array<Ticket>;
   batchUpdateTickets: TicketBatchPayload;
@@ -1016,6 +1018,13 @@ export type MutationAddWorkflowStateArgs = {
 export type MutationAddWorkflowsArgs = {
   productId: Scalars['Int']['input'];
   workflowIds: Array<Scalars['Int']['input']>;
+};
+
+
+export type MutationAdvanceTicketWorkflowStateArgs = {
+  note?: InputMaybe<Scalars['String']['input']>;
+  ticketId: Scalars['Int']['input'];
+  toTicketWorkflowStateId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2278,6 +2287,7 @@ export type PersonalAccessToken = {
   name: Scalars['String']['output'];
   readOnly: Scalars['Boolean']['output'];
   revokedAt?: Maybe<Scalars['DateTime']['output']>;
+  role: Role;
   roleId: Scalars['Int']['output'];
   tokenPrefix: Scalars['String']['output'];
 };

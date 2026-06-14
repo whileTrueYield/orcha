@@ -410,8 +410,11 @@ export const urlResolver = {
   user: {
     editMe: (orgId: string | number) =>
       urlResolver.user.paths.editMe.replace(":orgId", orgId.toString()),
+    tokens: (orgId: string | number) =>
+      urlResolver.user.paths.tokens.replace(":orgId", orgId.toString()),
     paths: {
       editMe: "/org/:orgId/user/me/edit",
+      tokens: "/org/:orgId/user/tokens",
     },
   },
   workflow: {
