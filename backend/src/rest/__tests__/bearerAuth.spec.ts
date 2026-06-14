@@ -20,21 +20,29 @@ function appWithBearer() {
   const app = express();
   app.use(bearerAuth);
   app.get("/probe", (req, res) => {
-    res.json({ userId: req.me?.userId, roleId: req.me?.roleId });
+    res.json({
+      userId: req.me?.userId,
+      roleId: req.me?.roleId,
+      tokenId: req.tokenId,
+    });
   });
   return app;
 }
 
 describe("bearer auth middleware", () => {
-  it("resolves a valid token to its role context", async () => {
-    const { plaintext, role, user } = await getTestApiToken();
+  it("resolves a valid token to its role context and token id", async () => {
+    const { plaintext, role, user, token } = await getTestApiToken();
 
     const res = await request(appWithBearer())
       .get("/probe")
       .set("Authorization", `Bearer ${plaintext}`)
       .expect(200);
 
-    expect(res.body).toEqual({ userId: user.id, roleId: role.id });
+    expect(res.body).toEqual({
+      userId: user.id,
+      roleId: role.id,
+      tokenId: token.id,
+    });
   });
 
   it("rejects a missing Authorization header with 401", async () => {

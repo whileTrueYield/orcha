@@ -8,7 +8,8 @@
  *
  * As each slice adds endpoints, document them here alongside their operation in
  * operations.ts — the two evolve together. (#26 reads; #40 body read/write;
- * #28 ticket writes: create / patch / transition.)
+ * #28 ticket writes: create / patch / transition; #29 the per-token rate-limit
+ * 429, shared by every operation via components.responses.RateLimited.)
  *
  * Exports:
  *  - openApiSpec: the spec object, served verbatim at GET /v1/openapi.json.
@@ -36,6 +37,27 @@ export const openApiSpec = {
         description:
           "A Personal Access Token (PAT). Bound to a single Role; scopes the " +
           "request to that Role's Organization.",
+      },
+    },
+    responses: {
+      // Cross-cutting: every authenticated endpoint shares the per-token rate
+      // limit, so its 429 is defined once here and referenced from each
+      // operation rather than re-described per path.
+      RateLimited: {
+        description:
+          "Per-token rate limit exceeded. Retry after the number of seconds " +
+          "given in the `Retry-After` header.",
+        headers: {
+          "Retry-After": {
+            description: "Seconds to wait before the rate-limit window resets.",
+            schema: { type: "integer" },
+          },
+        },
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/Error" },
+          },
+        },
       },
     },
     schemas: {
@@ -410,6 +432,7 @@ export const openApiSpec = {
         operationId: "getMe",
         security: bearerAuthRequirement,
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "200": {
             description: "The identity behind the presented token.",
             content: {
@@ -440,6 +463,7 @@ export const openApiSpec = {
           "read, so a read-only token works.",
         security: bearerAuthRequirement,
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "200": {
             description: "The scheduler-ordered next tickets.",
             content: {
@@ -526,6 +550,7 @@ export const openApiSpec = {
           },
         ],
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "200": {
             description: "A page of tickets.",
             content: {
@@ -577,6 +602,7 @@ export const openApiSpec = {
           },
         },
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "201": {
             description: "The created ticket.",
             content: {
@@ -620,6 +646,7 @@ export const openApiSpec = {
           },
         ],
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "200": {
             description: "The ticket.",
             content: {
@@ -657,6 +684,7 @@ export const openApiSpec = {
           },
         },
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "200": {
             description: "The updated ticket.",
             content: {
@@ -716,6 +744,7 @@ export const openApiSpec = {
           },
         },
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "200": {
             description:
               "The transition was applied. For schedule/advance/close/cancel " +
@@ -771,6 +800,7 @@ export const openApiSpec = {
           { name: "id", in: "path", required: true, schema: { type: "integer" } },
         ],
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "200": {
             description:
               "The body Markdown. The current version is in the ETag header; " +
@@ -816,6 +846,7 @@ export const openApiSpec = {
           },
         },
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "200": {
             description: "The body was written. The ETag is the new version.",
             headers: {
@@ -898,6 +929,7 @@ export const openApiSpec = {
           },
         ],
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "200": {
             description: "A page of projects.",
             content: {
@@ -940,6 +972,7 @@ export const openApiSpec = {
           },
         ],
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "200": {
             description: "The project.",
             content: {
@@ -968,6 +1001,7 @@ export const openApiSpec = {
           { name: "id", in: "path", required: true, schema: { type: "integer" } },
         ],
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "200": {
             description:
               "The body Markdown; the current version is in the ETag header.",
@@ -1011,6 +1045,7 @@ export const openApiSpec = {
           },
         },
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "200": {
             description: "The body was written. The ETag is the new version.",
             headers: {
@@ -1078,6 +1113,7 @@ export const openApiSpec = {
           "ETA. Scoped to the token's role, so a read-only token works.",
         security: bearerAuthRequirement,
         responses: {
+          "429": { $ref: "#/components/responses/RateLimited" },
           "200": {
             description: "The caller's unfinished schedule items.",
             content: {

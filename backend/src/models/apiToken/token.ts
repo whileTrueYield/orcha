@@ -66,6 +66,9 @@ export function hashToken(plaintext: string): string {
  * rather than re-reading the token downstream.
  */
 export interface ResolvedToken {
+  // The token's own primary key, so the transport layer can rate-limit per
+  // token (a Role may hold several tokens — keying on the Role would not do).
+  tokenId: number;
   role: Role;
   readOnly: boolean;
 }
@@ -90,5 +93,5 @@ export async function verifyAndResolve(
     throw new InvalidTokenError("EXPIRED");
   }
 
-  return { role: token.role, readOnly: token.readOnly };
+  return { tokenId: token.id, role: token.role, readOnly: token.readOnly };
 }

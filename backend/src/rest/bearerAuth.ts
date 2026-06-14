@@ -39,6 +39,8 @@ declare global {
     interface Request {
       me?: AuthRoleContext;
       tokenReadOnly?: boolean;
+      // The presented PAT's own id, used to rate-limit per token (see rateLimit).
+      tokenId?: number;
     }
   }
 }
@@ -68,7 +70,7 @@ export async function bearerAuth(
   }
 
   try {
-    const { role, readOnly } = await verifyAndResolve(plaintext);
+    const { tokenId, role, readOnly } = await verifyAndResolve(plaintext);
     req.me = buildRoleContext({
       userId: role.userId,
       roleId: role.id,
@@ -76,6 +78,7 @@ export async function bearerAuth(
       roleType: role.type,
     });
     req.tokenReadOnly = readOnly;
+    req.tokenId = tokenId;
     next();
   } catch (error) {
     if (error instanceof InvalidTokenError) {

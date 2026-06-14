@@ -37,6 +37,8 @@ import {
   RequestHandler,
 } from "express";
 import { bearerAuth } from "./bearerAuth";
+import { rateLimit, redisRateLimitStore } from "./rateLimit";
+import { redis } from "../redis";
 import { execute } from "./executor";
 import {
   ME_OPERATION,
@@ -98,11 +100,27 @@ v1Router.get("/openapi.json", (_req, res) => {
   res.json(openApiSpec);
 });
 
+// Per-token rate limit, env-tunable. Defaults: 120 requests / 60s — generous
+// headroom for an agent's read→update→transition loop, while still capping a
+// runaway. Built once and shared across every route via the wrapper below.
+const RATE_LIMIT_WINDOW_SECONDS = parseInt(
+  process.env.RATE_LIMIT_WINDOW_SECONDS || "60",
+  10,
+);
+const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX || "120", 10);
+const rateLimiter = rateLimit({
+  store: redisRateLimitStore(redis, RATE_LIMIT_WINDOW_SECONDS),
+  max: RATE_LIMIT_MAX,
+  windowSeconds: RATE_LIMIT_WINDOW_SECONDS,
+});
+
 // Wrap a bearer-authenticated route. bearerAuth runs first (so req.me is a
-// resolved LINKED context inside the handler), then the handler runs under one
-// try/catch: a thrown CursorError is a client mistake (a bad `?after=`) → 400
-// with the envelope; anything else is unexpected → forwarded to Express. This
-// keeps every route below free of repeated error plumbing.
+// resolved LINKED context inside the handler), then the per-token rate limiter
+// (it keys on the token id bearerAuth resolved), then the handler runs under
+// one try/catch: a thrown CursorError is a client mistake (a bad `?after=`) →
+// 400 with the envelope; anything else is unexpected → forwarded to Express.
+// This keeps every route below free of repeated error plumbing — and means the
+// rate limit covers the whole `/v1` surface from one place.
 //
 // `options.write` marks a mutating route: a read-only PAT is refused with 403
 // before the handler runs, so the capability check lives in one place rather
@@ -114,6 +132,7 @@ function route(
 ): RequestHandler[] {
   return [
     bearerAuth,
+    rateLimiter,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         if (options.write && req.tokenReadOnly) {
