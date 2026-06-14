@@ -15,42 +15,8 @@
  */
 
 import expect from "expect";
-import { AddressInfo } from "net";
-import { Server } from "http";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { createExpressApp } from "../../app";
-import {
-  getTestApiToken,
-  seedNextTicket,
-} from "../../utils/testing";
-
-// Start the app on an ephemeral port and return its base URL plus a teardown.
-function listen(): { url: URL; server: Server } {
-  const server = createExpressApp().listen(0);
-  const { port } = server.address() as AddressInfo;
-  return { url: new URL(`http://127.0.0.1:${port}/mcp`), server };
-}
-
-// Connect a real MCP client presenting `bearer` (omit to send no Authorization).
-async function connect(
-  url: URL,
-  bearer?: string,
-): Promise<{ client: Client; transport: StreamableHTTPClientTransport }> {
-  const client = new Client({ name: "mcp-test-client", version: "0.0.0" });
-  const transport = new StreamableHTTPClientTransport(url, {
-    requestInit: bearer
-      ? { headers: { Authorization: `Bearer ${bearer}` } }
-      : undefined,
-  });
-  await client.connect(transport);
-  return { client, transport };
-}
-
-// The tools return flat JSON as a single text content block; parse it back.
-function parse(result: any): any {
-  return JSON.parse(result.content[0].text);
-}
+import { getTestApiToken, seedNextTicket } from "../../utils/testing";
+import { listen, connect, parse } from "./mcpClient";
 
 describe("MCP /mcp", () => {
   it("whoami returns the token's role, user, and organization", async () => {

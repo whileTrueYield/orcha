@@ -88,7 +88,8 @@
     "unist-util-visit": "^5.1.0",
     "weak-napi": "^2.0.2",
     "web-push": "^3.6.7",
-    "winston": "^3.13.0"
+    "winston": "^3.13.0",
+    "zod": "^4.4.3"
   },
   "scripts": {
     "prebuild": "prisma generate && prisma migrate deploy",
