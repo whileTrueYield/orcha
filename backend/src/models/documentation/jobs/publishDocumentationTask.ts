@@ -14,6 +14,13 @@ import { logger } from "../../../logger";
 import { renderHtml } from "../../../markdown/render";
 import { analyze } from "../../../markdown/analysis";
 
+// The publish pipeline writes the static site to S3 and invalidates CloudFront
+// in production. Locally there is no S3/CloudFront, so both dev and test instead
+// write the artifacts to `out/` on disk — dev so a human can inspect them, test
+// so the integration spec can read them back. Anything that isn't a real cloud
+// environment uses this local filesystem sink.
+const usesLocalSink = config.isDev || config.isTest;
+
 export const publishDocumentationTask = async (documentationId: number) => {
   logger.info(`Starting publication of documentation ${documentationId}`);
 
@@ -179,8 +186,8 @@ export const publishDocumentationTask = async (documentationId: number) => {
 };
 
 const invalidateCloudfront = async (paths: string[]) => {
-  if (config.isDev || !config.documentationDistributionId) {
-    logger.info("Skipping CloudFront invalidation (dev mode or no distribution ID configured)");
+  if (usesLocalSink || !config.documentationDistributionId) {
+    logger.info("Skipping CloudFront invalidation (local sink or no distribution ID configured)");
   } else {
     logger.info(
       `Invalidating cloudfront ${
@@ -230,7 +237,7 @@ const getContentType = (filename: string) => {
 };
 
 const sendFileToS3 = async (filename: string, content: string) => {
-  if (config.isDev) {
+  if (usesLocalSink) {
     const outputFilename = path.join(__dirname, `../../../../out`, filename);
     // create filename project if necessary
     await fsPromises.mkdir(path.dirname(outputFilename), { recursive: true });
@@ -263,7 +270,7 @@ const sendFileToS3 = async (filename: string, content: string) => {
 export const unpublishDocumentationTask = async (documentationId: number) => {
   const documentationProject = `doc/${documentationId}`;
 
-  if (config.isDev) {
+  if (usesLocalSink) {
     const projectName = path.join(
       __dirname,
       `../../../../out`,
