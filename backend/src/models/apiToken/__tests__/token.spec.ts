@@ -38,6 +38,24 @@ describe("personal access token", () => {
     expect(resolved.readOnly).toBe(false);
   });
 
+  it("resolves the token's own id, so callers can key per-token", async () => {
+    const { role, organization } = await createRandomOrgAndUser();
+    const { plaintext, hash, prefix } = generateToken();
+    const created = await prisma.personalAccessToken.create({
+      data: {
+        name: "keyed token",
+        tokenHash: hash,
+        tokenPrefix: prefix,
+        roleId: role.id,
+        organizationId: organization.id,
+      },
+    });
+
+    const resolved = await verifyAndResolve(plaintext);
+
+    expect(resolved.tokenId).toBe(created.id);
+  });
+
   it("resolves a read-only token's capability flag", async () => {
     const { role, organization } = await createRandomOrgAndUser();
     const { plaintext, hash, prefix } = generateToken();
