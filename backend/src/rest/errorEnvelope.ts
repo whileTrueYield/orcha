@@ -48,6 +48,13 @@ export function errorEnvelope(code: string, message: string): ErrorEnvelope {
   return { error: { code, message } };
 }
 
+// Map a GraphQL/operation error code to its HTTP status. Exposed so the `/v1`
+// boundary can translate a thrown OperationError (which carries only a code and
+// message — it is transport-agnostic) without re-deriving this table.
+export function statusForCode(code: string): number {
+  return CODE_TO_STATUS[code] ?? INTERNAL_ERROR_STATUS;
+}
+
 export function toEnvelope(
   errors: readonly GraphQLError[],
 ): EnvelopeResponse {
