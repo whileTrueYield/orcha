@@ -24,13 +24,21 @@
  */
 
 import { RequestHandler } from "express";
-import type Redis from "ioredis";
 import { errorEnvelope } from "./errorEnvelope";
 
 export interface RateLimitStore {
   // Count one hit for `key` in the current window and return the running count
   // plus the seconds remaining until the window resets.
   hit(key: string): Promise<{ count: number; ttlSeconds: number }>;
+}
+
+// The slice of the Redis client the store needs. Structural typing keeps this
+// module decoupled from ioredis' export shape (whose default export resolves to
+// a namespace, not a usable type, under the build tsconfig).
+export interface RateLimitRedis {
+  incr(key: string): Promise<number>;
+  expire(key: string, seconds: number): Promise<number>;
+  ttl(key: string): Promise<number>;
 }
 
 const KEY_PREFIX = "ratelimit:v1:";
@@ -41,7 +49,7 @@ const KEY_PREFIX = "ratelimit:v1:";
  * the key self-evicts when it elapses — that is what lets the limit recover.
  */
 export function redisRateLimitStore(
-  client: Redis,
+  client: RateLimitRedis,
   windowSeconds: number,
 ): RateLimitStore {
   return {
