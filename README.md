@@ -81,6 +81,40 @@ architecture is documented in depth in [ARCHITECTURE.md](ARCHITECTURE.md).
 - Embeddable support widget that creates tickets in your workspace
 - Push notifications, time tracking, project dashboards, reports
 
+## Connect a coding agent (MCP)
+
+Orcha exposes a remote [MCP](https://modelcontextprotocol.io) endpoint at `/mcp`
+so a coding agent can ask "who am I?" and "what should I work on next?" and act
+on its answer. It authenticates with the same Personal Access Token you'd use for the `/v1`
+REST API — mint one in **Settings → Tokens**.
+
+Point any MCP client at the endpoint with the token in an `Authorization`
+header. For a Claude Code / Cursor-style `mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "orcha": {
+      "type": "http",
+      "url": "http://localhost:4000/mcp",
+      "headers": {
+        "Authorization": "Bearer orcha_pat_your_token_here"
+      }
+    }
+  }
+}
+```
+
+Once connected, two read tools are available:
+
+- **`whoami`** — your role, the user and organization you act for, and whether
+  your token is read-only.
+- **`next_tickets`** — your work queue in scheduler (MCTS) priority order, each
+  ticket paired with the next workflow state to advance it into.
+
+A read-only token can call both. The connection is refused outright if the token
+is missing, malformed, or invalid.
+
 ## Development
 
 ```sh

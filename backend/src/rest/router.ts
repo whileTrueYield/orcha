@@ -37,9 +37,8 @@ import {
   RequestHandler,
 } from "express";
 import { bearerAuth } from "./bearerAuth";
-import { rateLimit, redisRateLimitStore } from "./rateLimit";
-import { redis } from "../redis";
-import { execute } from "./executor";
+import { tokenRateLimiter } from "./tokenRateLimiter";
+import { runOperation, OperationError } from "./runOperation";
 import {
   ME_OPERATION,
   NEXT_TICKETS_OPERATION,
@@ -58,7 +57,7 @@ import {
   ADVANCE_TICKET_STATE_OPERATION,
   UPDATE_TICKET_STATUS_OPERATION,
 } from "./operations";
-import { toEnvelope, errorEnvelope } from "./errorEnvelope";
+import { errorEnvelope, statusForCode } from "./errorEnvelope";
 import {
   parsePageParams,
   buildPage,
@@ -73,22 +72,26 @@ export const v1Router = Router();
 // Run a GraphQL operation as the token's role and either return its `data`
 // (for the caller to shape into a response) or write the error envelope and
 // return undefined. Centralising this keeps every route's success/failure
-// handling identical.
+// handling identical. The operation itself runs through the transport-agnostic
+// `runOperation` core (shared with `/mcp`); this wrapper is only the HTTP
+// translation — mapping a thrown OperationError to its status + envelope.
 async function executeAs(
   res: Response,
   document: string,
   variables: Record<string, unknown>,
   me: AuthRoleContext,
 ): Promise<Record<string, any> | undefined> {
-  const { data, errors } = await execute({ document, variables, me });
-
-  if (errors && errors.length > 0) {
-    const { status, body } = toEnvelope(errors);
-    res.status(status).json(body);
-    return undefined;
+  try {
+    return await runOperation(document, variables, me);
+  } catch (error) {
+    if (error instanceof OperationError) {
+      res
+        .status(statusForCode(error.code))
+        .json(errorEnvelope(error.code, error.message));
+      return undefined;
+    }
+    throw error;
   }
-
-  return data ?? undefined;
 }
 
 // Bodies are JSON. Harmless for the current read-only tracer; ready for the
@@ -98,20 +101,6 @@ v1Router.use(jsonBodyParser());
 // The published contract — unauthenticated by design.
 v1Router.get("/openapi.json", (_req, res) => {
   res.json(openApiSpec);
-});
-
-// Per-token rate limit, env-tunable. Defaults: 120 requests / 60s — generous
-// headroom for an agent's read→update→transition loop, while still capping a
-// runaway. Built once and shared across every route via the wrapper below.
-const RATE_LIMIT_WINDOW_SECONDS = parseInt(
-  process.env.RATE_LIMIT_WINDOW_SECONDS || "60",
-  10,
-);
-const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX || "120", 10);
-const rateLimiter = rateLimit({
-  store: redisRateLimitStore(redis, RATE_LIMIT_WINDOW_SECONDS),
-  max: RATE_LIMIT_MAX,
-  windowSeconds: RATE_LIMIT_WINDOW_SECONDS,
 });
 
 // Wrap a bearer-authenticated route. bearerAuth runs first (so req.me is a
@@ -132,7 +121,7 @@ function route(
 ): RequestHandler[] {
   return [
     bearerAuth,
-    rateLimiter,
+    tokenRateLimiter,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         if (options.write && req.tokenReadOnly) {
