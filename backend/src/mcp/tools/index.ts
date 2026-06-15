@@ -25,6 +25,7 @@ import { registerTicketTools } from "./tickets";
 import { registerProjectTools } from "./projects";
 import { registerScheduleTools } from "./schedule";
 import { registerTicketWriteTools } from "./ticketWrites";
+import { registerTicketTransitionTool } from "./ticketTransition";
 
 export function registerReadTools(
   server: McpServer,
@@ -41,4 +42,5 @@ export function registerWriteTools(
   resolved: ResolvedRole,
 ): void {
   registerTicketWriteTools(server, resolved);
+  registerTicketTransitionTool(server, resolved);
 }
