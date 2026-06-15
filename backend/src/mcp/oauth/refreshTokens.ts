@@ -72,6 +72,11 @@ export async function mintRefreshToken(
 // Revoke every live refresh and access token sharing a family. Called when a
 // reuse is detected; idempotent (only flips rows whose revokedAt is still null).
 export async function revokeFamily(familyId: string): Promise<void> {
+  // Crash early (project rule): an empty familyId would silently match no rows
+  // and mask a caller bug in a security-critical path.
+  if (!familyId) {
+    throw new Error("revokeFamily called with an empty familyId");
+  }
   const now = new Date();
   // Atomic: revoking a family is the theft response — it must not half-apply
   // (refresh tokens revoked but access tokens left live), so both updates run
@@ -104,12 +109,15 @@ export async function rotateRefreshToken(
   if (row.client.clientId !== clientId) {
     throw new InvalidRefreshTokenError("CLIENT_MISMATCH");
   }
-  if (row.revokedAt) throw new InvalidRefreshTokenError("REVOKED");
   if (row.rotatedAt) {
-    // Reuse of a spent token: burn the whole chain, then refuse.
+    // Reuse of a spent token: burn the whole chain, then refuse. Checked BEFORE
+    // revokedAt so a re-presented spent token always re-signals REUSE (the theft
+    // alert the provider logs) instead of reading as a plain REVOKED. revokeFamily
+    // is idempotent, so re-burning an already-revoked family is a harmless no-op.
     await revokeFamily(row.familyId);
     throw new InvalidRefreshTokenError("REUSE");
   }
+  if (row.revokedAt) throw new InvalidRefreshTokenError("REVOKED");
   if (row.expiresAt.getTime() < Date.now()) {
     // Honest expiry is not theft — refuse without touching the family.
     throw new InvalidRefreshTokenError("EXPIRED");

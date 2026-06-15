@@ -1010,6 +1010,10 @@ model OAuthRefreshToken {
 
   // indices, table map and constraints
   @@index([tokenHash])
+  // IDEA: revokeFamily filters (familyId, revokedAt: null); a composite
+  // @@index([familyId, revokedAt]) here and on oauth_access_token would keep the
+  // theft-path sweep index-only as rotation families grow. Single-column is fine
+  // at current family sizes — deferred to avoid an extra migration now.
   @@index([familyId])
   @@map("oauth_refresh_token")
 }
