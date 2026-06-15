@@ -40,9 +40,11 @@ import {
   mintRefreshToken,
   rotateRefreshToken,
   RefreshTokenGrant,
+  InvalidRefreshTokenError,
 } from "./refreshTokens";
 import { InvalidGrantError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import prisma from "../../prisma";
+import { logger } from "../../logger";
 
 const DEFAULT_SCOPE = "mcp";
 
@@ -149,9 +151,10 @@ export const orchaOAuthProvider: OAuthServerProvider = {
     };
   },
 
-  // The SDK forwards a requested-scope subset as `scopes`; with the single `mcp`
-  // scope this slice we reissue the granted scope unchanged.
-  // TODO: honor scope narrowing once more than one scope exists.
+  // The SDK's hook can pass a requested-scope subset (and resource) as extra
+  // args; we omit those params this slice — with a single `mcp` scope there is
+  // nothing to narrow, so we always reissue the granted scope unchanged.
+  // TODO: accept and honor scope narrowing once more than one scope exists.
   async exchangeRefreshToken(
     client: OAuthClientInformationFull,
     refreshToken: string,
@@ -159,10 +162,20 @@ export const orchaOAuthProvider: OAuthServerProvider = {
     let grant: RefreshTokenGrant;
     try {
       grant = await rotateRefreshToken(client.client_id, refreshToken);
-    } catch {
-      // Any rejection (unknown / reuse / expired / client mismatch) is an invalid
-      // grant to the client — a 400, never a 500, and deliberately undifferentiated
-      // so a probe can't tell the rejection reasons apart.
+    } catch (err) {
+      // A protocol rejection (unknown / reuse / expired / client mismatch) is an
+      // invalid grant — a deliberately undifferentiated 400 so a probe can't tell
+      // the reasons apart. Anything else (a DB/store failure) is NOT an invalid
+      // grant: rethrow it so it surfaces as a 500 instead of masquerading as a
+      // bad token.
+      if (!(err instanceof InvalidRefreshTokenError)) throw err;
+      // A reuse means rotateRefreshToken just revoked an entire family — a real
+      // theft signal. Record it server-side; the client still gets the generic 400.
+      if (err.reason === "REUSE") {
+        logger.warn("oauth refresh token reuse detected — family revoked", {
+          clientId: client.client_id,
+        });
+      }
       throw new InvalidGrantError("invalid refresh token");
     }
     // clientPk (refresh grant) and clientId (access grant) are the same FK under
