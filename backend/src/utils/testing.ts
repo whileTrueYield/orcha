@@ -33,7 +33,12 @@ import {
   WorkflowState,
 } from "@prisma/client";
 
-import { OAuthAccessToken, OAuthClient, PersonalAccessToken } from "@prisma/client";
+import {
+  OAuthAccessToken,
+  OAuthClient,
+  OAuthRefreshToken,
+  PersonalAccessToken,
+} from "@prisma/client";
 import { UserSession } from "../types";
 // Maybe<T> is T | null — simple utility type previously from type-graphql
 type Maybe<T> = T | null | undefined;
@@ -288,6 +293,55 @@ export const getTestOAuthToken = async (
       scope: tokenOptions.scope ?? "mcp",
       readOnly: tokenOptions.readOnly ?? false,
       familyId: tokenOptions.familyId ?? randomUUID(),
+      revokedAt: tokenOptions.revokedAt,
+      expiresAt: tokenOptions.expiresAt ?? fromNow(60),
+      clientId: client.id,
+      roleId: role.id,
+      organizationId: organization.id,
+    },
+  });
+
+  return { plaintext, token, client, user, organization, role };
+};
+
+export interface TestRefreshToken {
+  plaintext: string;
+  token: OAuthRefreshToken;
+  client: OAuthClient;
+  user: User;
+  organization: Organization;
+  role: Role;
+}
+
+// Seeds an oauth_refresh_token row directly so tests can construct arbitrary
+// states (spent via rotatedAt, revoked, expired) without driving a full flow.
+export const getTestRefreshToken = async (
+  tokenOptions: Partial<{
+    readOnly: boolean;
+    revokedAt: Date;
+    rotatedAt: Date;
+    expiresAt: Date;
+    scope: string;
+    familyId: string;
+  }> = {},
+  roleType: RoleType = RoleType.MEMBER,
+): Promise<TestRefreshToken> => {
+  const { user, organization, role } = await createRandomOrgAndUser(roleType);
+  const { generateRefreshToken } = await import("../mcp/oauth/refreshTokens");
+  const { hashToken } = await import("../models/apiToken/token");
+  const plaintext = generateRefreshToken();
+
+  const client = await prisma.oAuthClient.create({
+    data: { clientId: getRandomCode(12), redirectUris: ["http://localhost/cb"] },
+  });
+
+  const token = await prisma.oAuthRefreshToken.create({
+    data: {
+      tokenHash: hashToken(plaintext),
+      familyId: tokenOptions.familyId ?? randomUUID(),
+      scope: tokenOptions.scope ?? "mcp",
+      readOnly: tokenOptions.readOnly ?? false,
+      rotatedAt: tokenOptions.rotatedAt,
       revokedAt: tokenOptions.revokedAt,
       expiresAt: tokenOptions.expiresAt ?? fromNow(60),
       clientId: client.id,
