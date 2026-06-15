@@ -73,14 +73,19 @@ export async function mintRefreshToken(
 // reuse is detected; idempotent (only flips rows whose revokedAt is still null).
 export async function revokeFamily(familyId: string): Promise<void> {
   const now = new Date();
-  await prisma.oAuthRefreshToken.updateMany({
-    where: { familyId, revokedAt: null },
-    data: { revokedAt: now },
-  });
-  await prisma.oAuthAccessToken.updateMany({
-    where: { familyId, revokedAt: null },
-    data: { revokedAt: now },
-  });
+  // Atomic: revoking a family is the theft response — it must not half-apply
+  // (refresh tokens revoked but access tokens left live), so both updates run
+  // in one transaction.
+  await prisma.$transaction([
+    prisma.oAuthRefreshToken.updateMany({
+      where: { familyId, revokedAt: null },
+      data: { revokedAt: now },
+    }),
+    prisma.oAuthAccessToken.updateMany({
+      where: { familyId, revokedAt: null },
+      data: { revokedAt: now },
+    }),
+  ]);
 }
 
 // Atomically spend the presented token and return its binding for re-minting.

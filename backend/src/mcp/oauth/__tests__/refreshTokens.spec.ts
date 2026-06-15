@@ -56,6 +56,9 @@ describe("oauth refreshTokens", () => {
   it("rejects a reused (already-rotated) token and revokes the whole family", async () => {
     const familyId = "fam-reuse";
     const spent = await getTestRefreshToken({ familyId, rotatedAt: new Date() });
+    // revokeFamily targets the familyId, not a client, so seeding an access
+    // token with the same familyId is enough to prove it gets swept — the
+    // helper's own client/role rows are irrelevant to the family match.
     const access = await getTestOAuthToken({ familyId });
 
     await expect(
@@ -70,6 +73,13 @@ describe("oauth refreshTokens", () => {
     });
     expect(rt!.revokedAt).not.toBeNull();
     expect(at!.revokedAt).not.toBeNull();
+  });
+
+  it("rejects an already-revoked token", async () => {
+    const revoked = await getTestRefreshToken({ revokedAt: new Date() });
+    await expect(
+      rotateRefreshToken(revoked.client.clientId, revoked.plaintext),
+    ).rejects.toBeInstanceOf(InvalidRefreshTokenError);
   });
 
   it("rejects an expired token WITHOUT revoking the family", async () => {
