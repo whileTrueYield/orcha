@@ -934,8 +934,9 @@ model OAuthAuthorizationCode {
 // A short-lived opaque access token issued after a successful PKCE exchange.
 // `tokenHash` is SHA-256(plaintext_token); plaintext carries the `orcha_oat_`
 // prefix and is shown once. `revokedAt` enables soft-revocation without
-// deleting the row (useful for audit). `lastUsedAt` is bumped on every
-// successful resolveRole call.
+// deleting the row (useful for audit). `lastUsedAt` is reserved for a future
+// "last seen" audit signal — no code writes it yet (the PAT column is likewise
+// unwired), so it stays null until a later slice populates it.
 model OAuthAccessToken {
   // required fields
   id        Int      @id @default(autoincrement())

@@ -47,8 +47,7 @@ oauthRouter.get("/oauth/consent", async (req, res) => {
   }
 
   // Session gate: if not signed in, hand off to the SPA login and come back.
-  const roleId = (req.session as any)?.roleId;
-  const organizationId = (req.session as any)?.organizationId;
+  const { roleId, organizationId } = req.session;
   if (!roleId || !organizationId) {
     const returnTo = encodeURIComponent(
       `${config.apiUri}/oauth/consent?request=${requestToken}`,
@@ -79,9 +78,16 @@ oauthRouter.post(
   async (req, res) => {
     const requestToken = String(req.body.request ?? "");
     const pending = pendingRequests.get(requestToken);
-    const roleId = (req.session as any)?.roleId;
-    const organizationId = (req.session as any)?.organizationId;
-    if (!pending || !roleId || !organizationId) {
+    const { roleId, organizationId } = req.session;
+    // Reject an expired pending request, matching the GET consent route's TTL
+    // guard — a consent form left open past the window must not still mint a code.
+    if (
+      !pending ||
+      pending.expiresAt < Date.now() ||
+      !roleId ||
+      !organizationId
+    ) {
+      pendingRequests.delete(requestToken);
       res.status(400).send("Authorization request expired or unknown.");
       return;
     }

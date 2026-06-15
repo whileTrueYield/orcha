@@ -57,6 +57,18 @@ export const pendingRequests = new Map<string, PendingRequest>();
 // own 60-second TTL after minting.
 const PENDING_TTL_MS = 1000 * 60 * 5;
 
+// Bound the in-process Map. An abandoned authorize (user never submits the
+// consent form) would otherwise linger until the process restarts. Sweeping on
+// each new request keeps the Map size O(requests within one TTL window) without
+// a background timer — a timer would keep the process alive and leak across
+// tests. The Redis-backed store a multi-instance deploy needs (see header) will
+// get native key expiry instead.
+function evictExpiredPending(now: number): void {
+  for (const [token, pending] of pendingRequests) {
+    if (pending.expiresAt < now) pendingRequests.delete(token);
+  }
+}
+
 export const orchaOAuthProvider: OAuthServerProvider = {
   get clientsStore() {
     return orchaClientsStore;
@@ -70,6 +82,8 @@ export const orchaOAuthProvider: OAuthServerProvider = {
     params: AuthorizationParams,
     res: Response,
   ): Promise<void> {
+    const now = Date.now();
+    evictExpiredPending(now);
     const requestToken = randomUUID();
     pendingRequests.set(requestToken, {
       clientId: client.client_id,
@@ -77,7 +91,7 @@ export const orchaOAuthProvider: OAuthServerProvider = {
       codeChallenge: params.codeChallenge,
       scope: params.scopes?.join(" ") || DEFAULT_SCOPE,
       state: params.state,
-      expiresAt: Date.now() + PENDING_TTL_MS,
+      expiresAt: now + PENDING_TTL_MS,
     });
     // Consent rendering and session gate live in the consent route (router.ts);
     // authorize only records intent so it remains testable without a live session.
@@ -139,7 +153,11 @@ export async function describePending(requestToken: string): Promise<{
   clientName: string;
 } | null> {
   const pending = pendingRequests.get(requestToken);
-  if (!pending || pending.expiresAt < Date.now()) return null;
+  if (!pending) return null;
+  if (pending.expiresAt < Date.now()) {
+    pendingRequests.delete(requestToken);
+    return null;
+  }
   const dbClient = await prisma.oAuthClient.findUnique({
     where: { clientId: pending.clientId },
   });
