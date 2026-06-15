@@ -290,7 +290,7 @@ export const getTestOAuthToken = async (
   const token = await prisma.oAuthAccessToken.create({
     data: {
       tokenHash: hashToken(plaintext),
-      scope: tokenOptions.scope ?? "mcp",
+      scope: tokenOptions.scope ?? "read write",
       readOnly: tokenOptions.readOnly ?? false,
       familyId: tokenOptions.familyId ?? randomUUID(),
       revokedAt: tokenOptions.revokedAt,
@@ -339,7 +339,7 @@ export const getTestRefreshToken = async (
     data: {
       tokenHash: hashToken(plaintext),
       familyId: tokenOptions.familyId ?? randomUUID(),
-      scope: tokenOptions.scope ?? "mcp",
+      scope: tokenOptions.scope ?? "read write",
       readOnly: tokenOptions.readOnly ?? false,
       rotatedAt: tokenOptions.rotatedAt,
       revokedAt: tokenOptions.revokedAt,

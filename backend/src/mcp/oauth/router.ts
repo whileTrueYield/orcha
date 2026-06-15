@@ -20,6 +20,7 @@ import {
 } from "./provider";
 import { renderConsent } from "./consent";
 import { mintCode } from "./codes";
+import { SUPPORTED_SCOPES } from "./scopes";
 import prisma from "../../prisma";
 
 const ISSUER = new URL(config.apiUri);
@@ -33,7 +34,7 @@ oauthRouter.use(
     provider: orchaOAuthProvider,
     issuerUrl: ISSUER,
     resourceServerUrl: RESOURCE,
-    scopesSupported: ["mcp"],
+    scopesSupported: SUPPORTED_SCOPES,
   }),
 );
 
