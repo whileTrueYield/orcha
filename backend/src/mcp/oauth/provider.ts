@@ -5,10 +5,11 @@
  * user is (authorize, via the session + consent), what challenge a code carries,
  * how a code becomes an access token, and how an access token is verified.
  *
- * Scope (slice #77): single default scope (read+write), opaque access tokens, no
- * refresh and no revocation (those throw clearly and land in #78/#81). PKCE-S256
- * is validated by the SDK before exchangeAuthorizationCode runs, so no verifier
- * carries meaning here — we only consume the code and mint.
+ * Scope (slice #78): single default scope (read+write), opaque access tokens, and
+ * refresh tokens that are issued on code exchange and rotated on the refresh grant;
+ * revocation endpoints remain a later slice (#81). PKCE-S256 is validated by the SDK
+ * before exchangeAuthorizationCode runs, so no verifier carries meaning here — we
+ * only consume the code and mint.
  *
  * The pending-authorize store is an in-process Map (single-instance only). In a
  * multi-process or multi-replica deployment, a pending authorize on instance A
@@ -35,6 +36,12 @@ import { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { orchaClientsStore } from "./clientStore";
 import { lookupChallenge, consumeCode } from "./codes";
 import { mintAccessToken, verifyAndResolveOAuth } from "./accessTokens";
+import {
+  mintRefreshToken,
+  rotateRefreshToken,
+  RefreshTokenGrant,
+} from "./refreshTokens";
+import { InvalidGrantError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import prisma from "../../prisma";
 
 const DEFAULT_SCOPE = "mcp";
@@ -125,17 +132,57 @@ export const orchaOAuthProvider: OAuthServerProvider = {
       readOnly: false,
       familyId,
     });
+    const refresh_token = await mintRefreshToken({
+      clientPk: grant.clientPk,
+      roleId: grant.roleId,
+      organizationId: grant.organizationId,
+      scope: grant.scope,
+      readOnly: false,
+      familyId,
+    });
     return {
       access_token,
+      refresh_token,
       token_type: "bearer",
       expires_in: 3600,
       scope: grant.scope,
     };
   },
 
-  async exchangeRefreshToken(): Promise<OAuthTokens> {
-    // Refresh tokens are not supported in this slice; a follow-up adds them (#78).
-    throw new Error("refresh tokens are not supported yet (#78)");
+  // The SDK forwards a requested-scope subset as `scopes`; with the single `mcp`
+  // scope this slice we reissue the granted scope unchanged.
+  // TODO: honor scope narrowing once more than one scope exists.
+  async exchangeRefreshToken(
+    client: OAuthClientInformationFull,
+    refreshToken: string,
+  ): Promise<OAuthTokens> {
+    let grant: RefreshTokenGrant;
+    try {
+      grant = await rotateRefreshToken(client.client_id, refreshToken);
+    } catch {
+      // Any rejection (unknown / reuse / expired / client mismatch) is an invalid
+      // grant to the client — a 400, never a 500, and deliberately undifferentiated
+      // so a probe can't tell the rejection reasons apart.
+      throw new InvalidGrantError("invalid refresh token");
+    }
+    // clientPk (refresh grant) and clientId (access grant) are the same FK under
+    // different names — map explicitly when minting the access token.
+    const access_token = await mintAccessToken({
+      clientId: grant.clientPk,
+      roleId: grant.roleId,
+      organizationId: grant.organizationId,
+      scope: grant.scope,
+      readOnly: grant.readOnly,
+      familyId: grant.familyId,
+    });
+    const refresh_token = await mintRefreshToken(grant);
+    return {
+      access_token,
+      refresh_token,
+      token_type: "bearer",
+      expires_in: 3600,
+      scope: grant.scope,
+    };
   },
 
   async verifyAccessToken(token: string): Promise<AuthInfo> {
