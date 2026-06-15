@@ -18,9 +18,9 @@ import {
   pendingRequests,
   describePending,
 } from "./provider";
-import { renderConsent } from "./consent";
+import { renderConsent, scopeLabel } from "./consent";
 import { mintCode } from "./codes";
-import { SUPPORTED_SCOPES } from "./scopes";
+import { SUPPORTED_SCOPES, offeredScopes, isGrantableScope } from "./scopes";
 import prisma from "../../prisma";
 
 const ISSUER = new URL(config.apiUri);
@@ -57,15 +57,33 @@ oauthRouter.get("/oauth/consent", async (req, res) => {
     return;
   }
 
-  const role = await prisma.role.findUnique({
-    where: { id: roleId },
+  // Build the Role chooser from every Role on the session (a user may hold
+  // several across orgs); the session's active one is pre-selected.
+  const roleIds = req.session.roles?.length
+    ? req.session.roles.map((r) => r.id)
+    : [roleId];
+  const roleRows = await prisma.role.findMany({
+    where: { id: { in: roleIds } },
     include: { organization: true },
   });
+  const roles = roleRows.map((r) => ({
+    value: r.id,
+    label: `${r.organization?.name ?? "your organization"} / ${r.name}`,
+    selected: r.id === roleId,
+  }));
+
+  // Offer only the scopes the client requested; pre-select the requested grant.
+  const scopeChoices = offeredScopes(described.pending.scope).map((value) => ({
+    value,
+    label: scopeLabel(value),
+    selected: value === described.pending.scope,
+  }));
+
   res.set("Content-Type", "text/html").send(
     renderConsent({
       clientName: described.clientName,
-      organizationName: role?.organization?.name ?? "your organization",
-      roleName: role?.name ?? "your role",
+      roles,
+      scopeChoices,
       requestToken,
       decisionPath: "/oauth/consent/decision",
     }),
@@ -111,11 +129,34 @@ oauthRouter.post(
       return;
     }
 
+    // Bind the grant to the Role the user chose, but only to one they actually
+    // hold (crash early on a forged roleId rather than mint for a foreign tenant).
+    // Falls back to the session's active Role for a session predating the list.
+    const candidateRoles: { id: number; organizationId: number }[] = req.session
+      .roles?.length
+      ? req.session.roles
+      : [{ id: roleId, organizationId }];
+    const chosenRole = candidateRoles.find(
+      (r) => r.id === Number(req.body.roleId),
+    );
+    if (!chosenRole) {
+      res.status(400).send("Invalid role selection.");
+      return;
+    }
+
+    // The chosen access level must be one the request offered — reject anything
+    // that would widen the grant past what the client asked for.
+    const chosenScope = String(req.body.scope ?? "");
+    if (!isGrantableScope(chosenScope, pending.scope)) {
+      res.status(400).send("Invalid scope selection.");
+      return;
+    }
+
     const code = await mintCode({
       clientPk: client.id,
-      roleId,
-      organizationId,
-      scope: pending.scope,
+      roleId: chosenRole.id,
+      organizationId: chosenRole.organizationId,
+      scope: chosenScope,
       codeChallenge: pending.codeChallenge,
       redirectUri: pending.redirectUri,
     });

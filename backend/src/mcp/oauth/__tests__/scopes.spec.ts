@@ -9,6 +9,8 @@ import {
   SUPPORTED_SCOPES,
   grantedScopeFromRequest,
   isReadOnlyScope,
+  offeredScopes,
+  isGrantableScope,
 } from "../scopes";
 
 describe("oauth scopes", () => {
@@ -33,5 +35,21 @@ describe("oauth scopes", () => {
   it("maps a scope without write to read-only, and with write to read+write", () => {
     expect(isReadOnlyScope("read")).toBe(true);
     expect(isReadOnlyScope("read write")).toBe(false);
+  });
+
+  it("offers both scopes when the request included write, read-only otherwise", () => {
+    expect(offeredScopes("read write")).toEqual(["read", "read write"]);
+    expect(offeredScopes("read")).toEqual(["read"]);
+  });
+
+  it("grants only a scope the request offered — never a widened grant", () => {
+    // A read+write request: the user may pick either.
+    expect(isGrantableScope("read", "read write")).toBe(true);
+    expect(isGrantableScope("read write", "read write")).toBe(true);
+    // A read-only request: read+write is not on the table.
+    expect(isGrantableScope("read", "read")).toBe(true);
+    expect(isGrantableScope("read write", "read")).toBe(false);
+    // Junk is never grantable.
+    expect(isGrantableScope("admin", "read write")).toBe(false);
   });
 });

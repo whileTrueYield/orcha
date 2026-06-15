@@ -20,6 +20,10 @@
  *    is granted (defaults to full read+write when none is requested).
  *  - isReadOnlyScope(scope): the single scope → `readOnly` mapping the mint paths
  *    use, uniform with the PAT `readOnly` flag.
+ *  - offeredScopes(requestedScope): the canonical scopes the consent screen may
+ *    let a user pick — bounded by the request, since consent narrows, never widens.
+ *  - isGrantableScope(chosen, requestedScope): whether a chosen scope is one the
+ *    request actually offered (the decision-route guard against a widened grant).
  */
 
 export const READ_SCOPE = "read";
@@ -54,4 +58,27 @@ export function grantedScopeFromRequest(requested?: string[]): string {
  */
 export function isReadOnlyScope(scope: string): boolean {
   return !scope.split(" ").includes(WRITE_SCOPE);
+}
+
+/**
+ * The canonical scopes the consent screen offers, bounded by what the client
+ * requested: `read` is always offered, `read write` only when the request
+ * included write — consent can narrow a grant but never widen it past the ask.
+ */
+export function offeredScopes(requestedScope: string): string[] {
+  return isReadOnlyScope(requestedScope)
+    ? [SCOPE_READ]
+    : [SCOPE_READ, SCOPE_READ_WRITE];
+}
+
+/**
+ * Whether a user-chosen scope is one the request actually offered — the
+ * decision-route guard that rejects a forged/widened grant. Defined as
+ * membership in `offeredScopes`, so the offer and the check can never disagree.
+ */
+export function isGrantableScope(
+  chosen: string,
+  requestedScope: string,
+): boolean {
+  return offeredScopes(requestedScope).includes(chosen);
 }
