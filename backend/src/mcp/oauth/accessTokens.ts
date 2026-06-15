@@ -83,6 +83,15 @@ export async function verifyAndResolveOAuth(
     throw new InvalidTokenError("EXPIRED");
   }
 
+  // Record the "last seen" the connected-apps view (#81) shows. Stamped only
+  // after the token proves valid, so a refused probe leaves no trace.
+  // IDEA: this is a write on every tool call; if it becomes hot, throttle to
+  // "only update when lastUsedAt is older than ~1min" to coalesce bursts.
+  await prisma.oAuthAccessToken.update({
+    where: { id: token.id },
+    data: { lastUsedAt: new Date() },
+  });
+
   return {
     tokenId: token.id,
     role: token.role,

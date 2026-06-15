@@ -353,6 +353,119 @@ export const getTestRefreshToken = async (
   return { plaintext, token, client, user, organization, role };
 };
 
+export interface TestGrant {
+  familyId: string;
+  client: OAuthClient;
+  accessPlaintext: string;
+  refreshPlaintext: string;
+  accessToken: OAuthAccessToken;
+  refreshToken: OAuthRefreshToken;
+  user: User;
+  organization: Organization;
+  role: Role;
+}
+
+/**
+ * Seed a complete OAuth grant — one connected client the way a real connect
+ * leaves the database: an OAuthClient plus an access token AND a refresh token
+ * sharing one familyId/role/org. The grant abstraction (mcp/oauth/grants) keys
+ * off exactly this shape, so listing and revocation tests need the whole chain,
+ * not the single-token rows getTestOAuthToken / getTestRefreshToken seed.
+ *
+ * Pass an existing `organization` + `role` to attach several grants to one Role
+ * (listing / tenant-scoping tests); omit them to mint a fresh org/user/role.
+ */
+export const getTestGrant = async (
+  tokenOptions: Partial<{
+    scope: string;
+    readOnly: boolean;
+    familyId: string;
+    lastUsedAt: Date;
+    expiresAt: Date;
+    revokedAt: Date;
+    rotatedAt: Date;
+    clientName: string;
+    organization: Organization;
+    role: Role;
+    client: OAuthClient;
+  }> = {},
+  roleType: RoleType = RoleType.MEMBER,
+): Promise<TestGrant> => {
+  let { organization, role } = tokenOptions;
+  let user: User;
+  if (organization && role) {
+    user = await prisma.user.findUniqueOrThrow({ where: { id: role.userId } });
+  } else {
+    const created = await createRandomOrgAndUser(roleType);
+    organization = created.organization;
+    role = created.role;
+    user = created.user;
+  }
+
+  const { hashToken } = await import("../models/apiToken/token");
+  const { generateAccessToken } = await import("../mcp/oauth/accessTokens");
+  const { generateRefreshToken } = await import("../mcp/oauth/refreshTokens");
+
+  const client =
+    tokenOptions.client ??
+    (await prisma.oAuthClient.create({
+      data: {
+        clientId: getRandomCode(12),
+        name: tokenOptions.clientName ?? faker.company.name(),
+        redirectUris: ["http://localhost/cb"],
+      },
+    }));
+
+  const familyId = tokenOptions.familyId ?? randomUUID();
+  const scope = tokenOptions.scope ?? "read write";
+  const readOnly = tokenOptions.readOnly ?? false;
+  const expiresAt = tokenOptions.expiresAt ?? fromNow(60);
+
+  const accessPlaintext = generateAccessToken();
+  const accessToken = await prisma.oAuthAccessToken.create({
+    data: {
+      tokenHash: hashToken(accessPlaintext),
+      scope,
+      readOnly,
+      familyId,
+      lastUsedAt: tokenOptions.lastUsedAt,
+      revokedAt: tokenOptions.revokedAt,
+      expiresAt,
+      clientId: client.id,
+      roleId: role.id,
+      organizationId: organization.id,
+    },
+  });
+
+  const refreshPlaintext = generateRefreshToken();
+  const refreshToken = await prisma.oAuthRefreshToken.create({
+    data: {
+      tokenHash: hashToken(refreshPlaintext),
+      familyId,
+      scope,
+      readOnly,
+      rotatedAt: tokenOptions.rotatedAt,
+      revokedAt: tokenOptions.revokedAt,
+      expiresAt,
+      clientId: client.id,
+      roleId: role.id,
+      organizationId: organization.id,
+    },
+  });
+
+  return {
+    familyId,
+    client,
+    accessPlaintext,
+    refreshPlaintext,
+    accessToken,
+    refreshToken,
+    user,
+    organization,
+    role,
+  };
+};
+
 interface TestUserSession {
   session: UserSession;
   user: User;
