@@ -789,6 +789,8 @@ model Organization {
   recurringBlackoutTimes RecurringBlackoutTime[]
   drawings               Drawing[]
   personalAccessTokens   PersonalAccessToken[]
+  oauthAuthorizationCodes OAuthAuthorizationCode[]
+  oauthAccessTokens       OAuthAccessToken[]
 
   // settings
   showOnboarding Boolean @default(true)
@@ -872,6 +874,97 @@ model PersonalAccessToken {
   @@index([roleId])
   @@index([organizationId])
   @@map("personal_access_token")
+}
+
+// An OAuth 2.1 client registered via Dynamic Client Registration (DCR).
+// Intentionally global (no organizationId): the org scope is carried by the
+// grant (OAuthAuthorizationCode / OAuthAccessToken), not the client itself.
+// Clients in this slice are public PKCE clients — no client secret is stored.
+model OAuthClient {
+  // required fields
+  id               Int      @id @default(autoincrement())
+  clientId         String   @unique @db.VarChar
+  name             String?  @db.VarChar
+  redirectUris     String[]
+  clientIdIssuedAt DateTime @default(now()) @db.Timestamptz(6)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // inverse relations
+  authorizationCodes OAuthAuthorizationCode[]
+  accessTokens       OAuthAccessToken[]
+
+  // indices, table map and constraints
+  @@index([clientId])
+  @@map("oauth_client")
+}
+
+// A single-use, PKCE-S256-bound authorization code issued during the
+// /authorize flow. `codeHash` is SHA-256(plaintext_code); the plaintext is
+// handed to the client and never stored. `consumedAt` is set on first
+// exchange; a non-null value means the code was already spent.
+model OAuthAuthorizationCode {
+  // required fields
+  id            Int       @id @default(autoincrement())
+  codeHash      String    @unique @db.VarChar
+  codeChallenge String    @db.VarChar
+  redirectUri   String    @db.VarChar
+  scope         String    @db.VarChar
+  expiresAt     DateTime  @db.Timestamptz(6)
+  consumedAt    DateTime? @db.Timestamptz(6)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  // relations
+  clientId       Int
+  client         OAuthClient  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  roleId         Int
+  role           Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([codeHash])
+  @@map("oauth_authorization_code")
+}
+
+// A short-lived opaque access token issued after a successful PKCE exchange.
+// `tokenHash` is SHA-256(plaintext_token); plaintext carries the `orcha_oat_`
+// prefix and is shown once. `revokedAt` enables soft-revocation without
+// deleting the row (useful for audit). `lastUsedAt` is bumped on every
+// successful resolveRole call.
+model OAuthAccessToken {
+  // required fields
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique @db.VarChar
+  scope     String   @db.VarChar
+  readOnly  Boolean  @default(false)
+  expiresAt DateTime @db.Timestamptz(6)
+
+  // optional fields
+  revokedAt  DateTime? @db.Timestamptz(6)
+  lastUsedAt DateTime? @db.Timestamptz(6)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  clientId       Int
+  client         OAuthClient  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  roleId         Int
+  role           Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([tokenHash])
+  @@index([roleId])
+  @@index([organizationId])
+  @@map("oauth_access_token")
 }
 
 model PersonalTag {
@@ -1394,6 +1487,8 @@ model Role {
   TimeOffs                                      TimeOff[]
   drawingLocks                                  Drawing[]
   personalAccessTokens                          PersonalAccessToken[]
+  oauthAuthorizationCodes                       OAuthAuthorizationCode[]
+  oauthAccessTokens                             OAuthAccessToken[]
 
   // indices, table map and constraints
   @@unique([organizationId, userId], map: "one_role_per_user_and_organization")
