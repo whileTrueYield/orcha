@@ -1,17 +1,23 @@
 /**
  * The MCP auth seam: turn a bearer token into a resolved role context.
  *
- * This is the single point the MCP transport depends on for identity, and the
- * one seam OAuth (PRD B) will later swap. Today it resolves a Personal Access
- * Token via the transport-agnostic token module; tomorrow an OAuth access
- * token could resolve the same shape. The MCP tools depend only on the returned
- * `{ role, readOnly, tokenId }` — never on how the token was proven.
+ * This is the single point the MCP transport depends on for identity. It
+ * resolves two token families, both to the same `{ role, readOnly, tokenId }`
+ * shape so the transport never needs to care which family proved the identity:
+ *
+ *  - `orcha_oat_` — an OAuth 2.1 access token (short-lived, client-bound,
+ *    PKCE-derived). Resolved via `verifyAndResolveOAuth` from oauth/accessTokens.
+ *  - `orcha_pat_` — a Personal Access Token (long-lived, user-scoped).
+ *    Resolved via `verifyAndResolve` from models/apiToken/token.
+ *
+ * The PAT path is byte-for-byte behaviorally unchanged; the branch is purely
+ * additive. Either path throws `InvalidTokenError` on refusal — the caller
+ * turns that into a refused connection. The error gives the caller no hint
+ * about which branch rejected the token (same opaque message either way).
  *
  * Exports:
  *  - ResolvedRole: the resolved identity + capabilities an MCP connection runs as.
- *  - resolveRole(bearerToken) → ResolvedRole. Throws InvalidTokenError (from the
- *    token module) for any token that fails to resolve — the caller turns that
- *    into a refused connection.
+ *  - resolveRole(bearerToken) → ResolvedRole.
  *
  * Mirrors the `/v1` bearer middleware (rest/bearerAuth.ts), which builds the
  * same role context from the same `verifyAndResolve` + `buildRoleContext` pair —
@@ -21,6 +27,10 @@
 import { AuthRoleContext } from "../types";
 import { buildRoleContext } from "../middlewares/isAuthenticated";
 import { verifyAndResolve } from "../models/apiToken/token";
+import {
+  isOAuthAccessToken,
+  verifyAndResolveOAuth,
+} from "./oauth/accessTokens";
 
 export interface ResolvedRole {
   // The resolved identity the operation runs as — the same context the GraphQL
@@ -35,7 +45,12 @@ export interface ResolvedRole {
 }
 
 export async function resolveRole(bearerToken: string): Promise<ResolvedRole> {
-  const { tokenId, role, readOnly } = await verifyAndResolve(bearerToken);
+  // Dispatch by token family: an OAuth access token (orcha_oat_) and a PAT
+  // (orcha_pat_) prove identity differently but both resolve to the same
+  // { role, readOnly, tokenId } the MCP tools depend on. The PAT path is unchanged.
+  const { tokenId, role, readOnly } = isOAuthAccessToken(bearerToken)
+    ? await verifyAndResolveOAuth(bearerToken)
+    : await verifyAndResolve(bearerToken);
 
   return {
     role: buildRoleContext({

@@ -65,11 +65,15 @@ const isStaging = process.env.ENV_NAME === "staging";
 const testEnv = {
   ORCHA_BACKEND_PORT: "4000",
   ORCHA_HOSTNAME: "example.com",
-  ORCHA_WEBAPP_URI: "http://app.example.com:3000",
+  // Use localhost so the SDK's mcpAuthRouter localhost-exemption accepts the
+  // HTTP issuer URL in tests without requiring HTTPS. api.example.com would
+  // trigger "Issuer URL must be HTTPS" because the SDK only exempts localhost
+  // and 127.0.0.1 for HTTP schemes.
+  ORCHA_WEBAPP_URI: "http://localhost:3000",
   ORCHA_SUPPORT_URI: "http://support.example.com:3000",
   ORCHA_SESSION_SECRET: "what-evs",
   ORCHA_DOMAIN: "example.com",
-  ORCHA_API_URI: "http://api.example.com:4000",
+  ORCHA_API_URI: "http://localhost:4000",
   ORCHA_AI_URI: "http://api.example.com:8000",
   ORCHA_WWW_URI: "http://www.example.com:3030",
   UPLOADS_BUCKET: "upload.example.com",

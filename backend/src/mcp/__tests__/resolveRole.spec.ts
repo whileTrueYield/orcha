@@ -48,4 +48,23 @@ describe("resolveRole", () => {
 
     expect(thrown).toBeInstanceOf(InvalidTokenError);
   });
+
+  it("resolves a valid OAuth access token to its role context and readOnly", async () => {
+    const { getTestOAuthToken } = await import("../../utils/testing");
+    const t = await getTestOAuthToken();
+
+    const { role, readOnly, tokenId } = await resolveRole(t.plaintext);
+
+    expect(role.status).toBe(AuthStatus.LINKED);
+    expect(role.roleId).toBe(t.role.id);
+    expect(role.organizationId).toBe(t.organization.id);
+    expect(readOnly).toBe(false);
+    expect(tokenId).toBe(t.token.id);
+  });
+
+  it("throws InvalidTokenError for an unknown OAuth access token", async () => {
+    await expect(resolveRole("orcha_oat_not_real")).rejects.toBeInstanceOf(
+      InvalidTokenError,
+    );
+  });
 });

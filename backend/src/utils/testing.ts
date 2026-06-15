@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { graphql } from "graphql";
 import { range, sample, map } from "lodash";
 import { faker } from "@faker-js/faker";
@@ -32,7 +33,7 @@ import {
   WorkflowState,
 } from "@prisma/client";
 
-import { PersonalAccessToken } from "@prisma/client";
+import { OAuthAccessToken, OAuthClient, PersonalAccessToken } from "@prisma/client";
 import { UserSession } from "../types";
 // Maybe<T> is T | null — simple utility type previously from type-graphql
 type Maybe<T> = T | null | undefined;
@@ -245,6 +246,55 @@ export const getTestApiToken = async (
   });
 
   return { plaintext, token, user, organization, role };
+};
+
+interface TestOAuthToken {
+  plaintext: string;
+  token: OAuthAccessToken;
+  client: OAuthClient;
+  user: User;
+  organization: Organization;
+  role: Role;
+}
+
+/**
+ * Mint an OAuth access token bound to a freshly-created org/user/role and a
+ * registered client, the way the MCP bearer stack expects to find one. Mirrors
+ * getTestApiToken for the OAuth lifecycle states the seam tests exercise
+ * (read-only, revoked, expired).
+ */
+export const getTestOAuthToken = async (
+  tokenOptions: Partial<{
+    readOnly: boolean;
+    revokedAt: Date;
+    expiresAt: Date;
+    scope: string;
+  }> = {},
+  roleType: RoleType = RoleType.MEMBER,
+): Promise<TestOAuthToken> => {
+  const { user, organization, role } = await createRandomOrgAndUser(roleType);
+  const { generateAccessToken } = await import("../mcp/oauth/accessTokens");
+  const { hashToken } = await import("../models/apiToken/token");
+  const plaintext = generateAccessToken();
+
+  const client = await prisma.oAuthClient.create({
+    data: { clientId: getRandomCode(12), redirectUris: ["http://localhost/cb"] },
+  });
+
+  const token = await prisma.oAuthAccessToken.create({
+    data: {
+      tokenHash: hashToken(plaintext),
+      scope: tokenOptions.scope ?? "mcp",
+      readOnly: tokenOptions.readOnly ?? false,
+      revokedAt: tokenOptions.revokedAt,
+      expiresAt: tokenOptions.expiresAt ?? fromNow(60),
+      clientId: client.id,
+      roleId: role.id,
+      organizationId: organization.id,
+    },
+  });
+
+  return { plaintext, token, client, user, organization, role };
 };
 
 interface TestUserSession {
@@ -572,6 +622,10 @@ export const getRandomCode = (length: number = 5): string => {
   const alphabet = "QWERTYUIOPASDFGHJKLZXCVBNM";
   return map(range(length), () => sample(alphabet)).join("");
 };
+
+// The S256 challenge for a PKCE verifier: base64url(sha256(verifier)).
+export const pkceChallengeFor = (verifier: string): string =>
+  createHash("sha256").update(verifier).digest("base64url");
 
 export const createRandomUser = async (
   isStaff: boolean = false,

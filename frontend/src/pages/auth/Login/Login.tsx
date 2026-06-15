@@ -15,6 +15,8 @@ import { FormInputGroup } from "components/fields/Input";
 import { Label } from "components/fields/Label";
 import { getFirstFromQuery, JSONToQuery } from "utils";
 import { AuthScreenContainer } from "./AuthScreenContainer";
+import { resolveReturnTo } from "./resolveReturnTo";
+import { ApiUri } from "config";
 import { useAppDispatch } from "store";
 import { LockClosedIcon } from "@heroicons/react/solid";
 import { useBlockingMutation } from "utils/graphql";
@@ -43,6 +45,10 @@ type FormSchema = yup.InferType<typeof schema>;
 export const Login: React.FC = () => {
   const dispatch = useAppDispatch();
   const emailFromQuery = getFirstFromQuery(document.location.search, "email");
+  // Resolve the OAuth consent returnTo URL on mount — this is a full-page
+  // navigation target on a different (backend) origin, so the guard ensures we
+  // never redirect to an arbitrary external URL.
+  const oauthReturnTo = resolveReturnTo(document.location.search, ApiUri);
   usePageTitle("Login");
 
   const formMethods = useForm<FormSchema>({
@@ -67,17 +73,20 @@ export const Login: React.FC = () => {
         title: "Login Success",
         callback: (data) => {
           const me = data.login;
+          dispatch({ type: "LOGIN_SUCCESS", payload: me });
+          if (oauthReturnTo) {
+            // External (backend) origin → must be a real navigation, not a router push.
+            window.location.assign(oauthReturnTo);
+            return;
+          }
           if (fromLocation) {
-            dispatch({ type: "LOGIN_SUCCESS", payload: me });
             history.replace(fromLocation);
           } else if (me.status === AuthStatus.User) {
-            dispatch({ type: "LOGIN_SUCCESS", payload: me });
             history.push(urlResolver.auth.chooseOrganization());
           } else if (me.status === AuthStatus.Linked) {
-            dispatch({ type: "LOGIN_SUCCESS", payload: me });
             if (me.organization?.id) {
               history.push(
-                urlResolver.dashboard.home(me.organization.id.toString())
+                urlResolver.dashboard.home(me.organization.id.toString()),
               );
             } else {
               history.push(urlResolver.auth.chooseOrganization());

@@ -3,6 +3,7 @@ import { config } from "./config";
 import { router } from "./routes";
 import { v1Router } from "./rest/router";
 import { mcpRouter } from "./mcp/router";
+import { oauthRouter } from "./mcp/oauth/router";
 
 /**
  * Automate the creation of the express application and
@@ -32,6 +33,10 @@ export function createExpressApp(middlewares: any[] = []) {
   for (const middleware of middlewares) {
     app.use(middleware);
   }
+
+  // OAuth authorization server for /mcp. Mounted at root, behind the session
+  // middleware above, because /authorize + consent must read the login cookie.
+  app.use(oauthRouter);
 
   // Mount REST endpoints under the API path prefix. Reverse proxies (DO App
   // Platform, Traefik) strip the /api prefix before forwarding, so the default

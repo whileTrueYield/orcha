@@ -21,9 +21,11 @@
  */
 
 import { Request, Response, NextFunction } from "express";
+import { getOAuthProtectedResourceMetadataUrl } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import { resolveRole, ResolvedRole } from "./resolveRole";
 import { InvalidTokenError } from "../models/apiToken/token";
 import { errorEnvelope } from "../rest/errorEnvelope";
+import { config } from "../config";
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -37,9 +39,18 @@ declare global {
 
 const BEARER_PREFIX = "Bearer ";
 
+// The protected-resource metadata URL a client follows from a 401 to discover
+// the authorization server (RS → AS linkage).
+const RESOURCE_METADATA_URL = getOAuthProtectedResourceMetadataUrl(
+  new URL(`${config.apiUri}${config.apiPathPrefix}/mcp`),
+);
+
 function unauthorized(res: Response, message: string): void {
-  // RFC 6750: advertise the scheme on a 401 to a bearer-protected resource.
-  res.set("WWW-Authenticate", "Bearer");
+  // RFC 6750 + MCP auth: advertise the scheme AND where to discover the AS.
+  res.set(
+    "WWW-Authenticate",
+    `Bearer resource_metadata="${RESOURCE_METADATA_URL}"`,
+  );
   res.status(401).json(errorEnvelope("UNAUTHENTICATED", message));
 }
 
