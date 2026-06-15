@@ -52,8 +52,11 @@ In `backend/prisma/schema.prisma`, add `familyId` to `OAuthAccessToken` (right a
 ```prisma
   readOnly  Boolean  @default(false)
   // Groups one rotation chain; lets a reuse-triggered family revoke reach live
-  // access tokens, not just refresh tokens. See OAuthRefreshToken.
-  familyId  String   @db.VarChar
+  // access tokens, not just refresh tokens. See OAuthRefreshToken. The DB-side
+  // gen_random_uuid() default exists ONLY to backfill the pre-existing rows this
+  // column is added to (so the migration is a single safe statement); application
+  // code always sets familyId explicitly via mintAccessToken.
+  familyId  String   @default(dbgenerated("gen_random_uuid()")) @db.VarChar
   expiresAt DateTime @db.Timestamptz(6)
 ```
 
@@ -105,40 +108,22 @@ Add the inverse relation arrays:
 - `Role` (near line 793, after `oauthAccessTokens`): `  oauthRefreshTokens      OAuthRefreshToken[]`
 - `Organization` (near line 1492, after `oauthAccessTokens`): `  oauthRefreshTokens                            OAuthRefreshToken[]`
 
-- [ ] **Step 2: Generate the migration without applying it**
+> **Migration is user-run (controller-gated).** The implementer does NOT run any
+> migrate/prisma command and does NOT commit. After the code edits below (Steps 2–4),
+> the controller pauses and the **user** runs the migration themselves, then the
+> controller resumes for typecheck/tests/commit. Because `familyId` carries a
+> `@default(dbgenerated("gen_random_uuid()"))`, the migration is a single safe
+> statement — no `--create-only`, no hand-edited SQL:
+>
+> ```
+> make migrate     # → prisma migrate dev; emits ADD COLUMN ... NOT NULL DEFAULT gen_random_uuid()
+> ```
+>
+> `make migrate` regenerates the Prisma client. If it doesn't, run `make generate`.
+> Existing `oauth_access_token` rows are backfilled by the DB default; new rows are
+> set explicitly by `mintAccessToken`.
 
-Run: `cd backend && yarn dotenv -e .env.development -- yarn prisma migrate dev --create-only --name oauth_refresh_token`
-Expected: a new folder `backend/prisma/migrations/<timestamp>_oauth_refresh_token/migration.sql` is written; nothing is applied yet.
-
-> The `--create-only` flag is required because the generated SQL adds `family_id` as
-> `NOT NULL` in one statement, which fails if the dev DB has existing `oauth_access_token`
-> rows. The next step splits it with a backfill.
-
-- [ ] **Step 3: Hand-edit the migration to backfill `family_id`**
-
-Open the generated `migration.sql`. Find the line adding the column to `oauth_access_token`
-(it looks like `ALTER TABLE "oauth_access_token" ADD COLUMN "family_id" VARCHAR NOT NULL;`)
-and replace **that single statement** with these three:
-
-```sql
-ALTER TABLE "oauth_access_token" ADD COLUMN "family_id" VARCHAR;
-UPDATE "oauth_access_token" SET "family_id" = gen_random_uuid() WHERE "family_id" IS NULL;
-ALTER TABLE "oauth_access_token" ALTER COLUMN "family_id" SET NOT NULL;
-```
-
-Leave the `CREATE TABLE "oauth_refresh_token"` and all `CREATE INDEX` statements as
-generated. (If the dev DB has no access-token rows, the `UPDATE` is a harmless no-op.)
-
-- [ ] **Step 4: Apply the migration and regenerate the client**
-
-> **Confirm with the user before running** — this runs `prisma migrate dev` against the
-> dev database, which touches their environment.
-
-Run: `make migrate`
-Expected: the migration applies cleanly; Prisma reports it regenerated the client.
-If the client is not regenerated automatically, run `make generate`.
-
-- [ ] **Step 5: Add `familyId` to `AccessTokenGrant` and persist it in `mintAccessToken`**
+- [ ] **Step 2: Add `familyId` to `AccessTokenGrant` and persist it in `mintAccessToken`**
 
 In `backend/src/mcp/oauth/accessTokens.ts`, extend the grant interface and the create call:
 
@@ -156,7 +141,7 @@ export interface AccessTokenGrant {
 In `mintAccessToken`, add `familyId: grant.familyId,` to the `data` object (e.g. right
 after `readOnly: grant.readOnly,`).
 
-- [ ] **Step 6: Generate a `familyId` at code exchange in the provider**
+- [ ] **Step 3: Generate a `familyId` at code exchange in the provider**
 
 In `backend/src/mcp/oauth/provider.ts`, `exchangeAuthorizationCode` currently mints only an
 access token. Add a family id and pass it. Add `randomUUID` to the existing
@@ -191,7 +176,7 @@ access token. Add a family id and pass it. Add `randomUUID` to the existing
 
 (The refresh token is added to this method in Task 3.)
 
-- [ ] **Step 7: Update `getTestOAuthToken` to set `familyId`**
+- [ ] **Step 4: Update `getTestOAuthToken` to set `familyId`**
 
 In `backend/src/utils/testing.ts`, `getTestOAuthToken` builds an `oAuthAccessToken` row
 directly. Add `familyId` to its options and the create data. Change the options type to
@@ -217,7 +202,10 @@ Add `import { randomUUID } from "crypto";` at the top if not already present, an
       familyId: tokenOptions.familyId ?? randomUUID(),
 ```
 
-- [ ] **Step 8: Verify typecheck and existing OAuth tests pass**
+- [ ] **Step 5: (after user-run migration) Verify typecheck and existing OAuth tests pass**
+
+> The controller runs this step only after the user has applied `make migrate` and the
+> Prisma client is regenerated (the new model/column must exist for typecheck to pass).
 
 Run: `make typecheck`
 Expected: no errors.
@@ -226,7 +214,7 @@ Run: `make test-backend TEST="oauth"`
 Expected: all existing OAuth specs (accessTokens, codes, provider, connect e2e, asRouter,
 clientStore, consent) PASS — `familyId` is now stored but no behavior changed.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add backend/prisma/schema.prisma backend/prisma/migrations backend/src/mcp/oauth/accessTokens.ts backend/src/mcp/oauth/provider.ts backend/src/utils/testing.ts
