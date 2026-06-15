@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { graphql } from "graphql";
 import { range, sample, map } from "lodash";
 import { faker } from "@faker-js/faker";
@@ -621,6 +622,10 @@ export const getRandomCode = (length: number = 5): string => {
   const alphabet = "QWERTYUIOPASDFGHJKLZXCVBNM";
   return map(range(length), () => sample(alphabet)).join("");
 };
+
+// The S256 challenge for a PKCE verifier: base64url(sha256(verifier)).
+export const pkceChallengeFor = (verifier: string): string =>
+  createHash("sha256").update(verifier).digest("base64url");
 
 export const createRandomUser = async (
   isStaff: boolean = false,
