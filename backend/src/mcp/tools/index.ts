@@ -26,6 +26,7 @@ import { registerProjectTools } from "./projects";
 import { registerScheduleTools } from "./schedule";
 import { registerTicketWriteTools } from "./ticketWrites";
 import { registerTicketTransitionTool } from "./ticketTransition";
+import { registerBodyWriteTools } from "./bodyWrites";
 
 export function registerReadTools(
   server: McpServer,
@@ -43,4 +44,5 @@ export function registerWriteTools(
 ): void {
   registerTicketWriteTools(server, resolved);
   registerTicketTransitionTool(server, resolved);
+  registerBodyWriteTools(server, resolved);
 }
