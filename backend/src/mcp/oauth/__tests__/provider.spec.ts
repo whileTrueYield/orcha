@@ -7,6 +7,7 @@
 import expect from "expect";
 import { orchaOAuthProvider } from "../provider";
 import { mintCode } from "../codes";
+import { verifyAndResolveOAuth } from "../accessTokens";
 import {
   getTestOAuthToken,
   createRandomOrgAndUser,
@@ -24,7 +25,7 @@ describe("OrchaOAuthProvider", () => {
     const info = await orchaOAuthProvider.verifyAccessToken(t.plaintext);
     expect(info.token).toBe(t.plaintext);
     expect(info.clientId).toBe(t.client.clientId);
-    expect(info.scopes).toEqual(["mcp"]);
+    expect(info.scopes).toEqual(["read", "write"]);
   });
 
   it("verifyAccessToken rejects an unknown token", async () => {
@@ -45,7 +46,7 @@ describe("OrchaOAuthProvider", () => {
       clientPk: row.id,
       roleId: role.id,
       organizationId: organization.id,
-      scope: "mcp",
+      scope: "read write",
       codeChallenge: pkceChallengeFor("v"),
       redirectUri: "http://localhost/cb",
     });
@@ -60,6 +61,42 @@ describe("OrchaOAuthProvider", () => {
     await expect(
       orchaOAuthProvider.exchangeAuthorizationCode(client(clientId), code),
     ).rejects.toThrow();
+  });
+
+  // The granted scope is the source of truth: exchangeAuthorizationCode derives
+  // the access token's readOnly flag from it, so the scope a user approved is the
+  // capability the resource server enforces — no separate readOnly input to drift.
+  const exchangeWithScope = async (scope: string) => {
+    const { role, organization } = await createRandomOrgAndUser();
+    const clientId = `scope-${getRandomCode(12)}`;
+    const row = await prisma.oAuthClient.create({
+      data: { clientId, redirectUris: ["http://localhost/cb"] },
+    });
+    const code = await mintCode({
+      clientPk: row.id,
+      roleId: role.id,
+      organizationId: organization.id,
+      scope,
+      codeChallenge: pkceChallengeFor("v"),
+      redirectUri: "http://localhost/cb",
+    });
+    const tokens = await orchaOAuthProvider.exchangeAuthorizationCode(
+      client(clientId),
+      code,
+    );
+    return verifyAndResolveOAuth(tokens.access_token);
+  };
+
+  it("resolves a read-only access token from a read-only grant's scope", async () => {
+    const resolved = await exchangeWithScope("read");
+    expect(resolved.scopes).toEqual(["read"]);
+    expect(resolved.readOnly).toBe(true);
+  });
+
+  it("resolves a read+write access token from a write grant's scope", async () => {
+    const resolved = await exchangeWithScope("read write");
+    expect(resolved.scopes).toEqual(["read", "write"]);
+    expect(resolved.readOnly).toBe(false);
   });
 
   it("refresh and revoke are unsupported in this slice", async () => {

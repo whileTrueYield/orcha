@@ -5,16 +5,19 @@
  * user is (authorize, via the session + consent), what challenge a code carries,
  * how a code becomes an access token, and how an access token is verified.
  *
- * Scope (slice #78): single default scope (read+write), opaque access tokens, and
- * refresh tokens that are issued on code exchange and rotated on the refresh grant;
- * revocation endpoints remain a later slice (#81). PKCE-S256 is validated by the SDK
- * before exchangeAuthorizationCode runs, so no verifier carries meaning here — we
- * only consume the code and mint.
+ * Scope (slice #79): real `read` / `read write` scopes — the authorize request's
+ * requested scope is granted (via grantedScopeFromRequest) and carried on the code
+ * and tokens; the mint paths derive `readOnly` from it (isReadOnlyScope), so a
+ * read-only grant hits the same write-tool refusal a read-only PAT does. Opaque
+ * access tokens; refresh tokens are issued on code exchange and rotated on the
+ * refresh grant; revocation endpoints remain a later slice (#81). PKCE-S256 is
+ * validated by the SDK before exchangeAuthorizationCode runs, so no verifier carries
+ * meaning here — we only consume the code and mint.
  *
  * The pending-authorize store is an in-process Map (single-instance only). In a
  * multi-process or multi-replica deployment, a pending authorize on instance A
  * will not be visible to the consent decision route on instance B. A later slice
- * moves this to Redis (#79). Until then, only single-instance deploys are supported.
+ * moves this to Redis. Until then, only single-instance deploys are supported.
  *
  * Exports:
  *  - orchaOAuthProvider: the OAuthServerProvider instance the router consumes.
@@ -35,6 +38,7 @@ import {
 import { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { orchaClientsStore } from "./clientStore";
 import { lookupChallenge, consumeCode } from "./codes";
+import { grantedScopeFromRequest, isReadOnlyScope } from "./scopes";
 import { mintAccessToken, verifyAndResolveOAuth } from "./accessTokens";
 import {
   mintRefreshToken,
@@ -45,8 +49,6 @@ import {
 import { InvalidGrantError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import prisma from "../../prisma";
 import { logger } from "../../logger";
-
-const DEFAULT_SCOPE = "mcp";
 
 // A validated authorize request awaiting the user's approve/deny decision.
 // Keyed by an opaque requestToken carried through the consent form. In-process only —
@@ -98,7 +100,9 @@ export const orchaOAuthProvider: OAuthServerProvider = {
       clientId: client.client_id,
       redirectUri: params.redirectUri,
       codeChallenge: params.codeChallenge,
-      scope: params.scopes?.join(" ") || DEFAULT_SCOPE,
+      // The client's requested scope, narrowed to what Orcha grants; carried
+      // through consent → code → tokens so the resource server enforces it.
+      scope: grantedScopeFromRequest(params.scopes),
       state: params.state,
       expiresAt: now + PENDING_TTL_MS,
     });
@@ -125,13 +129,15 @@ export const orchaOAuthProvider: OAuthServerProvider = {
     // One family id ties this access token to its paired refresh token and every
     // future rotation of the pair, so a reuse can revoke the whole chain.
     const familyId = randomUUID();
+    // The granted scope is the source of truth; the capability flag is derived
+    // from it, so a `read` grant is read-only and a `read write` grant is not.
+    const readOnly = isReadOnlyScope(grant.scope);
     const access_token = await mintAccessToken({
       clientId: grant.clientPk,
       roleId: grant.roleId,
       organizationId: grant.organizationId,
       scope: grant.scope,
-      // Single default scope this slice: full read+write.
-      readOnly: false,
+      readOnly,
       familyId,
     });
     const refresh_token = await mintRefreshToken({
@@ -139,7 +145,7 @@ export const orchaOAuthProvider: OAuthServerProvider = {
       roleId: grant.roleId,
       organizationId: grant.organizationId,
       scope: grant.scope,
-      readOnly: false,
+      readOnly,
       familyId,
     });
     return {
@@ -152,9 +158,10 @@ export const orchaOAuthProvider: OAuthServerProvider = {
   },
 
   // The SDK's hook can pass a requested-scope subset (and resource) as extra
-  // args; we omit those params this slice — with a single `mcp` scope there is
-  // nothing to narrow, so we always reissue the granted scope unchanged.
-  // TODO: accept and honor scope narrowing once more than one scope exists.
+  // args; we omit those params and always reissue the granted scope (and its
+  // derived readOnly) unchanged, so rotation never silently widens a grant.
+  // TODO: honor a down-scoping refresh request (e.g. read+write → read) once a
+  // client needs it; widening must still require fresh consent.
   async exchangeRefreshToken(
     client: OAuthClientInformationFull,
     refreshToken: string,

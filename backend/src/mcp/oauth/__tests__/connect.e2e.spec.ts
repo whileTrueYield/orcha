@@ -56,7 +56,7 @@ describe("oauth connect e2e", () => {
       clientPk: clientRow!.id,
       roleId: role.id,
       organizationId: organization.id,
-      scope: "mcp",
+      scope: "read write",
       codeChallenge: pkceChallengeFor(VERIFIER),
       redirectUri: "http://localhost:7777/cb",
     });
@@ -109,7 +109,7 @@ describe("oauth connect e2e", () => {
       clientPk: clientRow!.id,
       roleId: role.id,
       organizationId: organization.id,
-      scope: "mcp",
+      scope: "read write",
       codeChallenge: pkceChallengeFor(VERIFIER),
       redirectUri: "http://localhost:7777/cb",
     });

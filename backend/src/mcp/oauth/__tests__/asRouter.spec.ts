@@ -24,6 +24,8 @@ describe("oauth as router", () => {
     expect(res.body.code_challenge_methods_supported).toContain("S256");
     expect(res.body.token_endpoint).toBeDefined();
     expect(res.body.registration_endpoint).toBeDefined();
+    // Scope is a real, advertised dimension: a client discovers read/write here.
+    expect(res.body.scopes_supported).toEqual(["read", "write"]);
   });
 
   it("registers a client via DCR", async () => {

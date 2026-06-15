@@ -30,7 +30,7 @@ describe("oauth codes", () => {
       clientPk: client.id,
       roleId: role.id,
       organizationId: organization.id,
-      scope: "mcp",
+      scope: "read write",
       codeChallenge: challenge,
       redirectUri: "http://localhost/cb",
     });
@@ -45,14 +45,14 @@ describe("oauth codes", () => {
       clientPk: client.id,
       roleId: role.id,
       organizationId: organization.id,
-      scope: "mcp",
+      scope: "read write",
       codeChallenge: pkceChallengeFor("v"),
       redirectUri: "http://localhost/cb",
     });
 
     const grant = await consumeCode(client.clientId, code);
     expect(grant.roleId).toBe(role.id);
-    expect(grant.scope).toBe("mcp");
+    expect(grant.scope).toBe("read write");
 
     await expect(consumeCode(client.clientId, code)).rejects.toThrow();
   });
@@ -64,7 +64,7 @@ describe("oauth codes", () => {
       clientPk: client.id,
       roleId: role.id,
       organizationId: organization.id,
-      scope: "mcp",
+      scope: "read write",
       codeChallenge: pkceChallengeFor("v"),
       redirectUri: "http://localhost/cb",
       expiresAt: fromNow(-1),

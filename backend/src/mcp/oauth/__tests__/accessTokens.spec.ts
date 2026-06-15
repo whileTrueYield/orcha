@@ -25,7 +25,7 @@ describe("oauth accessTokens", () => {
     expect(resolved.role.id).toBe(t.role.id);
     expect(resolved.readOnly).toBe(false);
     expect(resolved.clientId).toBe(t.client.clientId);
-    expect(resolved.scopes).toEqual(["mcp"]);
+    expect(resolved.scopes).toEqual(["read", "write"]);
   });
 
   it("refuses an unknown OAuth token", async () => {

@@ -30,7 +30,7 @@ describe("oauth refreshTokens", () => {
       clientPk: seed.client.id,
       roleId: seed.role.id,
       organizationId: seed.organization.id,
-      scope: "mcp",
+      scope: "read write",
       readOnly: false,
       familyId: "fam-mint",
     });
