@@ -12,6 +12,7 @@ import {
 import { getTestOAuthToken } from "../../../utils/testing";
 import { InvalidTokenError } from "../../../models/apiToken/token";
 import { fromNow } from "../../../utils/testing";
+import prisma from "../../../prisma";
 
 describe("oauth accessTokens", () => {
   it("generateAccessToken returns an orcha_oat_ prefixed token", () => {
@@ -26,6 +27,18 @@ describe("oauth accessTokens", () => {
     expect(resolved.readOnly).toBe(false);
     expect(resolved.clientId).toBe(t.client.clientId);
     expect(resolved.scopes).toEqual(["read", "write"]);
+  });
+
+  it("stamps lastUsedAt on a successful resolve (the connected-apps 'last seen')", async () => {
+    const t = await getTestOAuthToken();
+    expect(t.token.lastUsedAt).toBeNull();
+
+    await verifyAndResolveOAuth(t.plaintext);
+
+    const after = await prisma.oAuthAccessToken.findUniqueOrThrow({
+      where: { id: t.token.id },
+    });
+    expect(after.lastUsedAt).toBeInstanceOf(Date);
   });
 
   it("refuses an unknown OAuth token", async () => {

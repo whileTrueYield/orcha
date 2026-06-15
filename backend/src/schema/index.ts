@@ -51,6 +51,10 @@ builder.mutationType({});
 import "../models/apiToken/entity";
 import "../models/apiToken/resolvers";
 
+// oauthGrant — connected clients (a grant is a familyId; see mcp/oauth/grants)
+import "../models/oauthGrant/entity";
+import "../models/oauthGrant/resolvers";
+
 // auth — resolvers/index.ts imports ../entity internally
 import "../models/auth/resolvers";
 

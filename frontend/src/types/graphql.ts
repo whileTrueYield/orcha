@@ -871,6 +871,7 @@ export type Mutation = {
   resendInvite: Role;
   resumeLastScheduleItem: ScheduleItem;
   revokeApiToken: PersonalAccessToken;
+  revokeOAuthGrant: OAuthGrant;
   saveDocumentBody: SaveDocumentBodyResult;
   scheduleTicket: Ticket;
   sendConfirmationEmail: Scalars['Boolean']['output'];
@@ -1561,6 +1562,11 @@ export type MutationRevokeApiTokenArgs = {
 };
 
 
+export type MutationRevokeOAuthGrantArgs = {
+  familyId: Scalars['String']['input'];
+};
+
+
 export type MutationSaveDocumentBodyArgs = {
   baseVersion: Scalars['Int']['input'];
   documentId: Scalars['Int']['input'];
@@ -2017,6 +2023,18 @@ export enum NotificationTarget {
   Reply = 'REPLY',
   Ticket = 'TICKET'
 }
+
+export type OAuthGrant = {
+  __typename?: 'OAuthGrant';
+  clientId: Scalars['String']['output'];
+  clientName?: Maybe<Scalars['String']['output']>;
+  connectedAt: Scalars['DateTime']['output'];
+  familyId: Scalars['String']['output'];
+  lastUsedAt?: Maybe<Scalars['DateTime']['output']>;
+  readOnly: Scalars['Boolean']['output'];
+  roleId: Scalars['Int']['output'];
+  scope: Scalars['String']['output'];
+};
 
 export type OnboardingStatus = {
   __typename?: 'OnboardingStatus';
@@ -2531,6 +2549,7 @@ export type Query = {
   myNextTickets: Array<NextTicket>;
   myNotScheduledTickets: PaginatedTickets;
   myNotifications: PaginatedNotifications;
+  myOAuthGrants: Array<OAuthGrant>;
   myOpenScheduleItems: Array<ScheduleItem>;
   myPreviousTickets: Array<MyPreviousAssignedTicket>;
   /** The user's own projects and drafts */

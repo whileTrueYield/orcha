@@ -25,6 +25,7 @@ import {
   SearchIcon,
   FolderIcon,
   KeyIcon,
+  LinkIcon,
 } from "@heroicons/react/outline";
 import {
   SwitchHorizontalIcon,
@@ -220,6 +221,12 @@ export const Sidebar: React.FC<Props> = ({ children }) => {
       label: "API Tokens",
       to: urlResolver.user.tokens(orgId),
       icon: (className) => <KeyIcon className={className} />,
+    },
+    {
+      type: "link",
+      label: "Connected Apps",
+      to: urlResolver.user.connectedApps(orgId),
+      icon: (className) => <LinkIcon className={className} />,
     },
     {
       type: "link",

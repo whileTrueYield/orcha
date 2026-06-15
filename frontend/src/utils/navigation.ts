@@ -412,9 +412,12 @@ export const urlResolver = {
       urlResolver.user.paths.editMe.replace(":orgId", orgId.toString()),
     tokens: (orgId: string | number) =>
       urlResolver.user.paths.tokens.replace(":orgId", orgId.toString()),
+    connectedApps: (orgId: string | number) =>
+      urlResolver.user.paths.connectedApps.replace(":orgId", orgId.toString()),
     paths: {
       editMe: "/org/:orgId/user/me/edit",
       tokens: "/org/:orgId/user/tokens",
+      connectedApps: "/org/:orgId/user/connected-apps",
     },
   },
   workflow: {
