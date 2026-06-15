@@ -28,7 +28,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { mcpBearerAuth } from "./bearerAuth";
 import { tokenRateLimiter } from "../rest/tokenRateLimiter";
-import { registerReadTools } from "./tools";
+import { registerReadTools, registerWriteTools } from "./tools";
 
 export const mcpRouter = Router();
 
@@ -44,6 +44,7 @@ const SERVER_INFO = { name: "orcha", version: "0.1.0" };
 async function handle(req: Request, res: Response): Promise<void> {
   const server = new McpServer(SERVER_INFO);
   registerReadTools(server, req.mcpRole!);
+  registerWriteTools(server, req.mcpRole!);
 
   const transport = new StreamableHTTPServerTransport({
     // Stateless: no session id is issued and none is validated.
