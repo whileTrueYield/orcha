@@ -791,6 +791,7 @@ model Organization {
   personalAccessTokens   PersonalAccessToken[]
   oauthAuthorizationCodes OAuthAuthorizationCode[]
   oauthAccessTokens       OAuthAccessToken[]
+  oauthRefreshTokens      OAuthRefreshToken[]
 
   // settings
   showOnboarding Boolean @default(true)
@@ -895,6 +896,7 @@ model OAuthClient {
   // inverse relations
   authorizationCodes OAuthAuthorizationCode[]
   accessTokens       OAuthAccessToken[]
+  refreshTokens      OAuthRefreshToken[]
 
   // indices, table map and constraints
   @@index([clientId])
@@ -943,6 +945,12 @@ model OAuthAccessToken {
   tokenHash String   @unique @db.VarChar
   scope     String   @db.VarChar
   readOnly  Boolean  @default(false)
+  // Groups one rotation chain; lets a reuse-triggered family revoke reach live
+  // access tokens, not just refresh tokens. See OAuthRefreshToken. The DB-side
+  // gen_random_uuid() default exists ONLY to backfill the pre-existing rows this
+  // column is added to (so the migration is a single safe statement); application
+  // code always sets familyId explicitly via mintAccessToken.
+  familyId  String   @default(dbgenerated("gen_random_uuid()")) @db.VarChar
   expiresAt DateTime @db.Timestamptz(6)
 
   // optional fields
@@ -963,9 +971,47 @@ model OAuthAccessToken {
 
   // indices, table map and constraints
   @@index([tokenHash])
+  @@index([familyId])
   @@index([roleId])
   @@index([organizationId])
   @@map("oauth_access_token")
+}
+
+// A long-lived, rotating refresh token. Exchanged at /token for a fresh access
+// token AND a new refresh token; the old one is marked `rotatedAt` (spent).
+// `tokenHash` is SHA-256(plaintext) with the `orcha_ort_` prefix; plaintext is
+// shown once. `familyId` groups a rotation chain: reusing a spent token revokes
+// the whole family (`revokedAt` across every live token sharing the id) — the
+// OAuth 2.1 reuse-detection behavior. TTL is a sliding 30 days.
+model OAuthRefreshToken {
+  // required fields
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique @db.VarChar
+  familyId  String   @db.VarChar
+  scope     String   @db.VarChar
+  readOnly  Boolean  @default(false)
+  expiresAt DateTime @db.Timestamptz(6)
+
+  // optional fields
+  rotatedAt DateTime? @db.Timestamptz(6)
+  revokedAt DateTime? @db.Timestamptz(6)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  clientId       Int
+  client         OAuthClient  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  roleId         Int
+  role           Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([tokenHash])
+  @@index([familyId])
+  @@map("oauth_refresh_token")
 }
 
 model PersonalTag {
@@ -1490,6 +1536,7 @@ model Role {
   personalAccessTokens                          PersonalAccessToken[]
   oauthAuthorizationCodes                       OAuthAuthorizationCode[]
   oauthAccessTokens                             OAuthAccessToken[]
+  oauthRefreshTokens                            OAuthRefreshToken[]
 
   // indices, table map and constraints
   @@unique([organizationId, userId], map: "one_role_per_user_and_organization")

@@ -39,6 +39,7 @@ export interface AccessTokenGrant {
   organizationId: number;
   scope: string;
   readOnly: boolean;
+  familyId: string; // groups the rotation chain (shared with the paired refresh token)
 }
 
 // Returns the one-time plaintext; only the hash is stored.
@@ -49,6 +50,7 @@ export async function mintAccessToken(grant: AccessTokenGrant): Promise<string> 
       tokenHash: hashToken(plaintext),
       scope: grant.scope,
       readOnly: grant.readOnly,
+      familyId: grant.familyId,
       expiresAt: new Date(Date.now() + ACCESS_TOKEN_TTL_MS),
       clientId: grant.clientId,
       roleId: grant.roleId,

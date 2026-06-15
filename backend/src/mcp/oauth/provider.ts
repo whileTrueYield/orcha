@@ -113,6 +113,9 @@ export const orchaOAuthProvider: OAuthServerProvider = {
     authorizationCode: string,
   ): Promise<OAuthTokens> {
     const grant = await consumeCode(client.client_id, authorizationCode);
+    // One family id ties this access token to its paired refresh token and every
+    // future rotation of the pair, so a reuse can revoke the whole chain.
+    const familyId = randomUUID();
     const access_token = await mintAccessToken({
       clientId: grant.clientPk,
       roleId: grant.roleId,
@@ -120,6 +123,7 @@ export const orchaOAuthProvider: OAuthServerProvider = {
       scope: grant.scope,
       // Single default scope this slice: full read+write.
       readOnly: false,
+      familyId,
     });
     return {
       access_token,

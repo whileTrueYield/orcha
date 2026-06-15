@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { graphql } from "graphql";
 import { range, sample, map } from "lodash";
 import { faker } from "@faker-js/faker";
@@ -269,6 +269,7 @@ export const getTestOAuthToken = async (
     revokedAt: Date;
     expiresAt: Date;
     scope: string;
+    familyId: string;
   }> = {},
   roleType: RoleType = RoleType.MEMBER,
 ): Promise<TestOAuthToken> => {
@@ -286,6 +287,7 @@ export const getTestOAuthToken = async (
       tokenHash: hashToken(plaintext),
       scope: tokenOptions.scope ?? "mcp",
       readOnly: tokenOptions.readOnly ?? false,
+      familyId: tokenOptions.familyId ?? randomUUID(),
       revokedAt: tokenOptions.revokedAt,
       expiresAt: tokenOptions.expiresAt ?? fromNow(60),
       clientId: client.id,
