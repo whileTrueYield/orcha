@@ -71,6 +71,7 @@ to PRD B and swaps in **at that seam**, touching no tool and no resolver.
   `update_ticket`, `transition_ticket`, `update_ticket_body`,
   `update_project_body`).
 - OAuth 2.1 is a contained future change: it lands behind `resolveRole` and adds
-  an authorization-server surface, without touching a tool or a resolver.
+  an authorization-server surface, without touching a tool or a resolver. (Now
+  realized — see ADR 0009 for the OAuth model that swapped in at this seam.)
 - Per-token rate limiting and read-only-PAT refusal are inherited from the `/v1`
   plumbing, not rebuilt.

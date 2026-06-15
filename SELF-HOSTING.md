@@ -178,15 +178,17 @@ If email is not configured, only the first user will be able to register.
 Orcha exposes a remote [MCP](https://modelcontextprotocol.io) endpoint so a
 coding agent (Claude Code, Cursor, …) can read your workspace and act on it —
 ask "what should I work on next?", then create, update, and transition tickets
-and edit their Markdown bodies.
+and edit their Markdown bodies. The endpoint is your backend's **`/api/mcp`**
+path (Traefik routes `/api` to the backend). Connect it with a Personal Access
+Token, or — for consumer clients like Claude Desktop and the claude.ai
+connector — over OAuth.
 
-The endpoint is your backend's **`/api/mcp`** path (Traefik routes `/api` to the
-backend), authenticated with a Personal Access Token. Mint one in the app from
-the **avatar menu → API Tokens**; a **read-only** token is accepted but refused
-on any write.
+### With a Personal Access Token
 
-Point any MCP client at it with the token in an `Authorization` header. For a
-Claude Code / Cursor-style `mcp.json`:
+Mint one in the app from the **avatar menu → API Tokens** (a **read-only** token
+is accepted but refused on any write), then point your MCP client at the endpoint
+with the token in an `Authorization` header. For a Claude Code / Cursor-style
+`mcp.json`:
 
 ```json
 {
@@ -202,8 +204,26 @@ Claude Code / Cursor-style `mcp.json`:
 }
 ```
 
-Available tools, all tenant-scoped to the token's role and returning LLM-shaped
-flat JSON:
+### With OAuth (consumer Claude clients)
+
+Claude Desktop and the claude.ai connector connect over OAuth instead of a pasted
+token. Add Orcha as a **custom connector** pointing at the same
+`https://your-domain.com/api/mcp` URL, with no `Authorization` header. Orcha is
+its **own** authorization server — no third-party identity provider to run or
+configure. The client discovers it from the endpoint, registers itself, and opens
+a browser where the user signs in, picks the **organization / Role** and **read**
+vs **read + write** access on the consent screen, and approves. Users manage their
+connected apps from the **avatar menu → Connected Apps**.
+
+> **OAuth needs HTTPS.** The authorization server refuses a non-HTTPS issuer
+> (except on `localhost`), so consumer OAuth clients only work once Orcha is
+> served over TLS — which the Traefik setup above already does. If you run behind
+> plain HTTP, use a Personal Access Token instead. See
+> [ADR 0009](docs/adr/0009-oauth-2.1-orcha-as-its-own-authorization-server.md)
+> for the authorization model.
+
+Either way, the tools are the same — tenant-scoped to the connection's role and
+returning LLM-shaped flat JSON:
 
 - **Read** — `whoami`, `next_tickets` (your MCTS-prioritized work queue),
   `list_tickets`, `get_ticket`, `get_ticket_body`, `list_projects`, `get_project`,
