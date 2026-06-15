@@ -14,6 +14,10 @@
  *    flagged `isError`, so an agent can branch on the machine code, not prose.
  *  - readAs(resolved, document, variables?): run a GraphQL operation as the
  *    connection's role, mapping an OperationError to a tool error.
+ *  - writeAs(resolved, document, variables?): the mutating twin of readAs — it
+ *    refuses a read-only token FIRST, before the operation runs, then executes.
+ *  - pickPresent(args, allowed): build a GraphQL input from only the keys an
+ *    agent actually supplied, so an omitted field stays untouched on a patch.
  *  - pageMeta(page, offset): the pagination fields an agent needs to walk a
  *    list — total, whether more remains, and the next `offset` to pass back.
  *
@@ -61,6 +65,54 @@ export async function readAs(
     }
     throw error;
   }
+}
+
+// Run a mutating operation as the connection's role — the write twin of readAs.
+// A write tool is "marked as a write" by going through here: a read-only token
+// is refused with a FORBIDDEN tool error BEFORE the mutation runs, mirroring how
+// rest/router.ts gates a `write: true` route. This is the single enforcement
+// point the lifecycle and body-write slices reuse, so no write tool can forget
+// the capability check. As in readAs, an OperationError maps to a tool error and
+// any other throw is a genuine fault that propagates to the transport.
+export async function writeAs(
+  resolved: ResolvedRole,
+  document: string,
+  variables: Record<string, unknown> = {},
+): Promise<{ data?: Record<string, any>; error?: CallToolResult }> {
+  if (resolved.readOnly) {
+    return {
+      error: toolError(
+        "FORBIDDEN",
+        "This token is read-only and cannot perform writes.",
+      ),
+    };
+  }
+  try {
+    return { data: await runOperation(document, variables, resolved.role) };
+  } catch (error) {
+    if (error instanceof OperationError) {
+      return { error: toolError(error.code, error.message) };
+    }
+    throw error;
+  }
+}
+
+// Build a GraphQL input object from ONLY the keys an agent actually supplied — a
+// partial update that omits a field must leave it untouched, not send `undefined`
+// the resolver could read as "clear it". `allowed` is the whitelist of input
+// fields, so an unrecognised arg never leaks into the mutation. Mirrors the same
+// helper in rest/router.ts; the caller decides what an empty result means.
+export function pickPresent(
+  args: Record<string, unknown>,
+  allowed: readonly string[],
+): Record<string, unknown> {
+  const input: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (args[key] !== undefined) {
+      input[key] = args[key];
+    }
+  }
+  return input;
 }
 
 // The shape of a GraphQL offset page (see rest/operations.ts list operations).

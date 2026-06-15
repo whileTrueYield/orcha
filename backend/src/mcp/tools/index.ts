@@ -13,6 +13,9 @@
  * Exports:
  *  - registerReadTools(server, resolved): bind all read tools to the server,
  *    closed over the connection's resolved role.
+ *  - registerWriteTools(server, resolved): bind all write tools the same way.
+ *    Read-only refusal is enforced per write (see shared.writeAs), so a
+ *    read-only token can register the tools but never run a mutation.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -21,6 +24,7 @@ import { registerIdentityTools } from "./identity";
 import { registerTicketTools } from "./tickets";
 import { registerProjectTools } from "./projects";
 import { registerScheduleTools } from "./schedule";
+import { registerTicketWriteTools } from "./ticketWrites";
 
 export function registerReadTools(
   server: McpServer,
@@ -30,4 +34,11 @@ export function registerReadTools(
   registerTicketTools(server, resolved);
   registerProjectTools(server, resolved);
   registerScheduleTools(server, resolved);
+}
+
+export function registerWriteTools(
+  server: McpServer,
+  resolved: ResolvedRole,
+): void {
+  registerTicketWriteTools(server, resolved);
 }
