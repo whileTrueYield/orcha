@@ -5088,20 +5088,20 @@
   dependencies:
     expect "*"
 
-"@types/express-serve-static-core@*", "@types/express-serve-static-core@^5.0.0":
-  version "5.1.1"
-  resolved "https://registry.yarnpkg.com/@types/express-serve-static-core/-/express-serve-static-core-5.1.1.tgz#1a77faffee9572d39124933259be2523837d7eaa"
-  integrity sha512-v4zIMr/cX7/d2BpAEX3KNKL/JrT1s43s96lLvvdTmza1oEvDudCqK9aF/djc/SWgy8Yh0h30TZx5VpzqFCxk5A==
+"@types/express-serve-static-core@^4.17.30", "@types/express-serve-static-core@^4.17.33":
+  version "4.19.8"
+  resolved "https://registry.yarnpkg.com/@types/express-serve-static-core/-/express-serve-static-core-4.19.8.tgz#99b960322a4d576b239a640ab52ef191989b036f"
+  integrity sha512-02S5fmqeoKzVZCHPZid4b8JH2eM5HzQLZWN2FohQEy/0eXTq8VXZfSN6Pcr3F6N9R/vNrj7cpgbhjie6m/1tCA==
   dependencies:
     "@types/node" "*"
     "@types/qs" "*"
     "@types/range-parser" "*"
     "@types/send" "*"
 
-"@types/express-serve-static-core@^4.17.30", "@types/express-serve-static-core@^4.17.33":
-  version "4.19.8"
-  resolved "https://registry.yarnpkg.com/@types/express-serve-static-core/-/express-serve-static-core-4.19.8.tgz#99b960322a4d576b239a640ab52ef191989b036f"
-  integrity sha512-02S5fmqeoKzVZCHPZid4b8JH2eM5HzQLZWN2FohQEy/0eXTq8VXZfSN6Pcr3F6N9R/vNrj7cpgbhjie6m/1tCA==
+"@types/express-serve-static-core@^5.0.0":
+  version "5.1.1"
+  resolved "https://registry.yarnpkg.com/@types/express-serve-static-core/-/express-serve-static-core-5.1.1.tgz#1a77faffee9572d39124933259be2523837d7eaa"
+  integrity sha512-v4zIMr/cX7/d2BpAEX3KNKL/JrT1s43s96lLvvdTmza1oEvDudCqK9aF/djc/SWgy8Yh0h30TZx5VpzqFCxk5A==
   dependencies:
     "@types/node" "*"
     "@types/qs" "*"
@@ -5114,15 +5114,6 @@
   integrity sha512-GbypG0bog68UbOq2tSAp7SclvCUm3ha1uDi58OPRGK1NfRvCIu7Gz0M7fTGtpNG1T9a29GpuurQj9zEcT/lMXQ==
   dependencies:
     "@types/express" "*"
-
-"@types/express-ws@^3.0.4":
-  version "3.0.6"
-  resolved "https://registry.yarnpkg.com/@types/express-ws/-/express-ws-3.0.6.tgz#b38cee8f84db1c9aaf11a53964db07d58c90909c"
-  integrity sha512-6ZDt+tMEQgM4RC1sMX1fIO7kHQkfUDlWfxoPddXUeeDjmc+Yt/fCzqXfp8rFahNr5eIxdomrWphLEWDkB2q3UQ==
-  dependencies:
-    "@types/express" "*"
-    "@types/express-serve-static-core" "*"
-    "@types/ws" "*"
 
 "@types/express@*":
   version "5.0.6"
@@ -5600,7 +5591,7 @@
   dependencies:
     winston "*"
 
-"@types/ws@*", "@types/ws@^8.0.0":
+"@types/ws@^8.0.0":
   version "8.18.1"
   resolved "https://registry.yarnpkg.com/@types/ws/-/ws-8.18.1.tgz#48464e4bf2ddfd17db13d845467f6070ffea4aa9"
   integrity sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==
