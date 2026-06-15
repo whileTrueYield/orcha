@@ -85,11 +85,15 @@ architecture is documented in depth in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Orcha exposes a remote [MCP](https://modelcontextprotocol.io) endpoint at `/mcp`
 so a coding agent can ask "who am I?" and "what should I work on next?" and act
-on its answer. It authenticates with the same Personal Access Token you'd use for the `/v1`
-REST API — mint one from the **avatar menu → API Tokens**.
+on its answer. Connect it two ways: a **Personal Access Token** (best for coding
+agents like Claude Code or Cursor) or **OAuth** (for consumer clients like Claude
+Desktop and the claude.ai connector).
 
-Point any MCP client at the endpoint with the token in an `Authorization`
-header. For a Claude Code / Cursor-style `mcp.json`:
+### With a Personal Access Token
+
+Mint one from the **avatar menu → API Tokens**, then point your MCP client at the
+endpoint with the token in an `Authorization` header. For a Claude Code /
+Cursor-style `mcp.json`:
 
 ```json
 {
@@ -133,9 +137,41 @@ And the write surface to act on what it finds:
   a concurrent edit comes back as a conflict to rebase on — never a silent
   overwrite.
 
-Every tool is tenant-scoped to the token's role and returns LLM-shaped flat JSON.
-A **read-only** token can call every read tool but is refused on the writes. The
-connection is refused outright if the token is missing, malformed, or invalid.
+Every tool is tenant-scoped to the connection's role and returns LLM-shaped flat
+JSON. A **read-only** connection can call every read tool but is refused on the
+writes. The connection is refused outright if its credential is missing,
+malformed, or invalid.
+
+### With OAuth (consumer Claude clients)
+
+Claude Desktop and the claude.ai connector don't take a pasted token — they
+connect over OAuth. Add Orcha as a **custom connector** pointing at the same
+`/mcp` URL, with no `Authorization` header:
+
+- **Claude Desktop:** Settings → Connectors → Add custom connector.
+- **claude.ai:** Settings → Connectors → Add custom connector.
+
+Orcha is its **own** authorization server — no third-party login. The client
+discovers it from the endpoint, registers itself, and opens a browser to Orcha,
+where you:
+
+1. **Sign in** to Orcha (if you aren't already).
+2. On the **consent screen**, choose which **organization / Role** the app acts
+   as — a Role is your membership in one org, so this also pins the tenant — and
+   choose **read** or **read + write** access.
+3. **Approve.** The client connects; no token is ever shown or pasted.
+
+The scope maps to the same capability a read-only PAT has: a **read** grant can
+call every read tool but is refused on every write. Revoke a connected app any
+time from the **avatar menu → Connected Apps** — it loses access immediately and
+must be re-approved to reconnect.
+
+> OAuth requires Orcha to be served over **HTTPS** (except on `localhost`). Over
+> plain HTTP, use a Personal Access Token instead.
+
+The decision record for this model — Orcha as its own authorization server,
+opaque tokens hashed at rest, PKCE + refresh rotation — is
+[ADR 0009](docs/adr/0009-oauth-2.1-orcha-as-its-own-authorization-server.md).
 
 ## Development
 

@@ -63,6 +63,32 @@ the public API as agent-shaped tools, so a coding agent (e.g. Claude Code) can
 drive a developer's Orcha workspace. Not a 1:1 mirror of every operation.
 _Avoid_: "the MCP" when you mean the protocol in general.
 
+**OAuth access token**:
+A short-lived, client-bound credential Orcha issues to a connected app through
+the OAuth flow, the alternative to a PAT for reaching `/mcp`. Like a PAT it
+resolves to one Role, and it is opaque and hashed at rest (prefix `orcha_oat_`);
+unlike a PAT it expires fast and is paired with a rotating refresh token.
+_Avoid_: JWT, bearer token (unqualified) — it is neither signed nor stateless.
+
+**Authorization server** (AS):
+Orcha itself. It runs the OAuth discovery, client-registration, consent, and
+token endpoints **first-party** — there is no external identity provider in the
+path.
+_Avoid_: IdP, identity provider — Orcha does not delegate to one.
+
+**Scope**:
+The access an OAuth grant carries: `read` or `read write`. It maps onto the same
+capability a **read-only** PAT has — a `read` grant can use every read tool but
+is refused on every write.
+_Avoid_: Permission; "role" — scope is per-grant, not the RoleType tier.
+
+**Connected app** (grant):
+A client a User has authorized over OAuth — one consent binds one Role and one
+scope. Listed and cut off from **Connected Apps** in the app; revoking one kills
+its access **and** refresh tokens at once.
+_Avoid_: Integration, plugin; "OAuth client" when you mean the user-visible
+connection rather than the registered software.
+
 ## Example dialogue
 
 > **Dev:** Can the agent's token see every org I'm in?
@@ -75,3 +101,10 @@ _Avoid_: "the MCP" when you mean the protocol in general.
 > **Maintainer:** Only the curated agent loop — read your tickets, read the
 > schedule, create/update/transition a ticket. The rest of `/v1` exists for
 > general API clients, not the agent.
+> **Dev:** Claude Desktop won't let me paste a token. How does it connect?
+> **Maintainer:** Over OAuth. Orcha is its own authorization server, so you add
+> it as a custom connector, sign in, and approve a Role and a scope — read or
+> read + write — on the consent screen. No token to paste.
+> **Dev:** And if I want to cut it off later?
+> **Maintainer:** Revoke it from Connected Apps. That kills its access and refresh
+> tokens at once, so it's locked out immediately and has to be re-approved.
