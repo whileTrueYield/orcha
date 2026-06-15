@@ -86,7 +86,7 @@ architecture is documented in depth in [ARCHITECTURE.md](ARCHITECTURE.md).
 Orcha exposes a remote [MCP](https://modelcontextprotocol.io) endpoint at `/mcp`
 so a coding agent can ask "who am I?" and "what should I work on next?" and act
 on its answer. It authenticates with the same Personal Access Token you'd use for the `/v1`
-REST API — mint one in **Settings → Tokens**.
+REST API — mint one from the **avatar menu → API Tokens**.
 
 Point any MCP client at the endpoint with the token in an `Authorization`
 header. For a Claude Code / Cursor-style `mcp.json`:
@@ -122,9 +122,20 @@ its work is available:
 - **`get_project`** — a single project's detail and its parent/children edges.
 - **`get_schedule`** — your own outstanding scheduled work and its ETAs.
 
+And the write surface to act on what it finds:
+
+- **`create_ticket`** / **`update_ticket`** — capture a new ticket, or patch an
+  existing one's fields.
+- **`transition_ticket`** — drive a ticket through its lifecycle: schedule it,
+  start a workflow stage, advance to the next stage, or close/cancel it.
+- **`update_ticket_body`** / **`update_project_body`** — write the Markdown body
+  with optimistic concurrency: the write conditions on the version you read, and
+  a concurrent edit comes back as a conflict to rebase on — never a silent
+  overwrite.
+
 Every tool is tenant-scoped to the token's role and returns LLM-shaped flat JSON.
-A read-only token can call all of them. The connection is refused outright if the
-token is missing, malformed, or invalid.
+A **read-only** token can call every read tool but is refused on the writes. The
+connection is refused outright if the token is missing, malformed, or invalid.
 
 ## Development
 

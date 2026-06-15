@@ -8,12 +8,13 @@
 4. [Step-by-step setup](#step-by-step-setup)
 5. [Starting Orcha](#starting-orcha)
 6. [First login](#first-login)
-7. [Architecture overview](#architecture-overview)
-8. [Environment variable reference](#environment-variable-reference)
-9. [Email configuration](#email-configuration)
-10. [Backups](#backups)
-11. [Updating](#updating)
-12. [Troubleshooting](#troubleshooting)
+7. [Connect a coding agent (MCP)](#connect-a-coding-agent-mcp)
+8. [Architecture overview](#architecture-overview)
+9. [Environment variable reference](#environment-variable-reference)
+10. [Email configuration](#email-configuration)
+11. [Backups](#backups)
+12. [Updating](#updating)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -171,6 +172,48 @@ Docker volumes.
 4. Invite team members -- subsequent users **will** need email confirmation
 
 If email is not configured, only the first user will be able to register.
+
+## Connect a coding agent (MCP)
+
+Orcha exposes a remote [MCP](https://modelcontextprotocol.io) endpoint so a
+coding agent (Claude Code, Cursor, …) can read your workspace and act on it —
+ask "what should I work on next?", then create, update, and transition tickets
+and edit their Markdown bodies.
+
+The endpoint is your backend's **`/api/mcp`** path (Traefik routes `/api` to the
+backend), authenticated with a Personal Access Token. Mint one in the app from
+the **avatar menu → API Tokens**; a **read-only** token is accepted but refused
+on any write.
+
+Point any MCP client at it with the token in an `Authorization` header. For a
+Claude Code / Cursor-style `mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "orcha": {
+      "type": "http",
+      "url": "https://your-domain.com/api/mcp",
+      "headers": {
+        "Authorization": "Bearer orcha_pat_your_token_here"
+      }
+    }
+  }
+}
+```
+
+Available tools, all tenant-scoped to the token's role and returning LLM-shaped
+flat JSON:
+
+- **Read** — `whoami`, `next_tickets` (your MCTS-prioritized work queue),
+  `list_tickets`, `get_ticket`, `get_ticket_body`, `list_projects`, `get_project`,
+  `get_project_body`, `get_schedule`.
+- **Write** — `create_ticket`, `update_ticket`, `transition_ticket` (lifecycle:
+  schedule / start / advance / close / cancel), `update_ticket_body`,
+  `update_project_body` (Markdown body with optimistic-concurrency conflict
+  handling).
+
+See the [README](README.md#connect-a-coding-agent-mcp) for per-tool detail.
 
 ## Architecture overview
 
