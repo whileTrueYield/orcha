@@ -14,14 +14,25 @@ import request from "supertest";
 import session from "express-session";
 import { Role } from "@prisma/client";
 import { createExpressApp } from "../../../app";
-import { pendingRequests, PendingRequest } from "../provider";
 import { consumeCode } from "../codes";
+import {
+  putPending,
+  setPendingStore,
+  redisPendingStore,
+} from "../pendingStore";
 import {
   createRandomOrgAndUser,
   pkceChallengeFor,
   getRandomCode,
+  inMemoryPendingRedis,
 } from "../../../utils/testing";
 import prisma from "../../../prisma";
+
+// Back the pending-authorize store with a fresh in-memory Redis per test, so the
+// consent routes (and seedPending below) share one store with no live Redis.
+beforeEach(() => {
+  setPendingStore(redisPendingStore(inMemoryPendingRedis()));
+});
 
 // An app whose session is populated on every request — the decision route reads
 // req.session.{roles,roleId,organizationId}, injected here instead of via login.
@@ -49,16 +60,15 @@ async function seedPending(
     data: { clientId, name: "Test Client", redirectUris: ["http://localhost/cb"] },
   });
   const requestToken = `tok-${getRandomCode(8)}`;
-  const pending: PendingRequest = {
+  const redirectUri = "http://localhost/cb";
+  await putPending(requestToken, {
     clientId,
-    redirectUri: "http://localhost/cb",
+    redirectUri,
     codeChallenge: pkceChallengeFor("v"),
     scope,
     state: "xyz",
-    expiresAt: Date.now() + 60_000,
-  };
-  pendingRequests.set(requestToken, pending);
-  return { requestToken, clientId, redirectUri: pending.redirectUri };
+  });
+  return { requestToken, clientId, redirectUri };
 }
 
 describe("oauth consent routes", () => {

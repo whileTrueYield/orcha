@@ -47,6 +47,7 @@ import { DEFAULT_WORK_WEEK } from "../models/entities";
 import { buildMeContext } from "../middlewares/isAuthenticated";
 import { generateToken } from "../models/apiToken/token";
 import { formatGraphQLError } from "./graphqlErrors";
+import { PendingRedis } from "../mcp/oauth/pendingStore";
 
 interface Options {
   source: string;
@@ -846,3 +847,27 @@ export const createRandomOrganization = async (): Promise<Organization> => {
 
 const getCounter = (): string =>
   Math.floor(Math.random() * Math.floor(9 ** 10)).toString();
+
+// An in-memory stand-in for the Redis slice the pending-authorize store needs,
+// so tests can exercise the OAuth consent flow without a live Redis. Honors
+// get/set and the store's atomic get-and-delete eval; TTL is ignored, because
+// expiry is Redis's own concern, not the store's logic to verify.
+export const inMemoryPendingRedis = (): PendingRedis => {
+  const entries = new Map<string, string>();
+  return {
+    async set(key: string, value: string) {
+      entries.set(key, value);
+    },
+    async get(key: string) {
+      return entries.has(key) ? (entries.get(key) as string) : null;
+    },
+    // The store's only eval is the GET+DEL take script over a single key.
+    async eval(_script: string, _numKeys: number, ...keys: string[]) {
+      const key = keys[0];
+      if (!entries.has(key)) return null;
+      const value = entries.get(key) as string;
+      entries.delete(key);
+      return value;
+    },
+  };
+};
