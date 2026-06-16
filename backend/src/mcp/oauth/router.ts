@@ -13,11 +13,8 @@
 import { Router, urlencoded } from "express";
 import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import { config } from "../../config";
-import {
-  orchaOAuthProvider,
-  pendingRequests,
-  describePending,
-} from "./provider";
+import { orchaOAuthProvider, describePending } from "./provider";
+import { consumePending } from "./pendingStore";
 import { renderConsent, scopeLabel } from "./consent";
 import { mintCode } from "./codes";
 import { SUPPORTED_SCOPES, offeredScopes, isGrantableScope } from "./scopes";
@@ -96,21 +93,14 @@ oauthRouter.post(
   urlencoded({ extended: false }),
   async (req, res) => {
     const requestToken = String(req.body.request ?? "");
-    const pending = pendingRequests.get(requestToken);
+    // Take spends the request once and atomically: a consent form left open past
+    // the TTL, an unknown token, or a double-submit all come back as null here.
+    const pending = await consumePending(requestToken);
     const { roleId, organizationId } = req.session;
-    // Reject an expired pending request, matching the GET consent route's TTL
-    // guard — a consent form left open past the window must not still mint a code.
-    if (
-      !pending ||
-      pending.expiresAt < Date.now() ||
-      !roleId ||
-      !organizationId
-    ) {
-      pendingRequests.delete(requestToken);
+    if (!pending || !roleId || !organizationId) {
       res.status(400).send("Authorization request expired or unknown.");
       return;
     }
-    pendingRequests.delete(requestToken);
 
     const redirect = new URL(pending.redirectUri);
     if (pending.state) redirect.searchParams.set("state", pending.state);

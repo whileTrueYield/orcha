@@ -14,15 +14,13 @@
  * validated by the SDK before exchangeAuthorizationCode runs, so no verifier carries
  * meaning here — we only consume the code and mint.
  *
- * The pending-authorize store is an in-process Map (single-instance only). In a
- * multi-process or multi-replica deployment, a pending authorize on instance A
- * will not be visible to the consent decision route on instance B. A later slice
- * moves this to Redis. Until then, only single-instance deploys are supported.
+ * The pending-authorize request (the bridge between /authorize and the consent
+ * decision) lives in Redis via pendingStore — shared across instances and
+ * self-expiring — so this provider holds no per-request state and the server can
+ * run on any number of replicas.
  *
  * Exports:
  *  - orchaOAuthProvider: the OAuthServerProvider instance the router consumes.
- *  - pendingRequests: the consent route (router.ts) reads/clears on decision.
- *  - PendingRequest: the shape of each stashed authorize request.
  *  - describePending(token): resolve a pending request to its display data.
  */
 import { randomUUID } from "crypto";
@@ -39,6 +37,8 @@ import { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { orchaClientsStore } from "./clientStore";
 import { lookupChallenge, consumeCode } from "./codes";
 import { grantedScopeFromRequest, isReadOnlyScope } from "./scopes";
+import { putPending, getPending } from "./pendingStore";
+import type { PendingRequest } from "./pendingStore";
 import { mintAccessToken, verifyAndResolveOAuth } from "./accessTokens";
 import {
   mintRefreshToken,
@@ -49,36 +49,6 @@ import {
 import { InvalidGrantError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import prisma from "../../prisma";
 import { logger } from "../../logger";
-
-// A validated authorize request awaiting the user's approve/deny decision.
-// Keyed by an opaque requestToken carried through the consent form. In-process only —
-// see the file header for the single-instance caveat.
-export interface PendingRequest {
-  clientId: string; // public client_id
-  redirectUri: string;
-  codeChallenge: string;
-  scope: string;
-  state?: string;
-  expiresAt: number; // ms since epoch
-}
-
-export const pendingRequests = new Map<string, PendingRequest>();
-
-// 5 minutes is generous for a human consent decision; the code still has its
-// own 60-second TTL after minting.
-const PENDING_TTL_MS = 1000 * 60 * 5;
-
-// Bound the in-process Map. An abandoned authorize (user never submits the
-// consent form) would otherwise linger until the process restarts. Sweeping on
-// each new request keeps the Map size O(requests within one TTL window) without
-// a background timer — a timer would keep the process alive and leak across
-// tests. The Redis-backed store a multi-instance deploy needs (see header) will
-// get native key expiry instead.
-function evictExpiredPending(now: number): void {
-  for (const [token, pending] of pendingRequests) {
-    if (pending.expiresAt < now) pendingRequests.delete(token);
-  }
-}
 
 export const orchaOAuthProvider: OAuthServerProvider = {
   get clientsStore() {
@@ -93,10 +63,8 @@ export const orchaOAuthProvider: OAuthServerProvider = {
     params: AuthorizationParams,
     res: Response,
   ): Promise<void> {
-    const now = Date.now();
-    evictExpiredPending(now);
     const requestToken = randomUUID();
-    pendingRequests.set(requestToken, {
+    await putPending(requestToken, {
       clientId: client.client_id,
       redirectUri: params.redirectUri,
       codeChallenge: params.codeChallenge,
@@ -104,7 +72,6 @@ export const orchaOAuthProvider: OAuthServerProvider = {
       // through consent → code → tokens so the resource server enforces it.
       scope: grantedScopeFromRequest(params.scopes),
       state: params.state,
-      expiresAt: now + PENDING_TTL_MS,
     });
     // Consent rendering and session gate live in the consent route (router.ts);
     // authorize only records intent so it remains testable without a live session.
@@ -223,12 +190,8 @@ export async function describePending(requestToken: string): Promise<{
   pending: PendingRequest;
   clientName: string;
 } | null> {
-  const pending = pendingRequests.get(requestToken);
+  const pending = await getPending(requestToken);
   if (!pending) return null;
-  if (pending.expiresAt < Date.now()) {
-    pendingRequests.delete(requestToken);
-    return null;
-  }
   const dbClient = await prisma.oAuthClient.findUnique({
     where: { clientId: pending.clientId },
   });
