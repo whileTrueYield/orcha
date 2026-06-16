@@ -167,7 +167,16 @@ export const config: Config = {
   // in the frontend repo, use: git rev-parse --short HEAD
   sessionSecret: env.ORCHA_SESSION_SECRET,
   hostname: env.ORCHA_HOSTNAME,
-  allowOrigin: [env.ORCHA_WEBAPP_URI, env.ORCHA_SUPPORT_URI, env.ORCHA_WWW_URI],
+  // ORCHA_API_URI is the server's own public origin: the OAuth consent flow is a
+  // server-rendered, same-origin browser flow (the consent page on api.* POSTs back
+  // to api.*), so the browser sends Origin: <api uri>. A same-origin request must
+  // pass CORS, hence the API's own origin belongs in the allowlist.
+  allowOrigin: [
+    env.ORCHA_WEBAPP_URI,
+    env.ORCHA_SUPPORT_URI,
+    env.ORCHA_WWW_URI,
+    env.ORCHA_API_URI,
+  ],
   webAppUri: env.ORCHA_WEBAPP_URI,
   supportUri: env.ORCHA_SUPPORT_URI,
   wwwUri: env.ORCHA_WWW_URI,
