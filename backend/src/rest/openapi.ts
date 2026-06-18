@@ -153,7 +153,12 @@ export const openApiSpec = {
       },
       CreateTicket: {
         type: "object",
-        description: "The body for POST /v1/tickets.",
+        description:
+          "The body for POST /v1/tickets. `body` and `ownerId` are optional " +
+          "extras that fully form the ticket in one call: `body` seeds the " +
+          "Markdown description (sparing a follow-up PUT to " +
+          "/v1/tickets/{id}/body), and `ownerId` assigns the owner (defaults " +
+          "to the calling role).",
         required: ["title", "projectId"],
         properties: {
           title: { type: "string" },
@@ -161,6 +166,8 @@ export const openApiSpec = {
           productId: { type: "integer" },
           workflowId: { type: "integer" },
           stage: { type: "string", enum: ["DRAFT", "PUBLISHED", "ARCHIVED"] },
+          ownerId: { type: "integer" },
+          body: { type: "string" },
         },
       },
       UpdateTicket: {

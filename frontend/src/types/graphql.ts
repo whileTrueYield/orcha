@@ -303,6 +303,8 @@ export type CreateTeamInput = {
 };
 
 export type CreateTicketInput = {
+  body?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: InputMaybe<Scalars['Int']['input']>;
   productId?: InputMaybe<Scalars['Int']['input']>;
   projectId: Scalars['Int']['input'];
   stage?: InputMaybe<ModelStage>;

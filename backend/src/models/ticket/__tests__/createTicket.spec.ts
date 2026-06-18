@@ -5,6 +5,8 @@ import {
   createRandomWorkflow,
   createRandomProject,
 } from "../../../utils/testing";
+import prisma from "../../../prisma";
+import { getBody } from "../../../markdown/bodyRepository";
 import { faker } from "@faker-js/faker";
 import { RoleType } from "@prisma/client";
 import { ModelStage } from "@prisma/client";
@@ -222,5 +224,123 @@ describe("create ticket", () => {
       },
       stage: ModelStage.DRAFT,
     });
+  });
+});
+
+// The two round-trip-saving extras (#3): seed the body and assign an owner in
+// the same call that creates the ticket. ownerId is a plain ticket field; body
+// funnels through the one ADR-0007 write path (writeDocumentBody) just as a
+// later update_ticket_body would.
+const createTicketIdMutation = `
+mutation CreateTicket($input: CreateTicketInput!) {
+  createTicket(input: $input) {
+    id
+    title
+  }
+}
+`;
+
+describe("create ticket with body and owner", () => {
+  it("seeds the Markdown body on creation", async () => {
+    const { organization, session } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+    );
+    const project = await createRandomProject(organization);
+
+    const response = await graphqlRequest({
+      source: createTicketIdMutation,
+      variableValues: {
+        input: {
+          title: "With body",
+          projectId: project.id,
+          body: "## Heading\n\nSome initial content.",
+        },
+      },
+      session,
+    });
+
+    expect(response.errors).not.toBeDefined();
+    const id = response.data?.createTicket.id as number;
+
+    // The body went through the real write path, so it reads back at a version
+    // past the empty-body baseline (0).
+    const stored = await getBody("ticket", id);
+    expect(stored.markdown).toContain("Some initial content.");
+    expect(stored.version).toBeGreaterThan(0);
+  });
+
+  it("assigns a provided ownerId on creation", async () => {
+    const { organization, session } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+    );
+    // A second role in the SAME org — a valid owner target.
+    const otherOwner = await getTestSessionWithRole(
+      RoleType.MEMBER,
+      false,
+      organization,
+    );
+    const project = await createRandomProject(organization);
+
+    const response = await graphqlRequest({
+      source: createTicketIdMutation,
+      variableValues: {
+        input: {
+          title: "Owned by another",
+          projectId: project.id,
+          ownerId: otherOwner.role.id,
+        },
+      },
+      session,
+    });
+
+    expect(response.errors).not.toBeDefined();
+    const persisted = await prisma.ticket.findUnique({
+      where: { id: response.data?.createTicket.id },
+    });
+    expect(persisted!.ownerId).toBe(otherOwner.role.id);
+  });
+
+  it("defaults the owner to the creator when ownerId is omitted", async () => {
+    const { organization, session, role } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+    );
+    const project = await createRandomProject(organization);
+
+    const response = await graphqlRequest({
+      source: createTicketIdMutation,
+      variableValues: {
+        input: { title: "Owned by me", projectId: project.id },
+      },
+      session,
+    });
+
+    expect(response.errors).not.toBeDefined();
+    const persisted = await prisma.ticket.findUnique({
+      where: { id: response.data?.createTicket.id },
+    });
+    expect(persisted!.ownerId).toBe(role.id);
+  });
+
+  it("rejects an ownerId outside the caller's organization", async () => {
+    const { organization, session } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+    );
+    // A role in a DIFFERENT org — must not be assignable as owner.
+    const foreign = await getTestSessionWithRole(RoleType.MEMBER);
+    const project = await createRandomProject(organization);
+
+    const response = await graphqlRequest({
+      source: createTicketIdMutation,
+      variableValues: {
+        input: {
+          title: "Cross-tenant owner",
+          projectId: project.id,
+          ownerId: foreign.role.id,
+        },
+      },
+      session,
+    });
+
+    expect(response.errors).toBeDefined();
   });
 });

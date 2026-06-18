@@ -354,6 +354,8 @@ v1Router.post(
       "productId",
       "workflowId",
       "stage",
+      "ownerId",
+      "body",
     ]);
 
     const data = await executeAs(
