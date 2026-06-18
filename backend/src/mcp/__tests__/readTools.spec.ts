@@ -64,6 +64,21 @@ describe("MCP read surface — tickets", () => {
     });
   });
 
+  it("get_ticket and list_tickets carry the ticket's web-app url", async () => {
+    const token = await getTestApiToken();
+    const { ticket } = await createRandomTicket(token.organization, token.role);
+    const expectedSuffix = `/org/${token.organization.id}/ticket/${ticket.id}/view`;
+
+    await withClient(token, async (call) => {
+      const detail = parse(await call("get_ticket", { id: ticket.id }));
+      expect(detail.url).toContain(expectedSuffix);
+
+      const page = parse(await call("list_tickets", {}));
+      const node = page.tickets.find((t: any) => t.id === ticket.id);
+      expect(node.url).toContain(expectedSuffix);
+    });
+  });
+
   it("list_tickets paginates with offset/limit and nextOffset", async () => {
     const token = await getTestApiToken();
     for (let i = 0; i < 3; i++) {

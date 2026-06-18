@@ -74,6 +74,52 @@ describe("MCP write surface — create_ticket", () => {
     });
   });
 
+  it("seeds the body and owner in a single call", async () => {
+    const token = await getTestApiToken();
+    const project = await createRandomProject(token.organization);
+
+    await withClient(token, async (call) => {
+      const created = parse(
+        await call("create_ticket", {
+          title: "Fully formed",
+          projectId: project.id,
+          body: "## Spec\n\nThe whole thing in one round-trip.",
+          ownerId: token.role.id,
+        }),
+      );
+
+      // The body landed via the same write path update_ticket_body uses, so it
+      // reads back through get_ticket_body without a follow-up write.
+      const body = parse(await call("get_ticket_body", { id: created.id }));
+      expect(body.markdown).toContain("The whole thing in one round-trip.");
+
+      const persisted = await prisma.ticket.findUnique({
+        where: { id: created.id },
+      });
+      expect(persisted!.ownerId).toBe(token.role.id);
+    });
+  });
+
+  it("returns a url pointing at the ticket in the web app", async () => {
+    const token = await getTestApiToken();
+    const project = await createRandomProject(token.organization);
+
+    await withClient(token, async (call) => {
+      const created = parse(
+        await call("create_ticket", {
+          title: "Linkable",
+          projectId: project.id,
+        }),
+      );
+
+      // The url closes the loop: an agent can hand the user a direct link
+      // straight after creation. Assert the path, not the configured base.
+      expect(created.url).toContain(
+        `/org/${token.organization.id}/ticket/${created.id}/view`,
+      );
+    });
+  });
+
   it("validates required fields at the tool boundary", async () => {
     const token = await getTestApiToken();
 

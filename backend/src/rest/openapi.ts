@@ -130,6 +130,10 @@ export const openApiSpec = {
           estimate: { type: "integer" },
           eta: { type: "string", format: "date-time", nullable: true },
           projectId: { type: "integer" },
+          url: {
+            type: "string",
+            description: "Direct link to the ticket in the web app.",
+          },
         },
       },
       TicketWrite: {
@@ -149,11 +153,20 @@ export const openApiSpec = {
           projectId: { type: "integer" },
           estimate: { type: "integer" },
           eta: { type: "string", format: "date-time", nullable: true },
+          url: {
+            type: "string",
+            description: "Direct link to the ticket in the web app.",
+          },
         },
       },
       CreateTicket: {
         type: "object",
-        description: "The body for POST /v1/tickets.",
+        description:
+          "The body for POST /v1/tickets. `body` and `ownerId` are optional " +
+          "extras that fully form the ticket in one call: `body` seeds the " +
+          "Markdown description (sparing a follow-up PUT to " +
+          "/v1/tickets/{id}/body), and `ownerId` assigns the owner (defaults " +
+          "to the calling role).",
         required: ["title", "projectId"],
         properties: {
           title: { type: "string" },
@@ -161,6 +174,8 @@ export const openApiSpec = {
           productId: { type: "integer" },
           workflowId: { type: "integer" },
           stage: { type: "string", enum: ["DRAFT", "PUBLISHED", "ARCHIVED"] },
+          ownerId: { type: "integer" },
+          body: { type: "string" },
         },
       },
       UpdateTicket: {
@@ -310,6 +325,10 @@ export const openApiSpec = {
           status: { type: "string" },
           stage: { type: "string" },
           progress: { type: "number" },
+          url: {
+            type: "string",
+            description: "Direct link to the ticket in the web app.",
+          },
           project: {
             type: "object",
             properties: {

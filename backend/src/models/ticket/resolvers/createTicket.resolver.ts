@@ -6,9 +6,13 @@
  *  - Mutation.importTickets(input): [Ticket!]!
  *
  * createTicket validates project/product/workflow constraints,
- * assigns local IDs, creates workflow state copies, and triggers
- * mention notifications. It seeds no body — Markdown is written
- * later via saveDocumentBody (ADR 0007).
+ * assigns local IDs, and creates workflow state copies. An owner can be
+ * set on creation; otherwise the creator owns it. An optional initial
+ * `body` is seeded through writeDocumentBody — the one
+ * ADR-0007 write path — so it resolves mentions, reindexes, and notifies
+ * exactly as a later update_ticket_body would, sparing the caller a second
+ * round-trip. With no `body` the ticket reads as empty (version 0) until a
+ * first body write lands.
  *
  * importTickets bulk-creates tickets with optional tag, author, and
  * owner association via CSV-style inputs.
@@ -23,6 +27,7 @@ import { findOrCreateTags } from "../../tag/helper";
 import { commaSeparatedValues } from "../../../utils/string";
 import { getWorkflowQueryForProduct } from "../../workflow/helper";
 import { ModelStageEnum } from "../../../schema/enums";
+import { writeDocumentBody } from "../../documentBody/writeDocumentBody";
 
 // ---------------------------------------------------------------------------
 // Input types
@@ -35,6 +40,8 @@ const CreateTicketInput = builder.inputType("CreateTicketInput", {
     workflowId: t.int({ required: false }),
     projectId: t.int({ required: true }),
     stage: t.field({ type: ModelStageEnum, required: false }),
+    ownerId: t.int({ required: false }),
+    body: t.string({ required: false }),
   }),
 });
 
@@ -84,8 +91,19 @@ builder.mutationField("createTicket", (t) =>
         organization: { connect: { id: me.organizationId } },
         author: { connect: { id: me.roleId } },
         project: { connect: { id: input.projectId } },
+        // The creator owns the ticket unless an explicit owner is named.
         owner: { connect: { id: me.roleId } },
       };
+
+      // An explicit owner must be a role in the caller's org — same org-scoped
+      // lookup updateTicket uses, so a cross-tenant ownerId is rejected (the
+      // findFirstOrThrow throws) rather than silently connecting.
+      if (input.ownerId) {
+        const owner = await ctx.prisma.role.findFirstOrThrow({
+          where: { organizationId: me.organizationId, id: input.ownerId },
+        });
+        ticketInput.owner = { connect: { id: owner.id } };
+      }
 
       const project = await ctx.prisma.project.findFirstOrThrow({
         where: {
@@ -178,12 +196,6 @@ builder.mutationField("createTicket", (t) =>
           : 1;
       }
 
-      // The ticket body is no longer seeded here. It is Markdown stored via the
-      // body repository (ADR 0007): a client that has initial content writes it
-      // through the saveDocumentBody mutation (or PUT /v1/tickets/:id/body),
-      // which is the single write path that resolves mentions, repopulates
-      // indexableContent, and fires notifications. A fresh ticket reads as an
-      // empty body (getBody → version 0) until that write lands.
       const ticket = await ctx.prisma.ticket.create({
         ...query,
         data: ticketInput,
@@ -206,9 +218,22 @@ builder.mutationField("createTicket", (t) =>
         });
       }
 
-      // Mention notifications now fire from the body write path (the
-      // saveDocumentBody mutation), not from ticket creation — see the note
-      // above. Nothing mention-related happens here anymore.
+      // Seed the initial body through the one ADR-0007 write path. A fresh
+      // ticket's body is at version 0, so baseVersion 0 fast-forwards — no
+      // concurrent writer can exist yet, so a conflict is impossible. This is
+      // also where any @-mentions in the body resolve and notify, exactly as a
+      // standalone update_ticket_body call would.
+      if (input.body) {
+        await writeDocumentBody({
+          type: "ticket",
+          id: ticket.id,
+          markdown: input.body,
+          baseVersion: 0,
+          organizationId: me.organizationId,
+          actorRoleId: me.roleId,
+        });
+      }
+
       return ticket;
     },
   }),

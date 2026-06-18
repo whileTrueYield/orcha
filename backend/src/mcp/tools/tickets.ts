@@ -162,6 +162,7 @@ export function registerTicketTools(
         estimate: ticket.estimate,
         eta: ticket.eta,
         progress: ticket.progress,
+        url: ticket.url,
         project: ticket.project,
         workflowStates: ticket.ticketWorkflowStates,
         ancestors: ticket.ancestors,
