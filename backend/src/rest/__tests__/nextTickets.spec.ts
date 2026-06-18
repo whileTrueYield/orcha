@@ -39,6 +39,7 @@ const SESSION_NEXT_TICKETS = /* GraphQL */ `
         estimate
         eta
         projectId
+        url
       }
       nextState {
         id

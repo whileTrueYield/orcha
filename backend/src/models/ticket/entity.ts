@@ -15,6 +15,7 @@
 
 import { TicketStatus as PrismaTicketStatus } from "@prisma/client";
 import builder from "../../schema/builder";
+import { config } from "../../config";
 import {
   ModelStageEnum,
   TicketStatusEnum,
@@ -34,6 +35,17 @@ export const TicketRef = builder.prismaObject("Ticket", {
   fields: (t) => ({
     id: t.exposeInt("id"),
     title: t.exposeString("title"),
+    // A direct link to this ticket in the web app, built from the configured
+    // web-app base (ORCHA_WEBAPP_URI) so it resolves to the same place the UI
+    // navigates to. Lets an API/MCP consumer close the loop by handing the user
+    // a link straight after creating or referencing a ticket. The trailing
+    // slash on the base (if an operator sets one) is trimmed to avoid `//org`.
+    url: t.string({
+      resolve: (ticket) =>
+        `${config.webAppUri.replace(/\/$/, "")}/org/${
+          ticket.organizationId
+        }/ticket/${ticket.id}/view`,
+    }),
     progress: t.exposeFloat("progress"),
     estimate: t.exposeInt("estimate"),
     localId: t.exposeInt("localId", { nullable: true }),

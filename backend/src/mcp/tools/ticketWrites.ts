@@ -77,7 +77,8 @@ export function registerTicketWriteTools(
         "`workflowId`, publication `stage`, `ownerId`, or an initial Markdown " +
         "`body` — passing `body` here seeds the description in one call, " +
         "sparing a follow-up update_ticket_body. Returns the new ticket's compact " +
-        "shape (id, title, status, stage, projectId, estimate, eta). The ticket " +
+        "shape (id, title, status, stage, projectId, estimate, eta, url) — `url` " +
+        "is a direct web-app link you can hand the user. The ticket " +
         "is created under your role's organization — you cannot target another.",
       inputSchema: {
         title: z

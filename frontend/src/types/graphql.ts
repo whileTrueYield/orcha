@@ -3832,6 +3832,7 @@ export type Ticket = {
   ticketWorkflowStates: Array<TicketWorkflowState>;
   title: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
+  url: Scalars['String']['output'];
   watchers: Array<Role>;
   workflow?: Maybe<Workflow>;
   workflowId?: Maybe<Scalars['Int']['output']>;

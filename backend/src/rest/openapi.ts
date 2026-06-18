@@ -130,6 +130,10 @@ export const openApiSpec = {
           estimate: { type: "integer" },
           eta: { type: "string", format: "date-time", nullable: true },
           projectId: { type: "integer" },
+          url: {
+            type: "string",
+            description: "Direct link to the ticket in the web app.",
+          },
         },
       },
       TicketWrite: {
@@ -149,6 +153,10 @@ export const openApiSpec = {
           projectId: { type: "integer" },
           estimate: { type: "integer" },
           eta: { type: "string", format: "date-time", nullable: true },
+          url: {
+            type: "string",
+            description: "Direct link to the ticket in the web app.",
+          },
         },
       },
       CreateTicket: {
@@ -317,6 +325,10 @@ export const openApiSpec = {
           status: { type: "string" },
           stage: { type: "string" },
           progress: { type: "number" },
+          url: {
+            type: "string",
+            description: "Direct link to the ticket in the web app.",
+          },
           project: {
             type: "object",
             properties: {
