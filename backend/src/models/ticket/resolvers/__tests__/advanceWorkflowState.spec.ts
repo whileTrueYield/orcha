@@ -105,6 +105,92 @@ describe("advance ticket workflow state", () => {
     );
   });
 
+  it("skips a disabled stage and hands off to the next active one", async () => {
+    const { session, organization, role } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+    );
+    const { ticket, ticketWorkflowStates } = await createRandomTicket(
+      organization,
+      role,
+    );
+
+    // Disable the middle stage (as a workflow with a turned-off stage would).
+    // Advancing from the first stage must skip it and land on the third — the
+    // next ENABLED stage by position — never the disabled middle.
+    const [first, middle, third] = ticketWorkflowStates;
+    await prisma.ticketWorkflowState.update({
+      where: { id: middle.id },
+      data: { isActive: false },
+    });
+
+    const response = await graphqlRequest({
+      source: advanceMutation,
+      variableValues: { ticketId: ticket.id },
+      session,
+    });
+
+    expect(response.errors).not.toBeDefined();
+    expect(response.data?.advanceTicketWorkflowState.status).toBe(
+      TicketStatus.SCHEDULED,
+    );
+
+    // Handoff points at the third (next active) stage...
+    const handoff = await prisma.scheduleItem.findFirst({
+      where: { ticketId: ticket.id, nextTicketWorkflowStateId: third.id },
+    });
+    expect(handoff).not.toBeNull();
+    expect(handoff?.ticketWorkflowStateId).toBe(first.id);
+
+    // ...and NOT at the disabled middle stage.
+    const intoDisabled = await prisma.scheduleItem.findFirst({
+      where: { ticketId: ticket.id, nextTicketWorkflowStateId: middle.id },
+    });
+    expect(intoDisabled).toBeNull();
+  });
+
+  it("completes the ticket when the only stage ahead is disabled", async () => {
+    const { session, organization, role } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+    );
+    const { ticket, ticketWorkflowStates } = await createRandomTicket(
+      organization,
+      role,
+    );
+
+    // The #3/#5 scenario: the final stage (e.g. a disabled "Peer Review") is
+    // turned off. Sitting on the second-to-last stage and advancing must
+    // complete the ticket — there is no enabled stage ahead to hand off to —
+    // rather than handing off into the disabled stage and stalling SCHEDULED.
+    const secondToLast =
+      ticketWorkflowStates[ticketWorkflowStates.length - 2];
+    const last = ticketWorkflowStates[ticketWorkflowStates.length - 1];
+    await prisma.ticketWorkflowState.update({
+      where: { id: last.id },
+      data: { isActive: false },
+    });
+
+    // Move the caller onto the second-to-last (still enabled) stage first.
+    await graphqlRequest({
+      source: advanceMutation,
+      variableValues: {
+        ticketId: ticket.id,
+        toTicketWorkflowStateId: secondToLast.id,
+      },
+      session,
+    });
+
+    const finish = await graphqlRequest({
+      source: advanceMutation,
+      variableValues: { ticketId: ticket.id, note: "all wrapped up" },
+      session,
+    });
+
+    expect(finish.errors).not.toBeDefined();
+    expect(finish.data?.advanceTicketWorkflowState.status).toBe(
+      TicketStatus.DONE,
+    );
+  });
+
   it("hands off to an explicit (non-adjacent) target stage", async () => {
     const { session, organization, role } = await getTestSessionWithRole(
       RoleType.MEMBER,

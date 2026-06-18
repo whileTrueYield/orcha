@@ -136,9 +136,16 @@ builder.mutationField("advanceTicketWorkflowState", (t) =>
         }
         targetStateId = target.id;
       } else {
-        // "next in line": smallest position strictly greater than current's.
+        // "next in line": smallest position strictly greater than current's,
+        // among ENABLED stages only. A disabled (isActive=false) stage is
+        // skipped — mirroring the read surface, which never surfaces inactive
+        // states. When every higher-position stage is disabled there is no next
+        // stage (targetStateId=null), so _closeScheduleItem completes the ticket
+        // (DONE) instead of handing off into a stage no one can work.
         const nextState = ticket.ticketWorkflowStates
-          .filter((state) => state.position > currentState.position)
+          .filter(
+            (state) => state.isActive && state.position > currentState.position,
+          )
           .sort((a, b) => a.position - b.position)[0];
         targetStateId = nextState ? nextState.id : null;
       }
