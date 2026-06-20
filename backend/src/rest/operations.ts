@@ -31,6 +31,7 @@ const TICKET_WRITE_SELECTION = /* GraphQL */ `
   projectId
   estimate
   eta
+  url
 `;
 
 // GET /v1/me — the token's Role, the User behind it, and the Organization it
@@ -72,6 +73,7 @@ export const NEXT_TICKETS_OPERATION = /* GraphQL */ `
         estimate
         eta
         projectId
+        url
       }
       nextState {
         id
@@ -122,6 +124,7 @@ export const TICKETS_OPERATION = /* GraphQL */ `
         estimate
         eta
         projectId
+        url
       }
     }
   }
@@ -143,6 +146,7 @@ export const TICKET_OPERATION = /* GraphQL */ `
       status
       stage
       progress
+      url
       body {
         markdown
         version
@@ -164,11 +168,13 @@ export const TICKET_OPERATION = /* GraphQL */ `
         id
         title
         status
+        url
       }
       successors {
         id
         title
         status
+        url
       }
     }
   }

@@ -303,6 +303,8 @@ export type CreateTeamInput = {
 };
 
 export type CreateTicketInput = {
+  body?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: InputMaybe<Scalars['Int']['input']>;
   productId?: InputMaybe<Scalars['Int']['input']>;
   projectId: Scalars['Int']['input'];
   stage?: InputMaybe<ModelStage>;
@@ -3830,6 +3832,7 @@ export type Ticket = {
   ticketWorkflowStates: Array<TicketWorkflowState>;
   title: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
+  url: Scalars['String']['output'];
   watchers: Array<Role>;
   workflow?: Maybe<Workflow>;
   workflowId?: Maybe<Scalars['Int']['output']>;

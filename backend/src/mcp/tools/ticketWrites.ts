@@ -45,6 +45,8 @@ const CREATE_TICKET_FIELDS = [
   "productId",
   "workflowId",
   "stage",
+  "ownerId",
+  "body",
 ] as const;
 
 // The patchable fields update_ticket accepts, matching UpdateTicketInput (and
@@ -97,6 +99,20 @@ export function registerTicketWriteTools(
           .enum(MODEL_STAGES)
           .optional()
           .describe("Optional publication stage; defaults to the project's."),
+        ownerId: z
+          .number()
+          .int()
+          .optional()
+          .describe(
+            "Optional owner role id; defaults to you, the creating role.",
+          ),
+        body: z
+          .string()
+          .optional()
+          .describe(
+            "Optional initial Markdown body. Seeded through the same write " +
+              "path as update_ticket_body, so `@`-mentions resolve and notify.",
+          ),
       },
     },
     async (args) => {
