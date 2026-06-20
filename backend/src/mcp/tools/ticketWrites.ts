@@ -72,14 +72,10 @@ export function registerTicketWriteTools(
     {
       title: "Create a ticket",
       description:
-        "Call this to capture a new unit of work as a ticket. A `title` and the " +
-        "`projectId` it belongs to are required; optionally set its `productId`, " +
-        "`workflowId`, publication `stage`, `ownerId`, or an initial Markdown " +
-        "`body` — passing `body` here seeds the description in one call, " +
-        "sparing a follow-up update_ticket_body. Returns the new ticket's compact " +
-        "shape (id, title, status, stage, projectId, estimate, eta, url) — `url` " +
-        "is a direct web-app link you can hand the user. The ticket " +
-        "is created under your role's organization — you cannot target another.",
+        "Call this to capture a new unit of work; `title` and `projectId` are " +
+        "required. Strongly prefer also setting `productId` and `workflowId` " +
+        "(discover them with `list_products` and `list_workflows`) — a ticket " +
+        "with no workflow has no lifecycle.",
       inputSchema: {
         title: z
           .string()
@@ -134,11 +130,10 @@ export function registerTicketWriteTools(
     {
       title: "Update a ticket",
       description:
-        "Call this to change an existing ticket's fields. Pass the ticket `id` " +
-        "and ONLY the fields you want to change — any field you omit is left " +
-        "untouched. Patchable: title, ownerId, projectId, difficulty, " +
-        "estimating, milestone, productId, workflowId. An empty patch (no " +
-        "fields beyond `id`) is rejected. Returns the ticket's compact shape.",
+        "Call this to change an existing ticket, passing `id` and only the " +
+        "fields you want to change (omitted fields are left untouched). To set " +
+        "`productId` or `workflowId`, discover valid values with `list_products` " +
+        "and `list_workflows` first.",
       inputSchema: {
         id: z.number().int().describe("Id of the ticket to update."),
         title: z.string().optional().describe("New title."),

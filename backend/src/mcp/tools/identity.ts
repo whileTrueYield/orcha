@@ -25,10 +25,9 @@ export function registerIdentityTools(
     {
       title: "Who am I?",
       description:
-        "Call this FIRST, before reading or planning any work, to learn your " +
-        "identity in Orcha: your role, the user and organization you act for, " +
-        "and whether your access is read-only. Use it to confirm which tenant " +
-        "you are operating in before anything else.",
+        "Call this first to confirm who you are and which tenant you act for " +
+        "before reading or planning. Reports your role, user, organization, " +
+        "and whether your token is read-only.",
     },
     async () => {
       const { data, error } = await readAs(resolved, ME_OPERATION);

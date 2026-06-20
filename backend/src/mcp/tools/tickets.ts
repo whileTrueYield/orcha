@@ -47,10 +47,9 @@ export function registerTicketTools(
     {
       title: "What should I work on next?",
       description:
-        "Call this to decide what to work on next. Returns your work queue in " +
-        "scheduler (MCTS) priority order: the tickets assigned to your role, " +
-        "each with the next workflow state to advance it into (`nextState`). " +
-        "The order is authoritative — start at the top. Takes no arguments.",
+        "Call this to decide what to work on next: your assigned tickets in " +
+        "scheduler priority order, each with the next stage to advance into " +
+        "(`nextState`). The order is authoritative — start at the top.",
     },
     async () => {
       const { data, error } = await readAs(resolved, NEXT_TICKETS_OPERATION);
@@ -72,12 +71,10 @@ export function registerTicketTools(
     {
       title: "Find tickets",
       description:
-        "Call this to find tickets by criteria — NOT to decide what to work " +
-        "on next (use `next_tickets` for that). Filter by project, status, " +
-        "stage, assignee role, and/or a search string; any omitted filter is " +
-        "unconstrained. Results are tenant-scoped and paginated: pass `limit` " +
-        "and `offset`, and walk pages with the `nextOffset` from the response " +
-        "(null once there are no more).",
+        "Call this to find tickets by project, status, stage, assignee, or " +
+        "text — not to decide what to work on next (use `next_tickets`). " +
+        "Tenant-scoped and paginated; walk pages with the response's " +
+        "`nextOffset` (null when no more).",
       inputSchema: {
         project: z
           .number()
@@ -140,10 +137,9 @@ export function registerTicketTools(
       title: "Get a ticket's full detail",
       description:
         "Call this to understand a single ticket before acting on it. Returns " +
-        "its status/stage, estimate and ETA, its workflow states (each with a " +
-        "three-point estimate), its dependency edges (`ancestors` it waits on, " +
-        "`successors` waiting on it), and the Markdown body with its version. " +
-        "Use the returned body `version` when writing the body back.",
+        "its status, estimates, stages, dependency edges (`ancestors`/" +
+        "`successors`), and Markdown body with the `version` you need to write " +
+        "the body back.",
       inputSchema: {
         id: z.number().int().describe("The ticket id."),
       },
@@ -177,10 +173,9 @@ export function registerTicketTools(
     {
       title: "Get a ticket's Markdown body",
       description:
-        "Call this when you only need a ticket's Markdown body and its " +
-        "version, not the surrounding detail. Returns `{ markdown, version }`; " +
-        "the `version` is the value a later body write must condition on, so " +
-        "read it immediately before editing.",
+        "Call this when you need only a ticket's Markdown body and version, " +
+        "not its surrounding detail. Read the `version` immediately before " +
+        "editing — a body write must condition on it.",
       inputSchema: {
         id: z.number().int().describe("The ticket id."),
       },

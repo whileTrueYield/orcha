@@ -273,6 +273,66 @@ export const PROJECTS_OPERATION = /* GraphQL */ `
   }
 `;
 
+// The org's products, tenant-scoped, searchable, paginated. No `/v1` twin yet;
+// it backs the MCP `list_products` discovery tool, which lets an agent choose
+// the `productId` a new ticket belongs to. `workflowIds` + `isUsingDefaultWorkflows`
+// let the agent reason about which workflows that product can attach.
+// IDEA: expose a GET /v1/products twin so the REST and MCP faces stay paired.
+export const PRODUCTS_OPERATION = /* GraphQL */ `
+  query RestProducts($first: Int, $offset: Int, $search: String) {
+    products(first: $first, offset: $offset, search: $search) {
+      totalCount
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        pageSize
+      }
+      nodes {
+        id
+        name
+        code
+        description
+        stage
+        isUsingDefaultWorkflows
+        workflowIds
+      }
+    }
+  }
+`;
+
+// The org's workflows, tenant-scoped, searchable, paginated. Backs the MCP
+// `list_workflows` discovery tool. When `productId` is given, the resolver
+// returns exactly the workflows that product can attach (org defaults included)
+// — the same valid set `create_ticket` validates against — so an agent never
+// picks a workflow the create would reject. Each carries its ordered `states`,
+// so the agent can see the lifecycle the ticket signs up for.
+// IDEA: expose a GET /v1/workflows twin so the REST and MCP faces stay paired.
+export const WORKFLOWS_OPERATION = /* GraphQL */ `
+  query RestWorkflows($first: Int, $offset: Int, $search: String, $productId: Int) {
+    workflows(first: $first, offset: $offset, search: $search, productId: $productId) {
+      totalCount
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        pageSize
+      }
+      nodes {
+        id
+        name
+        description
+        color
+        isDefaultWorkflow
+        stage
+        states {
+          id
+          name
+          position
+        }
+      }
+    }
+  }
+`;
+
 // GET /v1/projects/:id — a single project with its hierarchy edges.
 export const PROJECT_OPERATION = /* GraphQL */ `
   query RestProject($id: Int!) {

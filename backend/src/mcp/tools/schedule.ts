@@ -25,10 +25,8 @@ export function registerScheduleTools(
     {
       title: "What is on my schedule?",
       description:
-        "Call this to see your own outstanding scheduled work and when it is " +
-        "due. Returns your unfinished schedule items, each with the ticket it " +
-        "belongs to (including the ticket's ETA) and the workflow state being " +
-        "worked. Takes no arguments; it is always scoped to you.",
+        "Call this to see your own outstanding scheduled work and when each " +
+        "item is due. Always scoped to you; takes no arguments.",
     },
     async () => {
       const { data, error } = await readAs(resolved, SCHEDULE_OPERATION);
