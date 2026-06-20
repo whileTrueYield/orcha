@@ -209,6 +209,7 @@ export const TaskManagerModal: React.FC<TaskManagerModalInterface> = (
 
   return (
     <Transition
+      as="div"
       show={props.visible}
       enter="transition duration-100 ease-out"
       enterFrom="transform scale-95 opacity-0"
@@ -222,7 +223,7 @@ export const TaskManagerModal: React.FC<TaskManagerModalInterface> = (
         onClose={() => null}
         className="fixed inset-0 z-50 overflow-y-auto"
       >
-        <Dialog.Overlay className="fixed inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm transition-opacity" />
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm transition-opacity" />
         <div className="flex min-h-screen items-end justify-center px-2 pb-20 pt-4 text-center sm:items-center sm:px-0">
           <div className="relative inline-block w-full transform rounded-3xl bg-gray-900 pb-4 text-left align-bottom shadow-xl transition-all sm:my-8 sm:max-w-xl sm:align-middle">
             <button

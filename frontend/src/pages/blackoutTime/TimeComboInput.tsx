@@ -69,9 +69,9 @@ export const TimeComboInput: React.FC<Props> = (props) => {
           <Combobox.Option
             key={index}
             value={option}
-            className={({ active }) =>
+            className={({ focus }) =>
               `relative cursor-default select-none whitespace-nowrap py-2 pl-3 pr-9 text-right ${
-                active ? "bg-sky-600 text-white" : "text-gray-900"
+                focus ? "bg-sky-600 text-white" : "text-gray-900"
               }`
             }
           >

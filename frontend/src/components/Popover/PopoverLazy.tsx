@@ -72,6 +72,7 @@ const Popover: React.FC<Props> = (props) => {
         }}
       >
         <Transition
+          as="div"
           show
           appear
           enter="transition duration-100 ease-out"
@@ -89,6 +90,7 @@ const Popover: React.FC<Props> = (props) => {
         </Transition>
       </div>
       <Transition
+        as="div"
         show
         appear
         enter="transition duration-100 ease-out"

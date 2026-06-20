@@ -50,6 +50,7 @@ export const Notifications: FC<Props> = (props: Props) => {
     >
       {lastNotifications.map((notification) => (
         <Transition
+          as="div"
           show={findIndex(notifications, { index: notification.index }) > -1}
           className="w-full max-w-sm"
           enter="transform ease-out duration-300 transition"
@@ -70,6 +71,7 @@ export const Notifications: FC<Props> = (props: Props) => {
       ))}
       {newVersionAvailable ? (
         <Transition
+          as="div"
           show={showReloadNotification}
           className="w-full max-w-sm"
           enter="transform ease-out duration-300 transition"

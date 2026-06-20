@@ -11,7 +11,7 @@
     "@apollo/client": "^3.9.9",
     "@excalidraw/excalidraw": "^0.18.1",
     "@floating-ui/react": "^0.27.19",
-    "@headlessui/react": "1.7.18",
+    "@headlessui/react": "^2.2.10",
     "@heroicons/react": "^1.0.1",
     "@hookform/error-message": "^2.0.1",
     "@hookform/resolvers": "^3.10.0",

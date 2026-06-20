@@ -18,7 +18,7 @@ export const RoleRadioGroup: React.FC<Props> = (props) => {
   return (
     <RadioGroup.Option
       value={value}
-      className={({ checked, active }) =>
+      className={({ checked, focus }) =>
         cn(
           "relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm focus:outline-none",
           {
@@ -26,15 +26,15 @@ export const RoleRadioGroup: React.FC<Props> = (props) => {
             "border-transparent bg-yellow-50": checked && warning,
             "border-transparent": checked && !danger && !warning,
             "border-gray-300": !checked,
-            "border-orange-500 ring-2 ring-orange-500": active && danger,
-            "border-yellow-500 ring-2 ring-yellow-500": active && warning,
+            "border-orange-500 ring-2 ring-orange-500": focus && danger,
+            "border-yellow-500 ring-2 ring-yellow-500": focus && warning,
             "border-brand-500 ring-2 ring-brand-500":
-              active && !danger && !warning,
+              focus && !danger && !warning,
           }
         )
       }
     >
-      {({ checked, active }) => (
+      {({ checked, focus }) => (
         <>
           <div className="flex flex-1">
             <div className="flex flex-col">
@@ -58,8 +58,8 @@ export const RoleRadioGroup: React.FC<Props> = (props) => {
           />
           <div
             className={cn("pointer-events-none absolute -inset-px rounded-lg", {
-              border: active,
-              "border-2": !active,
+              border: focus,
+              "border-2": !focus,
               "border-orange-500": checked && danger,
               "border-yellow-500": checked && warning,
               "border-brand-500": checked && !danger && !warning,

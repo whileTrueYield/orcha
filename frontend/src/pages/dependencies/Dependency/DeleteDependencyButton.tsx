@@ -10,6 +10,7 @@ export const DeleteDependencyButton: React.FC<Props> = (props) => {
   return (
     <div className="relative z-20 h-5 w-5">
       <Transition
+        as="div"
         appear={true}
         show={true}
         enter="transition duration-150"

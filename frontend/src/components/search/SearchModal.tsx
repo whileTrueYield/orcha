@@ -151,10 +151,10 @@ export const SearchModal: React.FC<Props> = (props) => {
           <Combobox.Option
             key={result.id}
             value={result}
-            className={({ active }) =>
+            className={({ focus }) =>
               cn(
                 "group flex cursor-default select-none flex-row items-center px-4 py-2",
-                { "is-active bg-brand-100 text-brand-800": active }
+                { "is-active bg-brand-100 text-brand-800": focus }
               )
             }
           >
@@ -185,10 +185,10 @@ export const SearchModal: React.FC<Props> = (props) => {
                 <Combobox.Option
                   key={result.id}
                   value={result}
-                  className={({ active }) =>
+                  className={({ focus }) =>
                     cn(
                       "group flex cursor-default select-none flex-row items-center px-4 py-2",
-                      { "is-active bg-brand-100 text-brand-800": active }
+                      { "is-active bg-brand-100 text-brand-800": focus }
                     )
                   }
                 >

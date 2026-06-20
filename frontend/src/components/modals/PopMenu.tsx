@@ -125,13 +125,13 @@ export const PopMenu: React.FC<Props> = (props) => {
   const renderLink = (option: PopMenuOptionLink, key: string) => {
     return (
       <Menu.Item key={key} disabled={option.disabled}>
-        {({ active, disabled }) => {
+        {({ focus, disabled }) => {
           const linkClassName = cn(
             "block px-4 py-2 text-sm leading-5 focus:outline-none",
             {
               "text-gray-400 bg-gray-50 cursor-not-allowed": disabled,
-              "bg-brand-600 text-white": active && !disabled,
-              "bg-white text-gray-700": !active && !disabled,
+              "bg-brand-600 text-white": focus && !disabled,
+              "bg-white text-gray-700": !focus && !disabled,
               "cursor-pointer": !disabled,
             }
           );
@@ -139,17 +139,17 @@ export const PopMenu: React.FC<Props> = (props) => {
           const iconClassName = cn("w-5 h-5 mr-3 inline-block", {
             // regular
             "text-brand-100":
-              active && !disabled && !option.danger && !option.success,
+              focus && !disabled && !option.danger && !option.success,
             "text-gray-500":
-              !active && !disabled && !option.danger && !option.success,
+              !focus && !disabled && !option.danger && !option.success,
 
             // danger
-            "text-red-100 ": active && !disabled && option.danger,
-            "text-red-500": !active && !disabled && option.danger,
+            "text-red-100 ": focus && !disabled && option.danger,
+            "text-red-500": !focus && !disabled && option.danger,
 
             // success
-            "text-green-100 ": active && !disabled && option.success,
-            "text-green-500": !active && !disabled && option.success,
+            "text-green-100 ": focus && !disabled && option.success,
+            "text-green-500": !focus && !disabled && option.success,
           });
 
           return (
@@ -174,7 +174,7 @@ export const PopMenu: React.FC<Props> = (props) => {
   ) => {
     return (
       <Menu.Item key={key} disabled={option.disabled}>
-        {({ active, disabled }) => {
+        {({ focus, disabled }) => {
           const buttonClassName = cn(
             "w-full px-4 py-2 text-sm leading-5 focus:outline-none cursor-default flex flex-row truncate",
             {
@@ -183,34 +183,34 @@ export const PopMenu: React.FC<Props> = (props) => {
 
               // regular
               "bg-sky-600 text-white":
-                active && !disabled && !option.danger && !option.success,
+                focus && !disabled && !option.danger && !option.success,
               "bg-white text-gray-700":
-                !active && !disabled && !option.danger && !option.success,
+                !focus && !disabled && !option.danger && !option.success,
 
               // success
-              "bg-green-600 text-white": active && !disabled && option.success,
-              "bg-white text-green-700": !active && !disabled && option.success,
+              "bg-green-600 text-white": focus && !disabled && option.success,
+              "bg-white text-green-700": !focus && !disabled && option.success,
 
               // danger
-              "bg-red-600 text-white": active && !disabled && option.danger,
-              "bg-white text-red-700": !active && !disabled && option.danger,
+              "bg-red-600 text-white": focus && !disabled && option.danger,
+              "bg-white text-red-700": !focus && !disabled && option.danger,
             }
           );
 
           const iconClassName = cn("w-5 h-5 mr-3", {
             // regular
             "text-brand-100":
-              active && !disabled && !option.danger && !option.success,
+              focus && !disabled && !option.danger && !option.success,
             "text-gray-500":
-              !active && !disabled && !option.danger && !option.success,
+              !focus && !disabled && !option.danger && !option.success,
 
             // danger
-            "text-red-100 ": active && !disabled && option.danger,
-            "text-red-500": !active && !disabled && option.danger,
+            "text-red-100 ": focus && !disabled && option.danger,
+            "text-red-500": !focus && !disabled && option.danger,
 
             // success
-            "text-green-100 ": active && !disabled && option.success,
-            "text-green-500": !active && !disabled && option.success,
+            "text-green-100 ": focus && !disabled && option.success,
+            "text-green-500": !focus && !disabled && option.success,
           });
 
           return (
@@ -274,6 +274,7 @@ export const PopMenu: React.FC<Props> = (props) => {
               className={`relative ${open ? "z-40" : ""}`}
             >
               <Transition
+                as="div"
                 style={style}
                 className={popClassName}
                 show={open}

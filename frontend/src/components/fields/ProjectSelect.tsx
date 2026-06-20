@@ -131,7 +131,11 @@ export const ProjectSelect: React.FC<Props> = (props) => {
   };
 
   return (
-    <Combobox value={value} onChange={onChange} disabled={disabled}>
+    <Combobox
+      value={value}
+      onChange={(project) => onChange(project ?? undefined)}
+      disabled={disabled}
+    >
       {({ open }) => (
         <>
           {label ? (
@@ -205,16 +209,16 @@ export const ProjectSelect: React.FC<Props> = (props) => {
                     <Combobox.Option
                       key={index}
                       value={project}
-                      className={({ active }) =>
+                      className={({ focus }) =>
                         classNames(
                           "relative h-9 cursor-default select-none py-2 pl-3 pr-9",
-                          active
+                          focus
                             ? "bg-brand-600 text-white focus:ring-opacity-25"
                             : "text-gray-900"
                         )
                       }
                     >
-                      {({ active, selected }) => (
+                      {({ focus, selected }) => (
                         <>
                           <span
                             className={classNames(
@@ -232,7 +236,7 @@ export const ProjectSelect: React.FC<Props> = (props) => {
                             <span
                               className={classNames(
                                 "absolute inset-y-0 right-0 flex items-center pr-4",
-                                active
+                                focus
                                   ? "text-white"
                                   : "text-brand-600 focus:ring-opacity-25"
                               )}
