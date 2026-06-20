@@ -73,7 +73,9 @@ describe("get many documentations", () => {
       data: {
         documentations: {
           totalCount: 20,
-          nodes: take(sortBy(expectedDocumentationObjs, "name"), 10),
+          // Match the resolver's deterministic order: name, then id as the
+          // tie-break for documentations that happen to share a name.
+          nodes: take(sortBy(expectedDocumentationObjs, ["name", "id"]), 10),
           pageInfo: {
             endCursor: expect.any(Number),
             hasNextPage: true,
