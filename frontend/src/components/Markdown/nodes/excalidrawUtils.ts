@@ -10,7 +10,7 @@
  *     Excalidraw accepts a promise as `initialData`, and the scene is only
  *     ready once its images have been fetched
  */
-import { BinaryFileData } from "@excalidraw/excalidraw/types/types";
+import { BinaryFileData } from "@excalidraw/excalidraw/types";
 
 const IMAGE_MIME_TYPES = [
   "image/png",

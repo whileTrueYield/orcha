@@ -9,7 +9,7 @@
   "type": "module",
   "dependencies": {
     "@apollo/client": "^3.9.9",
-    "@excalidraw/excalidraw": "^0.16.0",
+    "@excalidraw/excalidraw": "^0.18.1",
     "@headlessui/react": "1.7.18",
     "@heroicons/react": "^1.0.1",
     "@hookform/error-message": "^2.0.1",
