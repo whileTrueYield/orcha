@@ -10,7 +10,7 @@ interface Props extends ModalProps {
   title: string;
   description: string;
   visible: boolean;
-  icon?: JSX.Element;
+  icon?: React.JSX.Element;
 }
 
 export const ConfirmModal: React.FC<Props> = (props) => {

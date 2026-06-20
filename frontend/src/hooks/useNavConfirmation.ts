@@ -5,7 +5,7 @@ export function useNavConfirmation(enabled: boolean = false) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isEnabled, setEnabled] = useState(enabled);
   const history = useHistory();
-  const unblockHandle = useRef<any>();
+  const unblockHandle = useRef<any>(undefined);
   const [targetLocation, setTargetLocation] = useState<any>();
 
   const onNavAccept = () => {
