@@ -167,7 +167,11 @@ export const PushNotification: React.FC = () => {
   );
 };
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+// TS 5.7+ made the typed arrays generic over their backing buffer. A bare
+// `Uint8Array` now widens to `Uint8Array<ArrayBufferLike>`, which `BufferSource`
+// (and thus `applicationServerKey`) rejects because it may be `SharedArrayBuffer`.
+// We allocate a plain `ArrayBuffer`-backed array, so pin the type to match.
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
 
