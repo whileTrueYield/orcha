@@ -1,7 +1,13 @@
-import { Datum, Serie } from "@nivo/line";
+// nivo 0.99 rewrote @nivo/line to a generic series model: the old standalone
+// `Serie`/`Datum` exports are gone. `LineSeries` is the series shape
+// ({ id, data: {x, y}[] }) and a single datum is its element type.
+import { LineSeries } from "@nivo/line";
 import { filter, groupBy, map, sortBy } from "lodash";
 import { QueryAggregate } from "types/graphql";
 import { autoFormatDatum, formatEnum, FormaterOptions } from "./helpers";
+
+type Datum = LineSeries["data"][number];
+type Serie = LineSeries;
 
 export function formatForLineChart(
   values: QueryAggregate[],
