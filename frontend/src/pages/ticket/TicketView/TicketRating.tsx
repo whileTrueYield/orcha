@@ -91,7 +91,6 @@ export const TicketRating: FCWithFragments<TicketRatingProps> = (props) => {
         </label>
         <select
           className="mt-1 flex-grow rounded border-0 bg-gray-200 py-0.5 text-sm focus:outline-none focus:ring focus:ring-brand-300 lg:mt-0 lg:flex-none"
-          placeholder="Choose difficulty"
           onChange={(event) => onChange(parseInt(event.target.value, 10))}
           id={`rating-difficulty`}
           value={difficulty || 0}

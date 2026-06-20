@@ -81,7 +81,6 @@ const TicketRatingModuleElement: FC<ElementProps> = (props) => {
         <div>
           <select
             className="form-select rounded border border-gray-300 bg-white py-0.5 text-sm"
-            placeholder="Choose complexity"
             onChange={(event) => setValue(parseInt(event.target.value))}
             id={`rating-${name}`}
             name={name}
