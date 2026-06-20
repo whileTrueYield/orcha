@@ -1,7 +1,7 @@
 FROM node:22-alpine AS base
 
 ARG node_env=development
-ENV NODE_ENV $node_env
+ENV NODE_ENV=$node_env
 
 WORKDIR /orcha
 # for Apple Silicon, we need to compile bcrypt, so we need to install 
@@ -13,7 +13,7 @@ RUN yarn --pure-lockfile
 
 FROM base AS prisma
 COPY prisma prisma/
-ENV NODE_OPTIONS --max-old-space-size=4096
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN yarn prisma generate
 
 FROM prisma AS studio
