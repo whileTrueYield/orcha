@@ -28,8 +28,8 @@ import {
   BinaryFiles,
   ExcalidrawImperativeAPI,
   ExcalidrawInitialDataState,
-} from "@excalidraw/excalidraw/types/types";
-import type { ExcalidrawElement } from "@excalidraw/excalidraw/types/element/types";
+} from "@excalidraw/excalidraw/types";
+import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import { ArrowsExpandIcon, TrashIcon } from "@heroicons/react/outline";
 import { filter } from "lodash";
 import cn from "classnames";
@@ -54,6 +54,10 @@ import {
   UPDATE_DRAWING,
 } from "./excalidrawGraphql";
 import { resolvablePromise, ResolvablePromise, urltoDataUrl } from "./excalidrawUtils";
+// Excalidraw 0.17+ no longer auto-injects its stylesheet (the pre-0.17 UMD
+// build did); the ESM build requires importing it explicitly or the canvas and
+// its UI render unstyled. Import it before our overrides so ./excalidraw.css wins.
+import "@excalidraw/excalidraw/index.css";
 import "./excalidraw.css";
 
 interface Props {
@@ -349,7 +353,9 @@ export function ExcalidrawEmbed({ id, onDelete }: Props) {
       }}
     >
       <Excalidraw
-        ref={(api: ExcalidrawImperativeAPI) => setExcalidrawAPI(api)}
+        // Excalidraw 0.17 removed API-access-via-ref in favor of the
+        // `excalidrawAPI` callback prop; the imperative API is delivered here.
+        excalidrawAPI={(api) => setExcalidrawAPI(api)}
         initialData={initialStatePromiseRef.current.promise}
         viewModeEnabled={readOnlyMode}
         generateIdForFile={generateIdForFile}
