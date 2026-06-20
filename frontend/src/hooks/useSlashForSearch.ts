@@ -7,7 +7,7 @@ import { get } from "lodash";
  * to place on the element to receive focus
  * @param searchElt
  */
-export const useSlashForSearch = (): React.RefObject<HTMLInputElement> => {
+export const useSlashForSearch = (): React.RefObject<HTMLInputElement | null> => {
   const searchElt = useRef<HTMLInputElement>(null);
 
   // Focus on the search input when pressing /

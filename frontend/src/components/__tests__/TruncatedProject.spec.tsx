@@ -3,7 +3,6 @@ import { render, screen } from "@testing-library/react";
 import { TruncatedProjectPath } from "components/TruncatedProjectPath";
 import { ModelStage, Project } from "types/graphql";
 import { GET_MINI_PROJECTS_QUERY } from "utils/project";
-import renderer from "react-test-renderer";
 
 const mocks = [
   {
@@ -82,13 +81,15 @@ describe("TruncatedProject", () => {
       parentId: null,
     };
 
-    const component = renderer.create(
+    render(
       <MockedProvider mocks={mocks}>
         <TruncatedProjectPath project={project as Project} />
       </MockedProvider>
     );
 
-    let tree = component.toJSON();
-    expect(tree).toMatchSnapshot();
+    // A parent-less project renders its name on its own, with no ancestry
+    // prefix (the ancestry variant renders the name as "/<name>").
+    expect(await screen.findByText("Project 01")).toBeTruthy();
+    expect(screen.queryByText("/Project 01")).toBeNull();
   });
 });

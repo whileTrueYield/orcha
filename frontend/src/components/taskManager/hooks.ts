@@ -93,7 +93,7 @@ export function useDebounceFn<T extends any[]>(
   fn: (...a: T) => any,
   delay: number,
 ): (...a: T) => void {
-  const debounce = useRef<any>();
+  const debounce = useRef<any>(undefined);
 
   return useCallback(
     (...a: T) => {
