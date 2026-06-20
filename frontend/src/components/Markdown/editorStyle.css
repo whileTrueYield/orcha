@@ -1,10 +1,197 @@
-.milkdown .ProseMirror {
-  padding: 30px;
+/**
+ * editorStyle.css — the presentation layer for the Crepe (Milkdown) markdown
+ * render, shared by both halves of the editor/view split (MarkdownEditor edits,
+ * MarkdownView views) so a body looks identical whether read or edited (ADR-0007).
+ *
+ * Crepe ships the "nord" theme (bundled in index.tsx, before Tailwind). Two of
+ * its defaults fight the Orcha design system, so we *retune the theme* rather
+ * than restyle every element:
+ *   1. Headings request `Rubik` via --crepe-font-title, but Rubik isn't bundled,
+ *      so every heading silently falls back to Times — a serif in an otherwise
+ *      all-Inter app. We repoint the title font at Inter.
+ *   2. nord's accents (a muted slate-blue link, a hot-red inline `code`) aren't
+ *      our brand blue + slate palette.
+ * Overriding the theme's CSS custom properties fixes both everywhere at once; the
+ * prose rules below only touch what tokens can't reach — the (too-large, too-thin)
+ * heading scale, vertical rhythm, and the inline-code / code-block chrome.
+ *
+ * Load order: this file is imported from the editor components, which land AFTER
+ * the nord theme in the bundle, so equal-specificity rules win on source order —
+ * the same mechanism the original padding override relied on. Colors are written
+ * as literal slate / brand hexes (the app's Tailwind palette) because Crepe owns
+ * this subtree and Tailwind utilities can't be applied to its generated elements.
+ */
+
+/* Retune the theme tokens to the Orcha system: Inter, brand blue, slate ink. */
+.milkdown {
+  --crepe-font-title: "Inter Var", Inter, ui-sans-serif, system-ui, sans-serif;
+  --crepe-color-primary: #1395f1; /* brand-600 — links, selection accents */
+  --crepe-color-on-background: #1e293b; /* slate-800 — body ink */
+  --crepe-color-on-surface: #1e293b;
 }
 
-/* The read-only view owns no chrome — its host surface (comment box, note
- * card, modal panel) controls the spacing, so the editor padding goes. The
- * extra class wins the specificity contest against the rule above. */
+/* The editor's own chrome. 24px keeps the body off the card edge without the
+ * cavernous top gap the old 30px left once heading margins are collapsed below. */
+.milkdown .ProseMirror {
+  padding: 24px;
+}
+
+/* The read-only view owns no chrome — its host surface (comment box, note card,
+ * modal panel) controls the spacing, so the editor padding goes. The extra class
+ * wins the specificity contest against the rule above. */
 .orcha-markdown-view .milkdown .ProseMirror {
   padding: 0;
+}
+
+/* The editor padding and a heading's top margin used to compound into an awkward
+ * dead band above the first line. Collapse the outer margins so the leading space
+ * is the padding alone, and the trailing space is the host's.
+ *
+ * ProseMirror seeds zero-height widget decorations as the first child, and which
+ * one swaps with focus: a `.ProseMirror-widget` gap target when blurred, a
+ * `.prosemirror-virtual-cursor` when the caret sits at the very top. Either one
+ * pushes the real first block to second position, where it reclaims its top
+ * margin — that's the "margin reappears the instant you click the title" bug. So
+ * we zero the literal first child *and* the block that follows up to two leading
+ * widgets (covers a blurred→focused transition that briefly stacks both). */
+.milkdown .ProseMirror > :first-child,
+.milkdown
+  .ProseMirror
+  > :first-child:is(.ProseMirror-widget, [class*="virtual-cursor"])
+  + *,
+.milkdown
+  .ProseMirror
+  > :first-child:is(.ProseMirror-widget, [class*="virtual-cursor"])
+  + :is(.ProseMirror-widget, [class*="virtual-cursor"])
+  + * {
+  margin-top: 0;
+}
+.milkdown .ProseMirror > :last-child {
+  margin-bottom: 0;
+}
+
+/* Headings: one sans family (via the token above), a calmer scale than nord's
+ * display sizes, real weight, and tight tracking on the large cuts. */
+.milkdown .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
+  color: #0f172a; /* slate-900 */
+  font-weight: 600;
+  margin: 1.4em 0 0.5em;
+  padding: 0;
+  text-wrap: balance;
+}
+.milkdown .ProseMirror h1 {
+  font-size: 28px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+.milkdown .ProseMirror h2 {
+  font-size: 22px;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+.milkdown .ProseMirror h3 {
+  font-size: 18px;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+.milkdown .ProseMirror h4 {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.milkdown .ProseMirror h5 {
+  font-size: 15px;
+  line-height: 1.5;
+}
+/* h6 reads as an eyebrow: small, uppercase, muted. */
+.milkdown .ProseMirror h6 {
+  font-size: 13px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b; /* slate-500 */
+}
+
+/* Body copy: looser leading than nord's 1.5 for comfortable reading. */
+.milkdown .ProseMirror p {
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
+/* Inline code: a quiet slate chip instead of nord's hot-red display:inline-block
+ * (which shifts the baseline against surrounding text). */
+.milkdown .ProseMirror code {
+  display: inline;
+  color: #1e293b; /* slate-800 */
+  background: #f1f5f9; /* slate-100 */
+  border: 1px solid #e2e8f0; /* slate-200 */
+  padding: 0.12em 0.35em;
+  border-radius: 0.375em;
+  font-size: 0.85em;
+  line-height: inherit;
+}
+
+/* Code block: a flat slate panel, horizontally scrollable, with no double border
+ * on its inner <code>. */
+.milkdown .ProseMirror pre {
+  background: #f8fafc; /* slate-50 */
+  border: 1px solid #e2e8f0; /* slate-200 */
+  border-radius: 0.5rem;
+  padding: 14px 16px;
+  overflow-x: auto;
+  line-height: 1.6;
+}
+.milkdown .ProseMirror pre code {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 0.875em;
+}
+
+/* Crepe renders fenced code through a CodeMirror instance whose stock theme ships
+ * dark-mode token colors (a #abb2bf grey) — illegible on our light panel. There's
+ * no active syntax highlighter here, so repainting the content and gutter in slate
+ * is all it takes to make code readable. */
+.milkdown .cm-editor .cm-content,
+.milkdown .cm-editor .cm-line {
+  color: #334155; /* slate-700 */
+}
+.milkdown .cm-editor .cm-gutters {
+  background: transparent;
+  border: none;
+  color: #94a3b8; /* slate-400 */
+}
+.milkdown .cm-editor .cm-activeLineGutter {
+  background: transparent;
+  color: #475569; /* slate-600 */
+}
+.milkdown .cm-editor .cm-activeLine {
+  background: rgb(15 23 42 / 0.03); /* a faint slate wash, not the default blue */
+}
+
+/* Links: brand blue, with an underline that clears the descenders and darkens on
+ * hover. */
+.milkdown .ProseMirror a {
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+.milkdown .ProseMirror a:hover {
+  color: #0b76c1; /* brand-700 */
+}
+
+/* Blockquote: a slate rule and muted italic text. */
+.milkdown .ProseMirror blockquote {
+  color: #475569; /* slate-600 */
+  font-style: italic;
+}
+.milkdown .ProseMirror blockquote::before {
+  background: #cbd5e1; /* slate-300 */
+}
+
+/* Horizontal rule: a single hairline instead of nord's thick padded band. */
+.milkdown .ProseMirror hr {
+  height: 1px;
+  padding: 0;
+  margin: 1.5em 0;
+  background-color: #e2e8f0; /* slate-200 */
+  background-clip: border-box;
 }

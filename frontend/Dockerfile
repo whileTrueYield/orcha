@@ -1,6 +1,6 @@
 FROM node:22-alpine AS base
 ARG node_env=production
-ENV NODE_ENV $node_env
+ENV NODE_ENV=$node_env
 WORKDIR /orcha
 COPY package.json yarn.lock ./
 ADD vite-env.d.ts vite-env.d.ts
@@ -14,7 +14,7 @@ RUN yarn --pure-lockfile
 
 FROM base AS test
 ARG node_env=test
-ENV NODE_ENV $node_env
+ENV NODE_ENV=$node_env
 COPY src src/
 COPY public public/
 ADD .env .env
@@ -41,16 +41,16 @@ ARG orcha_support_uri="http://localhost:3001"
 ARG orcha_hostname="localhost"
 ARG image_tag="latest"
 
-ENV ORCHA_API_URI $orcha_api_uri
-ENV ORCHA_UPLOAD_CDN_URI $orcha_upload_cdn_uri
-ENV ORCHA_SUPPORT_URI $orcha_support_uri
-ENV ORCHA_HOSTNAME $orcha_hostname
-ENV IMAGE_TAG $image_tag
+ENV ORCHA_API_URI=$orcha_api_uri
+ENV ORCHA_UPLOAD_CDN_URI=$orcha_upload_cdn_uri
+ENV ORCHA_SUPPORT_URI=$orcha_support_uri
+ENV ORCHA_HOSTNAME=$orcha_hostname
+ENV IMAGE_TAG=$image_tag
 RUN ["yarn", "build"]
 
 FROM base AS dev
 ARG node_env=development
-ENV NODE_ENV $node_env
+ENV NODE_ENV=$node_env
 COPY src src/
 COPY public public/
 ADD .env.development .env
