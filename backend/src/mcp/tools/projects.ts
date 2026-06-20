@@ -32,11 +32,10 @@ export function registerProjectTools(
     {
       title: "Find projects",
       description:
-        "Call this to find projects by name or position in the hierarchy. " +
-        "Filter by a search string and/or a parent project id (its direct " +
-        "children); any omitted filter is unconstrained. Results are " +
-        "tenant-scoped and paginated: pass `limit` and `offset`, and walk " +
-        "pages with the `nextOffset` from the response (null when no more).",
+        "Call this to find the projects tickets live in, by name or position " +
+        "in the hierarchy (a `parent` id returns its direct children). " +
+        "Tenant-scoped and paginated; walk pages with the response's " +
+        "`nextOffset` (null when no more).",
       inputSchema: {
         search: z
           .string()
@@ -81,9 +80,9 @@ export function registerProjectTools(
     {
       title: "Get a project's detail",
       description:
-        "Call this to understand a single project: its name, stage, duration, " +
-        "and its hierarchy edges (`parent` and direct `children`). Use it to " +
-        "navigate the project tree before listing or creating its tickets.",
+        "Call this to understand a single project and navigate the project " +
+        "tree before listing or creating its tickets. Returns its name, stage, " +
+        "duration, and `parent`/`children` edges.",
       inputSchema: {
         id: z.number().int().describe("The project id."),
       },
@@ -102,10 +101,9 @@ export function registerProjectTools(
     {
       title: "Get a project's Markdown body",
       description:
-        "Call this when you only need a project's Markdown body and its " +
-        "version. Returns `{ markdown, version }`; the `version` is the value " +
-        "a later body write must condition on, so read it immediately before " +
-        "editing.",
+        "Call this when you need only a project's Markdown body and version, " +
+        "not its surrounding detail. Read the `version` immediately before " +
+        "editing — a body write must condition on it.",
       inputSchema: {
         id: z.number().int().describe("The project id."),
       },

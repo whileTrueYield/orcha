@@ -55,28 +55,22 @@ export function registerTicketTransitionTool(
     {
       title: "Transition a ticket through its lifecycle",
       description:
-        "Call this to move a ticket through its lifecycle. Pass the ticket " +
-        "`id` and one `action`:\n" +
-        "- `schedule`: take an UNSCHEDULED ticket to SCHEDULED. This is the " +
-        "only way to schedule a ticket. No other fields.\n" +
-        "- `start`: open a unit of work on a specific workflow stage. Requires " +
-        "`stageId` (a ticket workflow state id). Returns the created schedule " +
-        "item, NOT the ticket.\n" +
-        "- `advance`: close the current stage and move to the next one — or to " +
-        "`toStageId` if you name one — with an optional `note`. Advancing past " +
-        "the last stage completes the ticket (status DONE).\n" +
-        "- `close`: finish the ticket (status DONE). Requires a non-empty " +
-        "`note` recording why.\n" +
-        "- `cancel`: drop the ticket (status CANCELLED). Requires a non-empty " +
-        "`note` recording why.\n" +
-        "Every action runs under your role's organization; you cannot " +
-        "transition another tenant's ticket.",
+        "Call this to move a ticket through its lifecycle, passing its `id` " +
+        "and one `action`. Each action has its own required fields and effect " +
+        "— see the `action` parameter.",
       inputSchema: {
         id: z.number().int().describe("Id of the ticket to transition."),
         action: z
           .enum(ACTIONS)
           .describe(
-            "The lifecycle move: schedule, start, advance, close, or cancel.",
+            "The lifecycle move:\n" +
+              "- `schedule`: UNSCHEDULED → SCHEDULED (the only way to schedule).\n" +
+              "- `start`: open work on a stage; requires `stageId`, returns the " +
+              "schedule item (not the ticket).\n" +
+              "- `advance`: close the current stage and move to the next (or " +
+              "`toStageId`); past the last stage completes the ticket (DONE).\n" +
+              "- `close`: finish the ticket (DONE); requires a non-empty `note`.\n" +
+              "- `cancel`: drop the ticket (CANCELLED); requires a non-empty `note`.",
           ),
         stageId: z
           .number()

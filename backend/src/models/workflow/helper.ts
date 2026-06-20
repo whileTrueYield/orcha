@@ -110,6 +110,52 @@ export async function getPaginatedWorkflows(
   return paginateNodes({ nodes: workflows, offset, pageSize, count });
 }
 
+// The workflows a product can actually attach to a ticket, paginated. This is
+// the *valid set* — direct-attached workflows plus org defaults when the product
+// uses them — which is exactly what `getWorkflowQueryForProduct` encodes and
+// what createTicket/updateTicket validate against. It is deliberately distinct
+// from `getPaginatedWorkflows({ productId })`, which returns only the
+// direct-attached set (used by the `Product.workflows` UI field). A foreign or
+// missing product yields an empty page rather than an error, so a caller can
+// branch on the count, not a throw.
+export async function getPaginatedWorkflowsForProduct(args: {
+  productId: number;
+  organizationId: number;
+  first?: number;
+  offset?: number;
+  search?: string;
+}) {
+  const { productId, organizationId, first, search } = args;
+  const offset = args.offset ? args.offset : 0;
+  const pageSize = clamp(first || 10, 1, 50);
+
+  const product = await prisma.product.findFirst({
+    where: { id: productId, organizationId },
+  });
+  if (!product) {
+    return paginateNodes({ nodes: [], offset, pageSize, count: 0 });
+  }
+
+  const workflowQuery = getWorkflowQueryForProduct(product);
+
+  // Layer search on top of the product-validity predicate, leaving its
+  // stage/OR clauses intact.
+  const query = trim(search);
+  if (query) {
+    workflowQuery.name = { contains: query, mode: "insensitive" };
+  }
+
+  const workflows = await prisma.workflow.findMany({
+    where: workflowQuery,
+    skip: offset,
+    take: pageSize,
+    orderBy: { name: Prisma.SortOrder.asc },
+  });
+  const count = await prisma.workflow.count({ where: workflowQuery });
+
+  return paginateNodes({ nodes: workflows, offset, pageSize, count });
+}
+
 /**
  * Convert a workflow into a mini Workflow
  */

@@ -76,18 +76,11 @@ async function saveBody(
 // the agent's mental model of read-edit-write-rebase is the tool description.
 function describe(noun: string, readTool: string): string {
   return (
-    `Call this to replace a ${noun}'s Markdown body. Pass the ${noun} \`id\`, the ` +
-    `full new \`markdown\`, and the \`baseVersion\` you read from \`${readTool}\` ` +
-    "— Markdown is the source of truth, so send the whole body, not a fragment. " +
-    "The write is conditional on `baseVersion`:\n" +
-    '- On success you get `{ status: "ok", markdown, version, warnings }` — ' +
-    "`version` is the new value your NEXT write must condition on.\n" +
-    '- If the body changed since `baseVersion`, NOTHING is overwritten: you get ' +
-    '`{ status: "conflict", markdown, version, warnings }` carrying the CURRENT ' +
-    "body and version. Rebase your edit onto that `markdown` and retry with the " +
-    "returned `version`.\n" +
-    "Always branch on `status`. `warnings` lists any `@`-mentions in your " +
-    "Markdown that did not resolve to a person."
+    `Call this to replace a ${noun}'s entire Markdown body (send the whole ` +
+    `body, not a fragment), conditioned on the \`baseVersion\` you read from ` +
+    `\`${readTool}\`. If the body moved since then nothing is overwritten and ` +
+    'you get `{ status: "conflict", markdown, version }` with the current body ' +
+    "to rebase onto and retry — so always branch on `status`."
   );
 }
 

@@ -3,10 +3,12 @@
  * to a per-request McpServer.
  *
  * An agent reads before it acts: it orients (`whoami`), finds and understands
- * work (the ticket and project tools), and checks what it is on the hook for
+ * work (the ticket and project tools), discovers where new work belongs (the
+ * product and workflow tools), and checks what it is on the hook for
  * (`get_schedule`). Each domain registers its own tools (see ./identity,
- * ./tickets, ./projects, ./schedule); this module just composes them in the
- * order an agent meets them. Every tool reuses the GraphQL document its `/v1`
+ * ./tickets, ./projects, ./products, ./workflows, ./schedule); this module just
+ * composes them in the order an agent meets them. Every tool reuses the GraphQL
+ * document its `/v1`
  * twin uses, run as the connection's resolved role, so MCP and REST never drift
  * and tenant scoping comes for free from the resolvers.
  *
@@ -23,6 +25,8 @@ import { ResolvedRole } from "../resolveRole";
 import { registerIdentityTools } from "./identity";
 import { registerTicketTools } from "./tickets";
 import { registerProjectTools } from "./projects";
+import { registerProductTools } from "./products";
+import { registerWorkflowTools } from "./workflows";
 import { registerScheduleTools } from "./schedule";
 import { registerTicketWriteTools } from "./ticketWrites";
 import { registerTicketTransitionTool } from "./ticketTransition";
@@ -35,6 +39,8 @@ export function registerReadTools(
   registerIdentityTools(server, resolved);
   registerTicketTools(server, resolved);
   registerProjectTools(server, resolved);
+  registerProductTools(server, resolved);
+  registerWorkflowTools(server, resolved);
   registerScheduleTools(server, resolved);
 }
 
