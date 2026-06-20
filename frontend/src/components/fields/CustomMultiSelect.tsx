@@ -97,16 +97,16 @@ export function CustomMultiSelect<T>(props: Props<T>) {
   };
 
   interface RenderItemParams {
-    active: boolean;
+    focus: boolean;
   }
 
   const renderItem =
     (option: SelectOption<T>) => (params: RenderItemParams) => {
       const className = cn("cursor-default select-none relative py-2 px-3", {
-        "bg-brand-700 text-white": params.active,
+        "bg-brand-700 text-white": params.focus,
         "bg-gray-300 text-gray-600": option.disabled && !isSelected(option),
         "font-semibold text-brand-900 bg-white":
-          !params.active && isSelected(option),
+          !params.focus && isSelected(option),
         "pl-8": checkmarks,
       });
       return (
@@ -321,6 +321,7 @@ export function CustomMultiSelect<T>(props: Props<T>) {
 
             <div className="relative mt-1">
               <Transition
+                as="div"
                 show={isOpen}
                 className=" absolute right-0 z-10 mt-1 mb-4 w-full max-w-md overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg"
                 enter="transition duration-100 ease-out"

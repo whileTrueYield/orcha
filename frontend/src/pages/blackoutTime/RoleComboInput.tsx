@@ -90,11 +90,11 @@ export const RoleComboInput: React.FC<Props> = (props) => {
     if (filteredRoles.length) {
       const getClassName =
         (id: number) =>
-        ({ active }: { active: boolean }) =>
+        ({ focus }: { focus: boolean }) =>
           cn("cursor-default select-none py-2 px-3", {
-            "bg-sky-600 text-white": active,
-            "bg-sky-100 text-sky-700": isSelected(id) && !active,
-            "text-gray-900": !active && !isSelected(id),
+            "bg-sky-600 text-white": focus,
+            "bg-sky-100 text-sky-700": isSelected(id) && !focus,
+            "text-gray-900": !focus && !isSelected(id),
           });
 
       return filteredRoles.map((miniRole) => (
@@ -103,7 +103,7 @@ export const RoleComboInput: React.FC<Props> = (props) => {
           key={miniRole.id}
           className={getClassName(miniRole.id)}
         >
-          {({ active }) => (
+          {({ focus }) => (
             <div className="flex flex-1 flex-row justify-between">
               <span
                 className={classNames(
@@ -118,11 +118,11 @@ export const RoleComboInput: React.FC<Props> = (props) => {
                   <Tag
                     large
                     className={cn({
-                      "bg-sky-700 text-white": active,
+                      "bg-sky-700 text-white": focus,
                       "bg-white text-sky-700":
-                        isSelected(miniRole.id) && !active,
+                        isSelected(miniRole.id) && !focus,
                       "bg-gray-100 text-gray-700":
-                        !active && !isSelected(miniRole.id),
+                        !focus && !isSelected(miniRole.id),
                     })}
                   >
                     {miniRole.title}
@@ -180,7 +180,7 @@ export const RoleComboInput: React.FC<Props> = (props) => {
   };
 
   return (
-    <Combobox value={selectedRole} onChange={toggleRole}>
+    <Combobox value={selectedRole} onChange={(role) => role && toggleRole(role)}>
       {() => (
         <>
           <Combobox.Label className="block text-left">

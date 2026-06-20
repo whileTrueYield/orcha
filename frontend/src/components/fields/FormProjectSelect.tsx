@@ -83,16 +83,16 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
       return (
         <Combobox.Option
           value={query}
-          className={({ active }) =>
+          className={({ focus }) =>
             classNames(
               "relative flex cursor-default select-none flex-row justify-between py-2 pl-3 pr-9",
-              active
+              focus
                 ? "bg-brand-600 text-white focus:ring-opacity-25"
                 : "text-gray-900"
             )
           }
         >
-          {({ active, selected }) => (
+          {({ focus, selected }) => (
             <>
               <span
                 className={classNames(
@@ -105,7 +105,7 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
               <span
                 className={classNames(
                   "rounded px-1 py-0.5 text-xs font-bold tracking-wide ",
-                  selected || active
+                  selected || focus
                     ? "bg-brand-700 text-gray-50"
                     : "bg-gray-100 text-gray-600"
                 )}
@@ -158,16 +158,16 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
             <Combobox.Option
               key={project.id}
               value={project}
-              className={({ active }) =>
+              className={({ focus }) =>
                 classNames(
                   "relative cursor-default select-none py-2 pl-3 pr-9",
-                  active
+                  focus
                     ? "bg-brand-600 text-white focus:ring-opacity-25"
                     : "text-gray-900"
                 )
               }
             >
-              {({ active, selected }) => (
+              {({ focus, selected }) => (
                 <>
                   <span
                     className={classNames(
@@ -182,7 +182,7 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
                     <span
                       className={classNames(
                         "absolute inset-y-0 right-0 flex items-center pr-4",
-                        active
+                        focus
                           ? "text-white"
                           : "text-brand-600 focus:ring-opacity-25"
                       )}

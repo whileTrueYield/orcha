@@ -56,7 +56,7 @@ export const TicketCombobox: React.FC<Props> = (props) => {
   };
 
   return (
-    <Combobox value={value} onChange={onChange}>
+    <Combobox value={value} onChange={(ticket) => ticket && onChange(ticket)}>
       {({ open }) => (
         <>
           {label ? (
@@ -98,16 +98,16 @@ export const TicketCombobox: React.FC<Props> = (props) => {
                     <Combobox.Option
                       key={index}
                       value={ticket}
-                      className={({ active }) =>
+                      className={({ focus }) =>
                         classNames(
                           "relative cursor-default select-none py-2 px-3",
-                          active
+                          focus
                             ? "bg-brand-600 text-white focus:ring-opacity-25"
                             : "text-gray-900"
                         )
                       }
                     >
-                      {({ active, selected }) => (
+                      {({ focus, selected }) => (
                         <>
                           <div
                             className={classNames(
@@ -121,7 +121,7 @@ export const TicketCombobox: React.FC<Props> = (props) => {
                             <div
                               className={classNames(
                                 "shrink-0 rounded py-0.5 px-2 text-xs font-medium",
-                                active
+                                focus
                                   ? "bg-brand-700 text-brand-50"
                                   : "bg-gray-100 text-gray-600"
                               )}

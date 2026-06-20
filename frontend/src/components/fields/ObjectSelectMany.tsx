@@ -139,7 +139,7 @@ export function ObjectSelectMany<T extends { id: number }>(
   const renderItems = () => {
     return items.map((item) => (
       <Listbox.Option key={item.id} value={item as any}>
-        {({ selected, active }) => renderOption({ selected, active, item })}
+        {({ selected, focus }) => renderOption({ selected, active: focus, item })}
       </Listbox.Option>
     ));
   };
@@ -195,6 +195,7 @@ export function ObjectSelectMany<T extends { id: number }>(
                 </span>
 
                 <Transition
+                  as="div"
                   show={open}
                   leave="transition ease-in duration-100"
                   leaveFrom="opacity-100"

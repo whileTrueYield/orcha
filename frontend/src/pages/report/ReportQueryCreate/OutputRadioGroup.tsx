@@ -17,18 +17,18 @@ export const OutputRadioGroup: React.FC<Props> = (props) => {
   return (
     <RadioGroup.Option
       value={value}
-      className={({ checked, active }) =>
+      className={({ checked, focus }) =>
         cn(
           "relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm focus:outline-none",
           {
             "border-transparent": checked,
             "border-gray-300": !checked,
-            "border-brand-500 bg-brand-50 ring-2 ring-brand-500": active,
+            "border-brand-500 bg-brand-50 ring-2 ring-brand-500": focus,
           }
         )
       }
     >
-      {({ checked, active }) => (
+      {({ checked, focus }) => (
         <>
           <div className="flex flex-1">
             <div className="flex flex-col">
@@ -57,8 +57,8 @@ export const OutputRadioGroup: React.FC<Props> = (props) => {
           />
           <div
             className={cn("pointer-events-none absolute -inset-px rounded-lg", {
-              border: active,
-              "border-2": !active,
+              border: focus,
+              "border-2": !focus,
               "border-brand-500": checked,
               "border-transparent": !checked,
             })}

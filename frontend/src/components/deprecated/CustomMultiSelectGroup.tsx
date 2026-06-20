@@ -92,14 +92,14 @@ const CustomMultiSelectGroupElement: React.FC<ElementProps> = (props) => {
   };
 
   interface RenderItemParams {
-    active: boolean;
+    focus: boolean;
   }
 
   const renderItem = (option: SelectOption) => (params: RenderItemParams) => {
     const className = cn("cursor-default select-none relative py-2 pl-3 pr-9", {
-      "bg-brand-600 text-white": params.active,
+      "bg-brand-600 text-white": params.focus,
       "bg-gray-100 text-gray-600": option.disabled,
-      "text-gray-900": !params.active && !option.disabled,
+      "text-gray-900": !params.focus && !option.disabled,
       "font-semibold": isSelected(option),
     });
     return (
@@ -124,8 +124,8 @@ const CustomMultiSelectGroupElement: React.FC<ElementProps> = (props) => {
       const className = cn(
         "absolute inset-y-0 right-0 flex items-center pr-4",
         {
-          "text-blue-600": !params.active,
-          "text-white": params.active,
+          "text-blue-600": !params.focus,
+          "text-white": params.focus,
         }
       );
 
@@ -156,8 +156,8 @@ const CustomMultiSelectGroupElement: React.FC<ElementProps> = (props) => {
   ) => {
     if (option.description) {
       const className = cn("ml-1 font-normal", {
-        "text-blue-200": params.active,
-        "text-gray-500": !params.active,
+        "text-blue-200": params.focus,
+        "text-gray-500": !params.focus,
       });
 
       return <span className={className}>{option.description}</span>;
@@ -242,6 +242,7 @@ const CustomMultiSelectGroupElement: React.FC<ElementProps> = (props) => {
             {renderButton()}
 
             <Transition
+              as="div"
               show={isOpen}
               className="absolute mt-1 mb-4 w-full rounded-md bg-white shadow-lg"
               enter="transition duration-100 ease-out"

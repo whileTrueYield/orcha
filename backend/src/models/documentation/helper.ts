@@ -53,7 +53,10 @@ export async function getPaginatedDocumentations(
     where: documentationQuery,
     skip: offset,
     take: pageSize,
-    orderBy: { [sort]: direction },
+    // Tie-break on the primary key so offset pagination is deterministic.
+    // Without it, rows that share a `name` come back in arbitrary order and
+    // page boundaries can skip or duplicate items between requests.
+    orderBy: [{ [sort]: direction }, { id: direction }],
   });
   const count = await prisma.documentation.count({ where: documentationQuery });
 

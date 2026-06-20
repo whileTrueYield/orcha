@@ -97,14 +97,14 @@ export const TicketTagInput: FCWithFragments<Props> = (props) => {
         <Combobox.Option
           value={miniTag}
           key={miniTag.id}
-          className={({ active }) =>
+          className={({ focus }) =>
             classNames(
               "relative cursor-default select-none py-2 pl-3 pr-9",
-              active ? "bg-brand-600 text-white" : "text-gray-900"
+              focus ? "bg-brand-600 text-white" : "text-gray-900"
             )
           }
         >
-          {({ active }) => (
+          {({ focus }) => (
             <>
               <span
                 className={classNames(
@@ -119,7 +119,7 @@ export const TicketTagInput: FCWithFragments<Props> = (props) => {
                 <span
                   className={classNames(
                     "absolute inset-y-0 right-0 flex items-center pr-4",
-                    active ? "text-white" : "text-indigo-600"
+                    focus ? "text-white" : "text-indigo-600"
                   )}
                 >
                   <CheckIcon className="h-5 w-5" aria-hidden="true" />
@@ -147,7 +147,7 @@ export const TicketTagInput: FCWithFragments<Props> = (props) => {
         name={query}
       />
 
-      <Combobox value={selectedTag} onChange={toggleTag}>
+      <Combobox value={selectedTag} onChange={(tag) => tag && toggleTag(tag)}>
         <Combobox.Label>
           <div className="mb-1 text-lg text-gray-700">Tags</div>
         </Combobox.Label>

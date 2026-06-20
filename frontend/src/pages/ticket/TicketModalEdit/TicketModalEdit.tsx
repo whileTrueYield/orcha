@@ -54,7 +54,7 @@ export const TicketModalEdit: FCWithFragments<Props> = (props) => {
         onClose={setOpen}
       >
         <div className="absolute inset-0 overflow-hidden">
-          <Dialog.Overlay className="absolute inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-all" />
+          <div className="absolute inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-all" />
 
           <div className="fixed inset-y-0 right-0 flex pl-10">
             <Transition.Child

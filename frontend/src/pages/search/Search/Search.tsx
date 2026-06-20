@@ -36,6 +36,7 @@ export const Search = () => {
       </div>
       <SearchMain project={data?.project} />
       <Transition
+        as="div"
         appear={true}
         show={selection.length > 0}
         className="fixed bottom-12 right-1/2 z-20 -mr-[150px] transition-all sm:right-1/4 lg:right-1/3"

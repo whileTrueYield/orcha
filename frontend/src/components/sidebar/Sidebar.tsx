@@ -415,6 +415,7 @@ export const Sidebar: React.FC<Props> = ({ children }) => {
         <div className="md:hidden">
           <div className="fixed inset-0 z-40 flex">
             <Transition.Child
+              as="div"
               className="fixed inset-0"
               enter="transition-opacity ease-linear duration-300"
               enterFrom="opacity-0"
@@ -427,6 +428,7 @@ export const Sidebar: React.FC<Props> = ({ children }) => {
             </Transition.Child>
 
             <Transition.Child
+              as="div"
               className="relative flex w-full max-w-xs flex-1 flex-col bg-gray-800"
               enter="transition-transform ease-in-out duration-300 transform"
               enterFrom="-translate-x-full"

@@ -66,14 +66,14 @@ interface Props {
 }
 
 export function ExcalidrawEmbed({ id, onDelete }: Props) {
-  const lastSave = useRef<string>();
-  const currentState = useRef<string>();
+  const lastSave = useRef<string | undefined>(undefined);
+  const currentState = useRef<string | undefined>(undefined);
   // The optimistic-concurrency token for updateDrawing. A ref, not state: lock
   // acquisition bumps `updatedAt` server-side (Prisma @updatedAt), and a
   // debounced save holding a pre-lock copy in its closure would be rejected as
   // stale ("changed since you opened it"). The ref makes every save read the
   // newest token no matter when its timer was scheduled.
-  const updatedAtRef = useRef<Drawing["updatedAt"]>();
+  const updatedAtRef = useRef<Drawing["updatedAt"] | undefined>(undefined);
   const [initialData, setInitialData] = useState<string>();
 
   const containerRef = useRef<HTMLDivElement>(null);

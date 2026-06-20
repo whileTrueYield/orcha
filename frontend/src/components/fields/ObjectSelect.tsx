@@ -151,8 +151,8 @@ export function ObjectSelect<T>(props: ObjectSelectProps<T>) {
         value={item as any}
         disabled={props.isDisabled ? props.isDisabled(item) : false}
       >
-        {({ selected, active, disabled }) =>
-          renderOption({ selected, active, item, disabled })
+        {({ selected, focus, disabled }) =>
+          renderOption({ selected, active: focus, item, disabled })
         }
       </Listbox.Option>
     ));
@@ -190,7 +190,7 @@ export function ObjectSelect<T>(props: ObjectSelectProps<T>) {
   return (
     <div className={containerClasses}>
       <div className="w-full">
-        <Listbox value={value} onChange={onChange} disabled={disabled}>
+        <Listbox value={value ?? undefined} onChange={onChange} disabled={disabled}>
           {({ open }) => (
             <>
               {label ? renderLabel() : null}
@@ -215,6 +215,7 @@ export function ObjectSelect<T>(props: ObjectSelectProps<T>) {
                 )}
 
                 <Transition
+                  as="div"
                   show={open}
                   leave="transition ease-in duration-100"
                   leaveFrom="opacity-100"
