@@ -4,27 +4,46 @@
  *
  * The stable Ticket.id never changes, so REST/MCP/FK references survive a move;
  * only the per-product localId (and the human-facing "CODE-localId" reference)
- * is reassigned. Picking a destination product re-validates the workflow against
- * it: the workflow picker offers only workflows valid for the chosen product and
- * defaults to the current one when it is still valid — keeping that selection is
- * a pure product move that preserves the plan, while picking a different workflow
- * resets it (and, for a ticket with logged work, supersedes instead of rewriting).
+ * is reassigned. Picking a destination re-validates the workflow against it.
  *
- * One action, the right outcome chosen for the user (the backend stays the
- * authoritative gate):
- *   - same workflow kept           → in-place move, plan preserved
- *   - workflow changes, no work    → in-place move, plan reset + re-estimation
- *   - workflow changes, has work   → supersede into the destination product
+ * The modal's frame (icon, title, lead-in copy) stays fixed — morphing it as the
+ * selection changes is disorienting. Instead, every consequence is surfaced as a
+ * callout next to the field that triggers it, so the explanation sits where the
+ * user is looking:
+ *   - destination has no workflow      → blocking error under the product
+ *   - destination lacks current flow   → warning under the workflow (plan can't carry)
+ *   - chosen workflow differs          → warning under the workflow (reset / supersede)
+ *   - current workflow kept            → no callout (plain move, plan preserved)
+ *
+ * Selection is driven here (not by the picker's own default) so we can apply one
+ * policy: prefer the current workflow when the destination offers it, otherwise
+ * auto-pick the only workflow when there is exactly one. The backend stays the
+ * authoritative gate; this is guidance, not enforcement.
  */
 
 import React, { useState } from "react";
+import { gql, useQuery } from "@apollo/client";
 import { Modal, ModalProps } from "components/modals/Modal";
 import { Button } from "components/fields/Button";
 import { SwitchHorizontalIcon } from "@heroicons/react/outline";
 import { ProductSelect } from "components/fields/ProductSelect";
 import { ProductWorkflowSelect } from "components/fields/ProductWorkflowSelect";
-import { MiniProduct, MiniWorkflow } from "types/graphql";
-import cn from "classnames";
+import { Alert } from "components/Alert";
+import { MiniProduct, MiniWorkflow, QueryMiniWorkflowsArgs } from "types/graphql";
+import { QueryReturnValue } from "types/queryTypes";
+
+// The destination's valid workflows. Shares Apollo's normalized cache cell with
+// ProductWorkflowSelect's own fetch (same root field + args), so the picker and
+// this modal stay consistent without a second network round-trip.
+const GET_DESTINATION_WORKFLOWS = gql`
+  query GetDestinationWorkflowsForChangeProduct($productId: Int) {
+    miniWorkflows(productId: $productId) {
+      id
+      name
+      stage
+    }
+  }
+`;
 
 interface Props extends ModalProps {
   currentProductId: number;
@@ -55,23 +74,62 @@ export const ChangeProductModal: React.FC<Props> = (props) => {
   const [product, setProduct] = useState<MiniProduct | undefined>();
   const [workflow, setWorkflow] = useState<MiniWorkflow | undefined>();
 
+  const isProductMove = !!product && product.id !== currentProductId;
+
+  // Load the destination's workflows so we can (a) auto-select sensibly and
+  // (b) explain when the current workflow can't come along. onCompleted fires
+  // per query completion (not per render); the functional update keeps a pick
+  // already made — by the user or a prior completion — from being clobbered
+  // when cache-and-network resolves a second time.
+  const { data: workflowData } = useQuery<
+    QueryReturnValue["miniWorkflows"],
+    QueryMiniWorkflowsArgs
+  >(GET_DESTINATION_WORKFLOWS, {
+    skip: !isProductMove,
+    fetchPolicy: "cache-and-network",
+    variables: { productId: product?.id },
+    onCompleted: ({ miniWorkflows }) => {
+      setWorkflow((previous) => {
+        if (previous) return previous;
+        const current = miniWorkflows.find((w) => w.id === currentWorkflowId);
+        if (current) return current;
+        if (miniWorkflows.length === 1) return miniWorkflows[0];
+        return previous;
+      });
+    },
+  });
+
   // Switching the destination invalidates the previous workflow choice; clearing
-  // it lets the (remounted) workflow picker re-default to the current workflow
-  // when that workflow is valid for the newly chosen product.
+  // it lets the auto-select policy (above) run fresh for the new product.
   const onSelectProduct = (next?: MiniProduct) => {
     setProduct(next);
     setWorkflow(undefined);
   };
 
-  const isProductMove = !!product && product.id !== currentProductId;
-  const canConfirm = isProductMove && !!workflow;
+  // `data` always corresponds to the current variables, so a non-null list means
+  // it has loaded for *this* destination (not a stale previous one).
+  const workflowsLoaded = isProductMove && workflowData?.miniWorkflows != null;
+  const destinationWorkflows = workflowData?.miniWorkflows ?? [];
+  const hasNoWorkflow = workflowsLoaded && destinationWorkflows.length === 0;
+  const currentWorkflowAvailable = destinationWorkflows.some(
+    (w) => w.id === currentWorkflowId,
+  );
+  const currentWorkflowMissing =
+    workflowsLoaded && destinationWorkflows.length > 0 && !currentWorkflowAvailable;
+
+  const workflowChanges = !!workflow && workflow.id !== currentWorkflowId;
 
   // A workflow change on a worked ticket cannot be rewritten in place — it
   // supersedes. Same workflow, or any change with no logged work, stays in place.
-  const willSupersede =
-    canConfirm && hasLoggedWork && workflow!.id !== currentWorkflowId;
-  const willResetPlan =
-    canConfirm && !willSupersede && workflow!.id !== currentWorkflowId;
+  const willSupersede = isProductMove && hasLoggedWork && workflowChanges;
+
+  const canConfirm = isProductMove && !!workflow && !hasNoWorkflow;
+
+  // Reset vs supersede depends only on whether the ticket has logged work, so the
+  // consequence can be stated even before a specific workflow is picked.
+  const consequence = hasLoggedWork
+    ? `Confirming closes ${ticketReference} (its logged work is kept) and opens a new ticket in ${product?.name}.`
+    : "Confirming resets the plan, and the ticket re-enters estimation.";
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -88,18 +146,8 @@ export const ChangeProductModal: React.FC<Props> = (props) => {
     <Modal {...modalProps}>
       <form onSubmit={onSubmit} data-e2e="change-product-modal-form">
         <div className="sm:flex sm:items-start">
-          <div
-            className={cn(
-              "mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full sm:mx-0 sm:h-10 sm:w-10",
-              willSupersede ? "bg-orange-100" : "bg-brand-100",
-            )}
-          >
-            <SwitchHorizontalIcon
-              className={cn(
-                "h-6 w-6",
-                willSupersede ? "text-orange-600" : "text-brand-600",
-              )}
-            />
+          <div className="mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-100 sm:mx-0 sm:h-10 sm:w-10">
+            <SwitchHorizontalIcon className="h-6 w-6 text-brand-600" />
           </div>
           <div className="mt-3 flex-1 text-center sm:mt-0 sm:ml-4 sm:text-left">
             <h3 className="text-lg font-medium leading-6 text-gray-900 sm:mr-6">
@@ -110,29 +158,6 @@ export const ChangeProductModal: React.FC<Props> = (props) => {
                 Move {ticketReference} to another product. It gets a new
                 reference there; the old one stops resolving. Comments, watchers
                 and dependencies are kept.
-                {willSupersede ? (
-                  <>
-                    {" "}
-                    Because {ticketReference} has logged work and the workflow
-                    changes, confirming will{" "}
-                    <span className="font-medium">close</span> it (its logged
-                    work is kept) and{" "}
-                    <span className="font-medium">create a new ticket</span> in
-                    the chosen product.
-                  </>
-                ) : willResetPlan ? (
-                  <>
-                    {" "}
-                    The chosen workflow differs, so the plan is reset and
-                    re-enters estimation.
-                  </>
-                ) : (
-                  <>
-                    {" "}
-                    Keeping the current workflow preserves the plan and
-                    estimates.
-                  </>
-                )}
               </p>
             </div>
             <div className="mt-4">
@@ -143,17 +168,49 @@ export const ChangeProductModal: React.FC<Props> = (props) => {
                 placeholder="Select a product"
               />
             </div>
-            {isProductMove ? (
+            {hasNoWorkflow ? (
+              <Alert
+                type="danger"
+                title="No workflow available"
+                className="mt-3"
+              >
+                {product!.name} has no published workflow, so {ticketReference}{" "}
+                can&apos;t be moved here. Pick another product.
+              </Alert>
+            ) : null}
+            {isProductMove && !hasNoWorkflow ? (
               <div className="mt-4">
                 <ProductWorkflowSelect
                   key={product!.id}
                   label="Workflow"
                   productId={product!.id}
-                  defaultId={currentWorkflowId}
                   value={workflow}
                   onChange={setWorkflow}
                   placeholder="Select a workflow"
                 />
+                {currentWorkflowMissing ? (
+                  <Alert
+                    type="warning"
+                    title="Current workflow isn't available here"
+                    className="mt-3"
+                  >
+                    {product!.name} doesn&apos;t offer {ticketReference}&apos;s
+                    current workflow, so its plan can&apos;t be carried over.{" "}
+                    {consequence}
+                  </Alert>
+                ) : workflowChanges ? (
+                  <Alert
+                    type="warning"
+                    title={
+                      willSupersede
+                        ? "This will supersede the ticket"
+                        : "The plan will be reset"
+                    }
+                    className="mt-3"
+                  >
+                    {consequence}
+                  </Alert>
+                ) : null}
               </div>
             ) : null}
           </div>
