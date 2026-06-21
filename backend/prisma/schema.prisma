@@ -1831,6 +1831,17 @@ model Ticket {
   ancestors  Ticket[] @relation("TicketAncestry")
   successors Ticket[] @relation("TicketAncestry")
 
+  // Supersession lineage (ADR 0010): when a worked Ticket's workflow changes it
+  // is closed (CANCELLED) and the effort continues on a new linked Ticket.
+  // `supersededById` points the original at its successor; `supersedes` is the
+  // reverse list (the successor's originals). This is "this became that" — it is
+  // deliberately NOT `ancestors`/`successors` (the dependency DAG the scheduler
+  // reads), so lineage never injects phantom dependencies into scheduling.
+  // onDelete: SetNull keeps a successor deletable without taking its original.
+  supersededById Int?
+  supersededBy   Ticket?  @relation("TicketSupersession", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes     Ticket[] @relation("TicketSupersession")
+
   ticketText             TicketText?
   ticketTextRevisions    TicketTextRevision[]
   comments               Comment[]
@@ -1854,6 +1865,7 @@ model Ticket {
   @@index([workflowId])
   @@index([folderId])
   @@index([organizationId])
+  @@index([supersededById])
   @@index([stage])
   @@index([status])
   @@index([estimating])

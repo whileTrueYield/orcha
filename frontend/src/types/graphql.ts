@@ -881,6 +881,7 @@ export type Mutation = {
   setChecklist: TicketWorkflowState;
   setProjectChecklist: Project;
   skipTicketWorkflowState: TicketWorkflowState;
+  supersedeTicketWorkflow: Ticket;
   toggleOnboarding: Organization;
   unarchiveProject: Project;
   unblockTicket: Ticket;
@@ -1603,6 +1604,12 @@ export type MutationSetProjectChecklistArgs = {
 
 export type MutationSkipTicketWorkflowStateArgs = {
   id: Scalars['Int']['input'];
+};
+
+
+export type MutationSupersedeTicketWorkflowArgs = {
+  ticketId: Scalars['Int']['input'];
+  workflowId: Scalars['Int']['input'];
 };
 
 
@@ -3819,6 +3826,7 @@ export type Ticket = {
   issues: Array<Issue>;
   lastScheduleItem?: Maybe<ScheduleItem>;
   localId?: Maybe<Scalars['Int']['output']>;
+  loggedWorkSeconds: Scalars['Int']['output'];
   milestone: Scalars['Boolean']['output'];
   organization: Organization;
   organizationId: Scalars['Int']['output'];
@@ -3836,6 +3844,9 @@ export type Ticket = {
   state?: Maybe<TicketWorkflowState>;
   status: TicketStatus;
   successors: Array<Ticket>;
+  supersededBy?: Maybe<Ticket>;
+  supersededById?: Maybe<Scalars['Int']['output']>;
+  supersedes: Array<Ticket>;
   tags: Array<Tag>;
   ticketWorkflowStates: Array<TicketWorkflowState>;
   title: Scalars['String']['output'];
