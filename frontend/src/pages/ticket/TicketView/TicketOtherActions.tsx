@@ -8,6 +8,7 @@ import {
   ArchiveIcon,
   ReplyIcon,
   RefreshIcon,
+  SwitchHorizontalIcon,
 } from "@heroicons/react/outline";
 import { Button } from "components/fields/Button";
 import { FCWithFragments } from "types";
@@ -23,6 +24,7 @@ import { ConfirmModal } from "components/modals/ConfirmModal";
 import { PlainTextModal } from "components/modals/PlainTextModal";
 import { ChangeWorkflowModal } from "./ChangeWorkflowModal";
 import { SupersedeWorkflowModal } from "./SupersedeWorkflowModal";
+import { ChangeProductModal } from "./ChangeProductModal";
 
 interface Props {
   ticket: Ticket;
@@ -30,8 +32,8 @@ interface Props {
   onTicketStageChange: (stage: ModelStage) => void;
   onTicketStatusChange: (status: TicketStatus, note?: string) => void;
   onMarkTicketNotDone: () => void;
-  onChangeWorkflow: (workflowId: number) => void;
-  onSupersedeWorkflow: (workflowId: number) => void;
+  onChangeWorkflow: (workflowId: number, productId?: number) => void;
+  onSupersedeWorkflow: (workflowId: number, productId?: number) => void;
 }
 
 export const TicketOtherActions: FCWithFragments<Props> = (props) => {
@@ -65,6 +67,9 @@ export const TicketOtherActions: FCWithFragments<Props> = (props) => {
     useState(false);
 
   const [isChangeWorkflowModalVisible, setIsChangeWorkflowModalVisible] =
+    useState(false);
+
+  const [isChangeProductModalVisible, setIsChangeProductModalVisible] =
     useState(false);
   const history = useHistory();
 
@@ -123,6 +128,13 @@ export const TicketOtherActions: FCWithFragments<Props> = (props) => {
       type: "button",
       icon: (className) => <RefreshIcon className={className} />,
       onClick: () => setIsChangeWorkflowModalVisible(true),
+      disabled: !canChangeWorkflow,
+    },
+    {
+      label: "Change Product",
+      type: "button",
+      icon: (className) => <SwitchHorizontalIcon className={className} />,
+      onClick: () => setIsChangeProductModalVisible(true),
       disabled: !canChangeWorkflow,
     },
     {
@@ -249,6 +261,22 @@ export const TicketOtherActions: FCWithFragments<Props> = (props) => {
           onConfirm={(workflowId) => onChangeWorkflow(workflowId)}
           onClose={() => setIsChangeWorkflowModalVisible(false)}
           visible={isChangeWorkflowModalVisible}
+        />
+      ) : null}
+      {canChangeWorkflow ? (
+        <ChangeProductModal
+          currentProductId={ticket.product!.id}
+          currentWorkflowId={ticket.workflow!.id}
+          ticketReference={ticketReference}
+          hasLoggedWork={hasLoggedWork}
+          onChange={(productId, workflowId) =>
+            onChangeWorkflow(workflowId, productId)
+          }
+          onSupersede={(productId, workflowId) =>
+            onSupersedeWorkflow(workflowId, productId)
+          }
+          onClose={() => setIsChangeProductModalVisible(false)}
+          visible={isChangeProductModalVisible}
         />
       ) : null}
       <PopMenu

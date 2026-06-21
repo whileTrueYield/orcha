@@ -117,9 +117,13 @@ export const TicketView: FCWithFragments = () => {
     { changeTicketWorkflow: Ticket },
     MutationChangeTicketWorkflowArgs
   >(CHANGE_TICKET_WORKFLOW_MUTATION, {
-    onError: onGraphQLError({ title: "Could not change workflow" }),
+    // This mutation now serves both an in-place workflow reset and a product
+    // move that may keep the workflow (plan preserved). A neutral message stays
+    // accurate for both; the stage UI already prompts for estimates when the
+    // ticket actually re-enters estimation.
+    onError: onGraphQLError({ title: "Could not update ticket" }),
     onCompleted: onMutationComplete({
-      title: "Workflow changed — re-estimate the new stages",
+      title: "Ticket updated",
     }),
   });
 
@@ -148,12 +152,18 @@ export const TicketView: FCWithFragments = () => {
     },
   });
 
-  const onChangeWorkflow = (workflowId: number) => {
-    changeTicketWorkflow({ variables: { ticketId: ticket.id, workflowId } });
+  // productId is optional (Phase 2, ADR 0010): present when the action also moves
+  // the ticket to another product, omitted for a same-product workflow change.
+  const onChangeWorkflow = (workflowId: number, productId?: number) => {
+    changeTicketWorkflow({
+      variables: { ticketId: ticket.id, workflowId, productId },
+    });
   };
 
-  const onSupersedeWorkflow = (workflowId: number) => {
-    supersedeTicketWorkflow({ variables: { ticketId: ticket.id, workflowId } });
+  const onSupersedeWorkflow = (workflowId: number, productId?: number) => {
+    supersedeTicketWorkflow({
+      variables: { ticketId: ticket.id, workflowId, productId },
+    });
   };
 
   const onTicketStageChange = (stage: ModelStage) => {
@@ -442,8 +452,13 @@ const CHANGE_TICKET_WORKFLOW_MUTATION = gql`
   mutation ChangeTicketWorkflowForTicketView(
     $ticketId: Int!
     $workflowId: Int!
+    $productId: Int
   ) {
-    changeTicketWorkflow(ticketId: $ticketId, workflowId: $workflowId) {
+    changeTicketWorkflow(
+      ticketId: $ticketId
+      workflowId: $workflowId
+      productId: $productId
+    ) {
       id
       ...TicketViewFragment
     }
@@ -455,8 +470,13 @@ const SUPERSEDE_TICKET_WORKFLOW_MUTATION = gql`
   mutation SupersedeTicketWorkflowForTicketView(
     $ticketId: Int!
     $workflowId: Int!
+    $productId: Int
   ) {
-    supersedeTicketWorkflow(ticketId: $ticketId, workflowId: $workflowId) {
+    supersedeTicketWorkflow(
+      ticketId: $ticketId
+      workflowId: $workflowId
+      productId: $productId
+    ) {
       id
       ...TicketViewFragment
     }

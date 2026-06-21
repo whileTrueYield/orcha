@@ -143,6 +143,14 @@ export const TicketRef = builder.prismaObject("Ticket", {
     // exposes every state so the UI can toggle them on/off. The Pothos
     // migration had flattened this to `t.relation(...)`, which leaked
     // deactivated states on scheduled tickets.
+    //
+    // The live plan is only ever the *current* workflow's stages. Changing a
+    // workflow in place (ADR 0010) deactivates the old workflow's rows rather
+    // than deleting them (so logged work stays attached) — those tombstones
+    // belong to a previous workflow and must never surface in the assignee/skip
+    // form, even though it shows inactive rows on an UNSCHEDULED ticket. Scoping
+    // to the current workflow hides them while keeping a skipped *current* stage
+    // (isActive=false, same workflow) visible so it can be toggled back on.
     ticketWorkflowStates: t.field({
       type: [TicketWorkflowStateRef],
       resolve: (ticket, _args, ctx) =>
@@ -153,6 +161,9 @@ export const TicketRef = builder.prismaObject("Ticket", {
               ticket.status === PrismaTicketStatus.UNSCHEDULED
                 ? undefined
                 : true,
+            ...(ticket.workflowId
+              ? { workflowState: { workflowId: ticket.workflowId } }
+              : {}),
           },
         }),
     }),

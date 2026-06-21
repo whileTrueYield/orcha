@@ -1215,13 +1215,18 @@ builder.mutationField("changeTicketWorkflow", (t) =>
     args: {
       ticketId: t.arg.int({ required: true }),
       workflowId: t.arg.int({ required: true }),
+      // Phase 2 (ADR 0010): an optional destination product. Moving product
+      // reassigns the per-product localId — and so the human-facing reference —
+      // while the stable Ticket.id (and every FK/REST/MCP reference to it) is
+      // untouched. Omit it for a same-product workflow change (Phase 1).
+      productId: t.arg.int({ required: false }),
     },
     resolve: async (query, _root, args, ctx) => {
       const me = ctx.me as AuthRoleContext;
 
       // Only a published Ticket has a plan to reset here; a DRAFT Ticket still
-      // changes its workflow directly through updateTicket while the lock is
-      // open.
+      // changes its workflow (and product) directly through updateTicket while
+      // the lock is open.
       const ticket = await ctx.prisma.ticket.findFirstOrThrow({
         where: {
           id: args.ticketId,
@@ -1242,27 +1247,58 @@ builder.mutationField("changeTicketWorkflow", (t) =>
         throw new GraphQLError("Ticket requires a published product");
       }
 
-      if (args.workflowId === ticket.workflowId) {
+      // A product move is requested only when a productId is given that differs
+      // from the current one; the destination must be a live product in the same
+      // organization. Workflow validity below is then checked against it, not the
+      // origin product.
+      const isProductMove =
+        args.productId != null && args.productId !== ticket.productId;
+      let destinationProduct = ticket.product;
+      if (isProductMove) {
+        const product = await ctx.prisma.product.findFirst({
+          where: {
+            id: args.productId!,
+            organizationId: me.organizationId,
+            stage: { not: ModelStage.DELETED },
+          },
+        });
+        if (!product) {
+          throw new GraphQLError("Product is not valid for this organization");
+        }
+        destinationProduct = product;
+      }
+
+      const workflowChanges = args.workflowId !== ticket.workflowId;
+
+      // Nothing to do: same workflow and same product.
+      if (!workflowChanges && !isProductMove) {
         throw new GraphQLError("Ticket already uses this workflow");
       }
 
-      // The gate (ADR 0010): any logged work turns a plan into a history.
-      // Estimates and SCHEDULED status do not count — only actually-elapsed
-      // time (a ScheduleItem). Such a Ticket must be superseded, not rewritten.
-      const loggedWork = await ctx.prisma.scheduleItem.count({
-        where: { ticketId: ticket.id },
-      });
-      if (loggedWork > 0) {
-        throw new GraphQLError(
-          "This ticket has logged work; its workflow can no longer be changed in place. It must be superseded instead.",
-        );
+      // The gate (ADR 0010) governs the *workflow*: any logged work turns a plan
+      // into a history, and rewriting that plan in place would make the Ticket
+      // misrepresent what happened — so a worked ticket whose workflow changes
+      // must be superseded instead. A pure product move keeps the workflow (and
+      // thus the workflow-scoped plan) intact and truthful, so logged work does
+      // not bar it; only a workflow change triggers the gate.
+      if (workflowChanges) {
+        const loggedWork = await ctx.prisma.scheduleItem.count({
+          where: { ticketId: ticket.id },
+        });
+        if (loggedWork > 0) {
+          throw new GraphQLError(
+            "This ticket has logged work; its workflow can no longer be changed in place. It must be superseded instead.",
+          );
+        }
       }
 
-      // The target must be a workflow this product can attach (org defaults
-      // included) and published — the same validity the publish path enforces.
+      // The target must be a workflow the *destination* product can attach (org
+      // defaults included) and published — the same validity the publish path
+      // enforces. On a move this re-validates the workflow against the new
+      // product; if it is no longer valid the caller must pick one that is.
       const workflow = await ctx.prisma.workflow.findFirst({
         where: {
-          ...getWorkflowQueryForProduct(ticket.product),
+          ...getWorkflowQueryForProduct(destinationProduct),
           id: args.workflowId,
         },
       });
@@ -1273,6 +1309,40 @@ builder.mutationField("changeTicketWorkflow", (t) =>
         throw new GraphQLError(
           `Workflow ${workflow.name} has not been published`,
         );
+      }
+
+      // On a move the ticket takes the next free localId within the destination
+      // product — the same per-product assignment the publish path makes.
+      const productMove = isProductMove
+        ? await (async () => {
+            const lastTicket = await ctx.prisma.ticket.findFirst({
+              where: {
+                productId: destinationProduct.id,
+                organizationId: me.organizationId,
+                localId: { not: null },
+              },
+              select: { localId: true },
+              orderBy: { localId: "desc" },
+            });
+            return {
+              product: { connect: { id: destinationProduct.id } },
+              localId: lastTicket?.localId ? lastTicket.localId + 1 : 1,
+            };
+          })()
+        : {};
+
+      // A pure product move keeps the workflow, so the plan stays valid and
+      // truthful: reassign productId + localId only, leaving the plan, estimates
+      // and status untouched — the Ticket does not re-enter estimation.
+      if (!workflowChanges) {
+        await ctx.prisma.ticket.update({
+          where: { id: ticket.id },
+          data: productMove,
+        });
+        return ctx.prisma.ticket.findUniqueOrThrow({
+          ...query,
+          where: { id: ticket.id },
+        });
       }
 
       const states = await ctx.prisma.workflowState.findMany({
@@ -1289,7 +1359,8 @@ builder.mutationField("changeTicketWorkflow", (t) =>
       // silently destroy any logged work; deactivation keeps every row (and its
       // snapshot name) attached and truthful. Fresh active rows then carry the
       // new workflow's stages, and the Ticket re-enters estimation
-      // (status=UNSCHEDULED, estimating=true) exactly as publishing does.
+      // (status=UNSCHEDULED, estimating=true) exactly as publishing does. Any
+      // product move rides along in the same update.
       await ctx.prisma.$transaction([
         ctx.prisma.ticketWorkflowState.updateMany({
           where: { ticketId: ticket.id },
@@ -1306,6 +1377,7 @@ builder.mutationField("changeTicketWorkflow", (t) =>
         ctx.prisma.ticket.update({
           where: { id: ticket.id },
           data: {
+            ...productMove,
             workflow: { connect: { id: workflow.id } },
             status: TicketStatus.UNSCHEDULED,
             estimating: true,
@@ -1375,6 +1447,10 @@ builder.mutationField("supersedeTicketWorkflow", (t) =>
     args: {
       ticketId: t.arg.int({ required: true }),
       workflowId: t.arg.int({ required: true }),
+      // Phase 2 (ADR 0010): an optional destination product. The successor is
+      // created under it (taking a fresh localId there); omit it to supersede
+      // within the same product (Phase 1).
+      productId: t.arg.int({ required: false }),
     },
     resolve: async (query, _root, args, ctx) => {
       const me = ctx.me as AuthRoleContext;
@@ -1405,6 +1481,24 @@ builder.mutationField("supersedeTicketWorkflow", (t) =>
         throw new GraphQLError("Ticket requires a published product");
       }
 
+      // The successor lands in the destination product when a move is requested,
+      // otherwise in the original's. Workflow validity and the successor's
+      // localId below are resolved against this product.
+      let destinationProduct = original.product;
+      if (args.productId != null && args.productId !== original.productId) {
+        const product = await ctx.prisma.product.findFirst({
+          where: {
+            id: args.productId,
+            organizationId: me.organizationId,
+            stage: { not: ModelStage.DELETED },
+          },
+        });
+        if (!product) {
+          throw new GraphQLError("Product is not valid for this organization");
+        }
+        destinationProduct = product;
+      }
+
       if (args.workflowId === original.workflowId) {
         throw new GraphQLError("Ticket already uses this workflow");
       }
@@ -1423,11 +1517,11 @@ builder.mutationField("supersedeTicketWorkflow", (t) =>
         );
       }
 
-      // The target must be a workflow this product can attach and published —
-      // the same validity the publish path enforces.
+      // The target must be a workflow the destination product can attach and
+      // published — the same validity the publish path enforces.
       const workflow = await ctx.prisma.workflow.findFirst({
         where: {
-          ...getWorkflowQueryForProduct(original.product),
+          ...getWorkflowQueryForProduct(destinationProduct),
           id: args.workflowId,
         },
       });
@@ -1448,11 +1542,11 @@ builder.mutationField("supersedeTicketWorkflow", (t) =>
         throw new GraphQLError("This workflow does not contain any states");
       }
 
-      // The successor's localId is the next free one within the product — the
-      // same assignment the publish path makes.
+      // The successor's localId is the next free one within the destination
+      // product — the same assignment the publish path makes.
       const lastTicket = await ctx.prisma.ticket.findFirst({
         where: {
-          productId: original.productId,
+          productId: destinationProduct.id,
           organizationId: me.organizationId,
           localId: { not: null },
         },
@@ -1482,7 +1576,7 @@ builder.mutationField("supersedeTicketWorkflow", (t) =>
             ? { owner: { connect: { id: original.ownerId } } }
             : {}),
           project: { connect: { id: original.projectId } },
-          product: { connect: { id: original.product.id } },
+          product: { connect: { id: destinationProduct.id } },
           workflow: { connect: { id: workflow.id } },
           ...(original.folderId
             ? { folder: { connect: { id: original.folderId } } }

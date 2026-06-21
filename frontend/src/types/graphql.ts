@@ -1069,6 +1069,7 @@ export type MutationChangePasswordArgs = {
 
 
 export type MutationChangeTicketWorkflowArgs = {
+  productId?: InputMaybe<Scalars['Int']['input']>;
   ticketId: Scalars['Int']['input'];
   workflowId: Scalars['Int']['input'];
 };
@@ -1608,6 +1609,7 @@ export type MutationSkipTicketWorkflowStateArgs = {
 
 
 export type MutationSupersedeTicketWorkflowArgs = {
+  productId?: InputMaybe<Scalars['Int']['input']>;
   ticketId: Scalars['Int']['input'];
   workflowId: Scalars['Int']['input'];
 };
