@@ -118,6 +118,43 @@ its access **and** refresh tokens at once.
 _Avoid_: Integration, plugin; "OAuth client" when you mean the user-visible
 connection rather than the registered software.
 
+## Version control
+
+**Ticket ref**:
+The canonical human key for a Ticket, `PRODUCT-localId` (e.g. `BUGS-1`) — the
+product's `code` and the Ticket's per-product `localId` joined by a hyphen
+(`formatTicketRef`). Unique **within an Organization**: product codes are
+case-insensitive-unique per org, and `localId` is unique per product, so the
+code is the part that disambiguates which product a bare number belongs to.
+This is the string a developer types to point a code change at a Ticket.
+_Avoid_: "ticket id" (that is the opaque DB `id`); "ticket number" unqualified
+(that is just the `localId`, meaningless without the product code).
+
+**Repository link**:
+The record binding one GitHub repository (`owner/name`) to exactly **one**
+Organization, enabling read-only mirroring of that repo's pull requests onto
+Tickets. It lives at the **Organization** level, not the Product level: the
+product code inside each **Ticket ref** already routes a reference to the right
+product, so one repo can feed many products. One repo binds to a single
+Organization (a public repo's refs must not resolve in two tenants at once).
+A link is **pending** until a valid signed webhook delivery proves the creator
+controls the repo (only a repo admin can install the webhook); **only an active,
+verified link reserves the repo** globally. This makes binding-squatting
+impossible — you cannot reserve a repo you cannot webhook.
+_Avoid_: Connected app, integration, plugin — a **Connected app** is a *User's*
+OAuth grant to call Orcha; a Repository link is the reverse direction (Orcha
+receiving a repo's webhooks). Do not store its webhook secret in the OAuth token
+tables — those are Orcha-as-authorization-server (inbound), this is outbound.
+
+**Linked pull request**:
+A GitHub pull request captured under a Ticket because its **head branch name or
+title** contains that Ticket's **Ticket ref**. Read-only: Orcha mirrors the PR's
+state (open/merged/closed) and never writes back. Surfaced in the Ticket's
+**Changes** tab. One PR may link to several Tickets (it can carry several refs);
+one Ticket may have several linked PRs.
+_Avoid_: "commit" (v1 captures PRs, not loose commits); "Issue" (that is a
+support submission, never a GitHub issue or a PR).
+
 ## Example dialogue
 
 > **Dev:** Can the agent's token see every org I'm in?
