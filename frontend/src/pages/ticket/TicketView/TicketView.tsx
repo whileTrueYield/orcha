@@ -46,6 +46,10 @@ import { MutationReturnValue, QueryReturnValue } from "types/queryTypes";
 import { TicketDependencyWarning } from "./TicketDependencyWarning";
 import { useAddToRecentlyVisitedTicket } from "utils/preferences";
 import { TicketTitle } from "./TicketTitle";
+import {
+  TicketSupersededByBanner,
+  TicketSupersedesChip,
+} from "./TicketSupersedeLineage";
 
 interface TicketViewUrlParams {
   orgId: string;
@@ -202,6 +206,7 @@ export const TicketView: FCWithFragments = () => {
         <div className="flex-row-reverse gap-x-6 pb-6 md:flex md:flex-row">
           <div className="min-w-0 flex-1">
             <div className="bg-white shadow sm:mt-0 sm:rounded-lg">
+              <TicketSupersedesChip ticket={ticket} className="ml-4 mt-2" />
               <TicketTitle
                 title={ticket.title}
                 ticketId={ticketId}
@@ -223,6 +228,8 @@ export const TicketView: FCWithFragments = () => {
             {ticket.stage === ModelStage.Published ? (
               <TicketClosingNote ticket={ticket} className="mt-6" />
             ) : null}
+
+            <TicketSupersededByBanner ticket={ticket} className="mt-6" />
 
             {ticket.stage === ModelStage.Published &&
             ticket.status === TicketStatus.Scheduled ? (
@@ -348,6 +355,8 @@ TicketView.fragments = {
         }
       }
       ...TicketTitleFragment
+      ...TicketSupersededByBannerFragment
+      ...TicketSupersedesChipFragment
       ...TicketInfoFragment
       ...TicketFeaturesFragment
       ...ticketStageManagerFragment
@@ -362,6 +371,8 @@ TicketView.fragments = {
       ...TicketIssuesFragment
     }
     ${TicketTitle.fragments.TicketTitleFragment}
+    ${TicketSupersededByBanner.fragments.TicketSupersededByBannerFragment}
+    ${TicketSupersedesChip.fragments.TicketSupersedesChipFragment}
     ${TicketInfo.fragments.TicketInfoFragment}
     ${TicketFeatures.fragments.TicketFeaturesFragment}
     ${TicketWorkflowStateAssigneeModal.fragments
