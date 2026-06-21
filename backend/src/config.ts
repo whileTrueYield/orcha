@@ -15,6 +15,8 @@ interface Config {
   hostname: string;
   allowOrigin: string[];
   sessionSecret: string;
+  // Base64-encoded 32-byte key for encryption at rest (see utils/crypto.ts).
+  encryptionKey: string;
   assetRoot: string;
   webAppUri: string;
   supportUri: string;
@@ -72,6 +74,7 @@ const testEnv = {
   ORCHA_WEBAPP_URI: "http://localhost:3000",
   ORCHA_SUPPORT_URI: "http://support.example.com:3000",
   ORCHA_SESSION_SECRET: "what-evs",
+  ORCHA_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
   ORCHA_DOMAIN: "example.com",
   ORCHA_API_URI: "http://localhost:4000",
   ORCHA_AI_URI: "http://api.example.com:8000",
@@ -94,6 +97,7 @@ const env = isTest
       ORCHA_WEBAPP_URI: process.env.ORCHA_WEBAPP_URI,
       ORCHA_SUPPORT_URI: process.env.ORCHA_SUPPORT_URI,
       ORCHA_SESSION_SECRET: process.env.ORCHA_SESSION_SECRET,
+      ORCHA_ENCRYPTION_KEY: process.env.ORCHA_ENCRYPTION_KEY,
       ORCHA_DOMAIN: process.env.ORCHA_DOMAIN,
       ORCHA_API_URI: process.env.ORCHA_API_URI,
       ORCHA_AI_URI: process.env.ORCHA_AI_URI,
@@ -122,6 +126,10 @@ if (!env.ORCHA_WEBAPP_URI) {
 
 if (!env.ORCHA_SESSION_SECRET) {
   throw Error("ORCHA_SESSION_SECRET env variable is undefined");
+}
+
+if (!env.ORCHA_ENCRYPTION_KEY) {
+  throw Error("ORCHA_ENCRYPTION_KEY env variable is undefined");
 }
 
 if (!env.ORCHA_DOMAIN) {
@@ -166,6 +174,7 @@ export const config: Config = {
   isStaging,
   // in the frontend repo, use: git rev-parse --short HEAD
   sessionSecret: env.ORCHA_SESSION_SECRET,
+  encryptionKey: env.ORCHA_ENCRYPTION_KEY,
   hostname: env.ORCHA_HOSTNAME,
   // ORCHA_API_URI is the server's own public origin: the OAuth consent flow is a
   // server-rendered, same-origin browser flow (the consent page on api.* POSTs back
