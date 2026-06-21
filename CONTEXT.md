@@ -35,6 +35,35 @@ A unit of work to be scheduled. Carries an estimate, priority, workflow state,
 and dependencies (`ancestors`/`successors`).
 _Avoid_: Task, issue (an **Issue** is a support submission, not a Ticket).
 
+**Logged work**:
+A `ScheduleItem` — one real, elapsed work session (a Role's `startedAt`→
+`stoppedAt`) against a single stage of a Ticket. It is the historical *fact*
+that time was spent, and it is immutable: re-planning a Ticket never deletes or
+rewrites it. The presence of **any** logged work is the line between a Ticket
+that is still *a plan* and one that has become *a history* — the gate that
+governs how its workflow may change (see **Supersede**).
+_Avoid_: "estimate" (that is a forward projection, not work that happened);
+"progress" (a derived roll-up).
+
+**Plan** (per-stage):
+A `TicketWorkflowState` — one row per workflow stage on a Ticket, holding that
+stage's three-point estimate and progress. It is scoped to the stages of the
+Ticket's *current* workflow, so it is disposable: changing the workflow
+supersedes these rows. Distinct from **Logged work**, which outlives any plan.
+_Avoid_: conflating the plan (a projection that resets) with logged work (a fact
+that persists).
+
+**Supersede**:
+Closing a Ticket as the immutable record of the work done under *its* workflow,
+and continuing the effort on a **new** Ticket under a different workflow. This is
+the honest move when a Ticket's workflow must change *after* work has been logged
+— rewriting the live Ticket's workflow in place would make it misrepresent what
+actually happened. Supersession is its own link ("this became that"); it is
+**not** a dependency.
+_Avoid_: `ancestors`/`successors` — those are the **dependency** DAG (*what must
+happen before what*), read by the scheduler for ordering. Supersession lineage
+must never reuse them, or it injects phantom dependencies into scheduling.
+
 **Next tickets**:
 The prioritized list of Tickets a Role should work on *now*, ordered the way
 the MCTS scheduler ranked them. The canonical answer to "what should I work on
