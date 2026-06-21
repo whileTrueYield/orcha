@@ -7,6 +7,7 @@ import {
   CheckIcon,
   ArchiveIcon,
   ReplyIcon,
+  RefreshIcon,
 } from "@heroicons/react/outline";
 import { Button } from "components/fields/Button";
 import { FCWithFragments } from "types";
@@ -20,6 +21,7 @@ import { useHistory, useParams } from "react-router-dom";
 import { urlResolver } from "utils/navigation";
 import { ConfirmModal } from "components/modals/ConfirmModal";
 import { PlainTextModal } from "components/modals/PlainTextModal";
+import { ChangeWorkflowModal } from "./ChangeWorkflowModal";
 
 interface Props {
   ticket: Ticket;
@@ -27,6 +29,7 @@ interface Props {
   onTicketStageChange: (stage: ModelStage) => void;
   onTicketStatusChange: (status: TicketStatus, note?: string) => void;
   onMarkTicketNotDone: () => void;
+  onChangeWorkflow: (workflowId: number) => void;
 }
 
 export const TicketOtherActions: FCWithFragments<Props> = (props) => {
@@ -37,6 +40,7 @@ export const TicketOtherActions: FCWithFragments<Props> = (props) => {
     onTicketStageChange,
     onMarkTicketNotDone,
     onTicketStatusChange,
+    onChangeWorkflow,
   } = props;
 
   const [isCancelWarningModalVisible, setIsCancelWarningModalVisible] =
@@ -56,7 +60,17 @@ export const TicketOtherActions: FCWithFragments<Props> = (props) => {
 
   const [isDeleteDangerModalVisible, setIsDeleteDangerModalVisible] =
     useState(false);
+
+  const [isChangeWorkflowModalVisible, setIsChangeWorkflowModalVisible] =
+    useState(false);
   const history = useHistory();
+
+  // Changing a workflow in place is only meaningful for a published, open
+  // ticket that still has both a product and a workflow to swap between.
+  const canChangeWorkflow =
+    ticket.stage === ModelStage.Published &&
+    !!ticket.product?.id &&
+    !!ticket.workflow?.id;
 
   const stageOptions: PopMenuOption[] = [
     {
@@ -88,6 +102,13 @@ export const TicketOtherActions: FCWithFragments<Props> = (props) => {
     },
   ];
   const scheduledOptions: PopMenuOption[] = [
+    {
+      label: "Change Workflow",
+      type: "button",
+      icon: (className) => <RefreshIcon className={className} />,
+      onClick: () => setIsChangeWorkflowModalVisible(true),
+      disabled: !canChangeWorkflow,
+    },
     {
       label: "Unschedule Ticket",
       type: "button",
@@ -194,6 +215,15 @@ export const TicketOtherActions: FCWithFragments<Props> = (props) => {
         title={`Delete ticket?`}
         visible={isDeleteDangerModalVisible}
       />
+      {canChangeWorkflow ? (
+        <ChangeWorkflowModal
+          productId={ticket.product!.id}
+          currentWorkflowId={ticket.workflow!.id}
+          onConfirm={(workflowId) => onChangeWorkflow(workflowId)}
+          onClose={() => setIsChangeWorkflowModalVisible(false)}
+          visible={isChangeWorkflowModalVisible}
+        />
+      ) : null}
       <PopMenu
         direction="bottom-left"
         size="large"
@@ -220,6 +250,12 @@ TicketOtherActions.fragments = {
       id
       status
       stage
+      product {
+        id
+      }
+      workflow {
+        id
+      }
     }
   `,
 };

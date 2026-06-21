@@ -773,6 +773,7 @@ export type Mutation = {
   blockTicket: Ticket;
   changeEmail: User;
   changePassword: User;
+  changeTicketWorkflow: Ticket;
   changeTicketWorkflowStateAssignee: Ticket;
   checkTodo: Todo;
   /** Close (or update an already closed) last known ticket workflow state */
@@ -1063,6 +1064,12 @@ export type MutationChangeEmailArgs = {
 
 export type MutationChangePasswordArgs = {
   input: ChangePasswordInput;
+};
+
+
+export type MutationChangeTicketWorkflowArgs = {
+  ticketId: Scalars['Int']['input'];
+  workflowId: Scalars['Int']['input'];
 };
 
 
@@ -3354,6 +3361,7 @@ export type QueryWorkflowsArgs = {
   first?: InputMaybe<Scalars['Int']['input']>;
   last?: InputMaybe<Scalars['Int']['input']>;
   offset?: InputMaybe<Scalars['Int']['input']>;
+  productId?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
   stages?: InputMaybe<Array<ModelStage>>;

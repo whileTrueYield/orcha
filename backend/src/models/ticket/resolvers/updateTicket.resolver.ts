@@ -16,6 +16,7 @@
  *  - Mutation.addTicketAncestor(ticketId, ancestorId): Ticket!
  *  - Mutation.updateTicketWorkflowStates(ticketId, input): Ticket!
  *  - Mutation.updateTicket(ticketId, input): Ticket!
+ *  - Mutation.changeTicketWorkflow(ticketId, workflowId): Ticket!
  */
 
 import { GraphQLError } from "graphql";
@@ -1184,6 +1185,157 @@ builder.mutationField("updateTicket", (t) =>
         ...query,
         where: { id: ticket.id },
         data: data as any, // temporary fix for "Excessive stack depth comparing types"
+      });
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Mutation: changeTicketWorkflow — reset the plan, keep the identity (ADR 0010)
+// ---------------------------------------------------------------------------
+
+// Change a *published* Ticket's workflow when it has no logged work. The line
+// that governs whether a workflow may change in place is whether any
+// ScheduleItem exists (ADR 0010): with zero logged work the Ticket is still a
+// plan, so we swap its workflow without touching its identity (id, localId,
+// comments, watchers, dependency edges). Once work is logged the Ticket has
+// become a history and must be superseded instead (issue #110) — rewriting it in
+// place would make it misrepresent what actually happened, so we reject it here.
+//
+// Authority is member-level (`hasRole: true`), matching updateTicket: editing a
+// plan is an edit, not a lifecycle transition. (The supersede path in #110 is
+// ADMIN/OWNER, like updateTicketStage.)
+builder.mutationField("changeTicketWorkflow", (t) =>
+  t.prismaField({
+    type: "Ticket",
+    authScopes: { hasRole: true },
+    args: {
+      ticketId: t.arg.int({ required: true }),
+      workflowId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      // Only a published Ticket has a plan to reset here; a DRAFT Ticket still
+      // changes its workflow directly through updateTicket while the lock is
+      // open.
+      const ticket = await ctx.prisma.ticket.findFirstOrThrow({
+        where: {
+          id: args.ticketId,
+          organizationId: me.organizationId,
+          stage: ModelStage.PUBLISHED,
+        },
+        include: { product: true, project: true },
+      });
+
+      if (
+        ticket.project.ancestorIsArchived ||
+        ticket.project.stage === ModelStage.ARCHIVED
+      ) {
+        throw new GraphQLError("Cannot update ticket in an archived project");
+      }
+
+      if (!ticket.product) {
+        throw new GraphQLError("Ticket requires a published product");
+      }
+
+      if (args.workflowId === ticket.workflowId) {
+        throw new GraphQLError("Ticket already uses this workflow");
+      }
+
+      // The gate (ADR 0010): any logged work turns a plan into a history.
+      // Estimates and SCHEDULED status do not count — only actually-elapsed
+      // time (a ScheduleItem). Such a Ticket must be superseded, not rewritten.
+      const loggedWork = await ctx.prisma.scheduleItem.count({
+        where: { ticketId: ticket.id },
+      });
+      if (loggedWork > 0) {
+        throw new GraphQLError(
+          "This ticket has logged work; its workflow can no longer be changed in place. It must be superseded instead.",
+        );
+      }
+
+      // The target must be a workflow this product can attach (org defaults
+      // included) and published — the same validity the publish path enforces.
+      const workflow = await ctx.prisma.workflow.findFirst({
+        where: {
+          ...getWorkflowQueryForProduct(ticket.product),
+          id: args.workflowId,
+        },
+      });
+      if (!workflow) {
+        throw new GraphQLError("Workflow is not valid for this product");
+      }
+      if (workflow.stage !== ModelStage.PUBLISHED) {
+        throw new GraphQLError(
+          `Workflow ${workflow.name} has not been published`,
+        );
+      }
+
+      const states = await ctx.prisma.workflowState.findMany({
+        where: { workflowId: workflow.id },
+        orderBy: { position: "asc" },
+      });
+      if (states.length === 0) {
+        throw new GraphQLError("This workflow does not contain any states");
+      }
+
+      // Reset the plan, never the history (ADR 0010): deactivate the existing
+      // TicketWorkflowState rows instead of deleting them. ScheduleItem →
+      // ticketWorkflowState is onDelete: Cascade, so deleting the plan would
+      // silently destroy any logged work; deactivation keeps every row (and its
+      // snapshot name) attached and truthful. Fresh active rows then carry the
+      // new workflow's stages, and the Ticket re-enters estimation
+      // (status=UNSCHEDULED, estimating=true) exactly as publishing does.
+      await ctx.prisma.$transaction([
+        ctx.prisma.ticketWorkflowState.updateMany({
+          where: { ticketId: ticket.id },
+          data: { isActive: false },
+        }),
+        ctx.prisma.ticketWorkflowState.createMany({
+          data: states.map((state) => ({
+            workflowStateId: state.id,
+            name: state.name,
+            position: state.position,
+            ticketId: ticket.id,
+          })),
+        }),
+        ctx.prisma.ticket.update({
+          where: { id: ticket.id },
+          data: {
+            workflow: { connect: { id: workflow.id } },
+            status: TicketStatus.UNSCHEDULED,
+            estimating: true,
+          },
+        }),
+      ]);
+
+      // Notify any assignee that the fresh stages need (re-)estimation — the
+      // same side effect publishing runs. Fresh rows start unassigned, so this
+      // is a no-op today; it stays so the behaviour holds if future work carries
+      // assignees across a change.
+      const freshStates = await ctx.prisma.ticketWorkflowState.findMany({
+        where: { ticketId: ticket.id, isActive: true },
+      });
+      for (const tws of freshStates) {
+        if (shouldNotifyAssignee(tws)) {
+          await pushNotifyRole(
+            tws.assigneeId!,
+            ticket.organizationId,
+            "ESTIMATE_REQUESTED",
+            "You have been assigned a new ticket and it requires your estimate.",
+            { targetId: tws.id },
+          );
+        }
+      }
+
+      // The Ticket is now unscheduled with unestimated stages — re-run the
+      // scheduler so it stops surfacing on a stale estimate.
+      await requestEstimate(me.organizationId);
+
+      return ctx.prisma.ticket.findUniqueOrThrow({
+        ...query,
+        where: { id: ticket.id },
       });
     },
   }),

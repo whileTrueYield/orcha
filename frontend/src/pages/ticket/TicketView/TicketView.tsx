@@ -10,6 +10,7 @@ import {
   MutationUpdateTicketStageArgs,
   MutationUpdateTicketStatusArgs,
   MutationMarkTicketNotDoneArgs,
+  MutationChangeTicketWorkflowArgs,
 } from "types/graphql";
 import { useQuery } from "@apollo/client";
 import { EmptyState } from "components/views/EmtpyState";
@@ -104,8 +105,22 @@ export const TicketView: FCWithFragments = () => {
     }),
   });
 
+  const [changeTicketWorkflow] = useBlockingMutation<
+    { changeTicketWorkflow: Ticket },
+    MutationChangeTicketWorkflowArgs
+  >(CHANGE_TICKET_WORKFLOW_MUTATION, {
+    onError: onGraphQLError({ title: "Could not change workflow" }),
+    onCompleted: onMutationComplete({
+      title: "Workflow changed — re-estimate the new stages",
+    }),
+  });
+
   const onTicketStatusChange = (status: TicketStatus, note?: string) => {
     updateTicketStatus({ variables: { ticketId: ticket.id, note, status } });
+  };
+
+  const onChangeWorkflow = (workflowId: number) => {
+    changeTicketWorkflow({ variables: { ticketId: ticket.id, workflowId } });
   };
 
   const onTicketStageChange = (stage: ModelStage) => {
@@ -256,6 +271,7 @@ export const TicketView: FCWithFragments = () => {
               onTicketStageChange={onTicketStageChange}
               onTicketStatusChange={onTicketStatusChange}
               onMarkTicketNotDone={onMarkTicketNotDone}
+              onChangeWorkflow={onChangeWorkflow}
             />
             <div className="mt-4 border-t-2 border-gray-200" />
             <TicketInfo ticket={ticket} className="mt-4" />
@@ -374,6 +390,19 @@ const UPDATE_TICKET_STATUS_MUTATION = gql`
     $note: String
   ) {
     updateTicketStatus(ticketId: $ticketId, status: $status, note: $note) {
+      id
+      ...TicketViewFragment
+    }
+  }
+  ${TicketView.fragments.TicketViewFragment}
+`;
+
+const CHANGE_TICKET_WORKFLOW_MUTATION = gql`
+  mutation ChangeTicketWorkflowForTicketView(
+    $ticketId: Int!
+    $workflowId: Int!
+  ) {
+    changeTicketWorkflow(ticketId: $ticketId, workflowId: $workflowId) {
       id
       ...TicketViewFragment
     }
