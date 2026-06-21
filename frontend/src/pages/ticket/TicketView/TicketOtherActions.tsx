@@ -22,6 +22,7 @@ import { urlResolver } from "utils/navigation";
 import { ConfirmModal } from "components/modals/ConfirmModal";
 import { PlainTextModal } from "components/modals/PlainTextModal";
 import { ChangeWorkflowModal } from "./ChangeWorkflowModal";
+import { SupersedeWorkflowModal } from "./SupersedeWorkflowModal";
 
 interface Props {
   ticket: Ticket;
@@ -30,6 +31,7 @@ interface Props {
   onTicketStatusChange: (status: TicketStatus, note?: string) => void;
   onMarkTicketNotDone: () => void;
   onChangeWorkflow: (workflowId: number) => void;
+  onSupersedeWorkflow: (workflowId: number) => void;
 }
 
 export const TicketOtherActions: FCWithFragments<Props> = (props) => {
@@ -41,6 +43,7 @@ export const TicketOtherActions: FCWithFragments<Props> = (props) => {
     onMarkTicketNotDone,
     onTicketStatusChange,
     onChangeWorkflow,
+    onSupersedeWorkflow,
   } = props;
 
   const [isCancelWarningModalVisible, setIsCancelWarningModalVisible] =
@@ -65,12 +68,25 @@ export const TicketOtherActions: FCWithFragments<Props> = (props) => {
     useState(false);
   const history = useHistory();
 
-  // Changing a workflow in place is only meaningful for a published, open
-  // ticket that still has both a product and a workflow to swap between.
+  // Changing a workflow is only meaningful for a published ticket that still has
+  // both a product and a workflow to swap between.
   const canChangeWorkflow =
     ticket.stage === ModelStage.Published &&
     !!ticket.product?.id &&
     !!ticket.workflow?.id;
+
+  // The fork (ADR 0010): a ticket with logged work can't be rewritten in place —
+  // it must be superseded (close the original, continue on a new linked ticket).
+  // One "Change Workflow" action picks the matching confirmation. The backend
+  // remains the authoritative gate.
+  const hasLoggedWork = (ticket.loggedWorkSeconds ?? 0) > 0;
+
+  // Human reference to the ticket being superseded (e.g. "TWKS-42"), used in the
+  // supersede confirmation so the user knows exactly which ticket closes.
+  const ticketReference =
+    ticket.product?.code && ticket.localId
+      ? `${ticket.product.code}-${ticket.localId}`
+      : `#${ticket.id}`;
 
   const stageOptions: PopMenuOption[] = [
     {
@@ -215,7 +231,18 @@ export const TicketOtherActions: FCWithFragments<Props> = (props) => {
         title={`Delete ticket?`}
         visible={isDeleteDangerModalVisible}
       />
-      {canChangeWorkflow ? (
+      {canChangeWorkflow && hasLoggedWork ? (
+        <SupersedeWorkflowModal
+          productId={ticket.product!.id}
+          currentWorkflowId={ticket.workflow!.id}
+          ticketReference={ticketReference}
+          loggedWorkSeconds={ticket.loggedWorkSeconds ?? 0}
+          onConfirm={(workflowId) => onSupersedeWorkflow(workflowId)}
+          onClose={() => setIsChangeWorkflowModalVisible(false)}
+          visible={isChangeWorkflowModalVisible}
+        />
+      ) : null}
+      {canChangeWorkflow && !hasLoggedWork ? (
         <ChangeWorkflowModal
           productId={ticket.product!.id}
           currentWorkflowId={ticket.workflow!.id}
@@ -248,10 +275,13 @@ TicketOtherActions.fragments = {
   TicketOtherActionsDetails: gql`
     fragment TicketOtherActionsDetails on Ticket {
       id
+      localId
       status
       stage
+      loggedWorkSeconds
       product {
         id
+        code
       }
       workflow {
         id

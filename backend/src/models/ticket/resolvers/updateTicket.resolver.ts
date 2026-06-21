@@ -17,6 +17,7 @@
  *  - Mutation.updateTicketWorkflowStates(ticketId, input): Ticket!
  *  - Mutation.updateTicket(ticketId, input): Ticket!
  *  - Mutation.changeTicketWorkflow(ticketId, workflowId): Ticket!
+ *  - Mutation.supersedeTicketWorkflow(ticketId, workflowId): Ticket!
  */
 
 import { GraphQLError } from "graphql";
@@ -47,6 +48,8 @@ import { pushNotifyRole } from "../../../notifications/endpoints";
 import { isTicketBlocked, shouldNotifyAssignee } from "../helper";
 import { getWorkflowQueryForProduct } from "../../workflow/helper";
 import { createNotificationsForTarget } from "../../notification/createNotification";
+import { getBody } from "../../../markdown/bodyRepository";
+import { writeDocumentBody } from "../../documentBody/writeDocumentBody";
 
 // ---------------------------------------------------------------------------
 // Input types
@@ -1336,6 +1339,239 @@ builder.mutationField("changeTicketWorkflow", (t) =>
       return ctx.prisma.ticket.findUniqueOrThrow({
         ...query,
         where: { id: ticket.id },
+      });
+    },
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Mutation: supersedeTicketWorkflow — close the worked original, continue on a
+// new linked successor (ADR 0010, issue #110)
+// ---------------------------------------------------------------------------
+
+// Once a Ticket has logged work (any ScheduleItem) its workflow can no longer be
+// rewritten in place: doing so would make a single Ticket misrepresent its own
+// history (a live "new workflow, 0% done" headline hiding the hours already
+// logged). Instead we *supersede*. The original is closed as CANCELLED — its
+// logged work and deactivated plan kept as an immutable record — and the effort
+// continues on a brand-new Ticket under the chosen workflow, linked back through
+// supersededBy/supersedes.
+//
+// The successor inherits the intent (title, description, body, owner,
+// difficulty, milestone, tags, folder) and the dependency edges *both ways*: it
+// waits on the same ancestors, and the same successors now wait on it — so a
+// ticket that depended on the original ends up waiting on the successor, the
+// original's own edges reading as satisfied because it is CANCELLED. It does NOT
+// inherit logged work or the plan/estimates; it re-enters estimation
+// (UNSCHEDULED, estimating=true) exactly as a fresh publish does.
+//
+// Authority is ADMIN/OWNER (like updateTicketStage): superseding is a lifecycle
+// transition, not a plan edit. The member-level in-place path is
+// changeTicketWorkflow, which rejects a worked ticket and points here.
+builder.mutationField("supersedeTicketWorkflow", (t) =>
+  t.prismaField({
+    type: "Ticket",
+    authScopes: { hasRole: [RoleType.ADMIN, RoleType.OWNER] },
+    args: {
+      ticketId: t.arg.int({ required: true }),
+      workflowId: t.arg.int({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const me = ctx.me as AuthRoleContext;
+
+      const original = await ctx.prisma.ticket.findFirstOrThrow({
+        where: {
+          id: args.ticketId,
+          organizationId: me.organizationId,
+          stage: ModelStage.PUBLISHED,
+        },
+        include: {
+          product: true,
+          project: true,
+          tags: true,
+          ancestors: true,
+          successors: true,
+        },
+      });
+
+      if (
+        original.project.ancestorIsArchived ||
+        original.project.stage === ModelStage.ARCHIVED
+      ) {
+        throw new GraphQLError("Cannot update ticket in an archived project");
+      }
+
+      if (!original.product) {
+        throw new GraphQLError("Ticket requires a published product");
+      }
+
+      if (args.workflowId === original.workflowId) {
+        throw new GraphQLError("Ticket already uses this workflow");
+      }
+
+      // The gate (ADR 0010), inverted from changeTicketWorkflow: supersede is the
+      // path *for* worked tickets. With zero logged work there is no history to
+      // preserve, so the in-place reset (changeTicketWorkflow) is the honest move
+      // and we send the caller back there rather than churning the ticket's
+      // identity for nothing.
+      const loggedWork = await ctx.prisma.scheduleItem.count({
+        where: { ticketId: original.id },
+      });
+      if (loggedWork === 0) {
+        throw new GraphQLError(
+          "This ticket has no logged work; change its workflow in place instead.",
+        );
+      }
+
+      // The target must be a workflow this product can attach and published —
+      // the same validity the publish path enforces.
+      const workflow = await ctx.prisma.workflow.findFirst({
+        where: {
+          ...getWorkflowQueryForProduct(original.product),
+          id: args.workflowId,
+        },
+      });
+      if (!workflow) {
+        throw new GraphQLError("Workflow is not valid for this product");
+      }
+      if (workflow.stage !== ModelStage.PUBLISHED) {
+        throw new GraphQLError(
+          `Workflow ${workflow.name} has not been published`,
+        );
+      }
+
+      const states = await ctx.prisma.workflowState.findMany({
+        where: { workflowId: workflow.id },
+        orderBy: { position: "asc" },
+      });
+      if (states.length === 0) {
+        throw new GraphQLError("This workflow does not contain any states");
+      }
+
+      // The successor's localId is the next free one within the product — the
+      // same assignment the publish path makes.
+      const lastTicket = await ctx.prisma.ticket.findFirst({
+        where: {
+          productId: original.productId,
+          organizationId: me.organizationId,
+          localId: { not: null },
+        },
+        select: { localId: true },
+        orderBy: { localId: "desc" },
+      });
+      const nextLocalId = lastTicket?.localId ? lastTicket.localId + 1 : 1;
+
+      // Create the successor first and close the original last: a mid-flight
+      // failure then leaves the original live and uncancelled, never a closed
+      // ticket with no successor to continue the work on.
+      const successor = await ctx.prisma.ticket.create({
+        data: {
+          title: original.title,
+          description: original.description,
+          difficulty: original.difficulty,
+          milestone: original.milestone,
+          localId: nextLocalId,
+          stage: ModelStage.PUBLISHED,
+          status: TicketStatus.UNSCHEDULED,
+          estimating: true,
+          organization: { connect: { id: original.organizationId } },
+          // The actor performing the supersede authors the successor; the
+          // original's owner carries over so the unit of work keeps its owner.
+          author: { connect: { id: me.roleId } },
+          ...(original.ownerId
+            ? { owner: { connect: { id: original.ownerId } } }
+            : {}),
+          project: { connect: { id: original.projectId } },
+          product: { connect: { id: original.product.id } },
+          workflow: { connect: { id: workflow.id } },
+          ...(original.folderId
+            ? { folder: { connect: { id: original.folderId } } }
+            : {}),
+          tags: { connect: original.tags.map((tag) => ({ id: tag.id })) },
+          // Inherit the dependency DAG both ways (ADR 0010): the successor waits
+          // on the same upstreams, and the same downstreams now wait on it.
+          ancestors: {
+            connect: original.ancestors.map((a) => ({ id: a.id })),
+          },
+          successors: {
+            connect: original.successors.map((s) => ({ id: s.id })),
+          },
+        },
+      });
+
+      // Fresh, unestimated plan rows for the new workflow's stages.
+      await ctx.prisma.ticketWorkflowState.createMany({
+        data: states.map((state) => ({
+          workflowStateId: state.id,
+          name: state.name,
+          position: state.position,
+          ticketId: successor.id,
+        })),
+      });
+
+      // Carry the body across through the one ADR-0007 write path so mentions
+      // resolve and the search index repopulates exactly as a normal edit would.
+      // A never-written body reads as empty (version 0) and is simply skipped.
+      const { markdown } = await getBody("ticket", original.id);
+      if (markdown) {
+        await writeDocumentBody({
+          type: "ticket",
+          id: successor.id,
+          markdown,
+          baseVersion: 0,
+          organizationId: me.organizationId,
+          actorRoleId: me.roleId,
+        });
+      }
+
+      const now = new Date();
+
+      // Stop any still-open work session on the original — the same move
+      // cancelling a ticket already makes (updateTicketStatus). This sets an end
+      // time on a running session; it never deletes a ScheduleItem, so the logged
+      // history survives intact (ADR 0010: never delete the work).
+      await ctx.prisma.scheduleItem.updateMany({
+        where: { ticketId: original.id, stoppedAt: null },
+        data: { done: true, stoppedAt: now },
+      });
+
+      // Close the original as the immutable record and point it at its successor.
+      await ctx.prisma.ticket.update({
+        where: { id: original.id },
+        data: {
+          status: TicketStatus.CANCELLED,
+          closedAt: now,
+          supersededBy: { connect: { id: successor.id } },
+        },
+      });
+
+      // Notify the successor's assignees that the fresh stages need estimation —
+      // the same side effect publishing runs. Fresh rows start unassigned, so
+      // this is a no-op today; it stays so the behaviour holds if future work
+      // carries assignees across a supersede.
+      const freshStates = await ctx.prisma.ticketWorkflowState.findMany({
+        where: { ticketId: successor.id, isActive: true },
+      });
+      for (const tws of freshStates) {
+        if (shouldNotifyAssignee(tws)) {
+          await pushNotifyRole(
+            tws.assigneeId!,
+            successor.organizationId,
+            "ESTIMATE_REQUESTED",
+            "You have been assigned a new ticket and it requires your estimate.",
+            { targetId: tws.id },
+          );
+        }
+      }
+
+      // The successor is unscheduled with unestimated stages and the original has
+      // left the schedule — re-run the scheduler so neither lingers on a stale
+      // estimate.
+      await requestEstimate(me.organizationId);
+
+      return ctx.prisma.ticket.findUniqueOrThrow({
+        ...query,
+        where: { id: successor.id },
       });
     },
   }),

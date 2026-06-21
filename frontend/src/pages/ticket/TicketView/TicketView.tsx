@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { useParams } from "react-router-dom";
+import { useHistory, useParams } from "react-router-dom";
 
 import { gql } from "@apollo/client";
 import {
@@ -11,7 +11,9 @@ import {
   MutationUpdateTicketStatusArgs,
   MutationMarkTicketNotDoneArgs,
   MutationChangeTicketWorkflowArgs,
+  MutationSupersedeTicketWorkflowArgs,
 } from "types/graphql";
+import { urlResolver } from "utils/navigation";
 import { useQuery } from "@apollo/client";
 import { EmptyState } from "components/views/EmtpyState";
 import { TicketBody } from "./TicketBody";
@@ -46,12 +48,14 @@ import { useAddToRecentlyVisitedTicket } from "utils/preferences";
 import { TicketTitle } from "./TicketTitle";
 
 interface TicketViewUrlParams {
+  orgId: string;
   ticketId: string;
 }
 
 export const TicketView: FCWithFragments = () => {
   const urlParams = useParams<TicketViewUrlParams>();
   const ticketId = parseInt(urlParams.ticketId);
+  const history = useHistory();
   const addToRecentlyVisitedTicket = useAddToRecentlyVisitedTicket();
   const [subTab, setSubTab] = useState<"comments" | "dependencies" | "notes">(
     "comments",
@@ -119,8 +123,33 @@ export const TicketView: FCWithFragments = () => {
     updateTicketStatus({ variables: { ticketId: ticket.id, note, status } });
   };
 
+  // Superseding closes this ticket and creates a new linked successor under the
+  // chosen workflow (ADR 0010). The mutation returns the successor, so on success
+  // we navigate there — staying on the now-closed original would be confusing.
+  const [supersedeTicketWorkflow] = useBlockingMutation<
+    { supersedeTicketWorkflow: Ticket },
+    MutationSupersedeTicketWorkflowArgs
+  >(SUPERSEDE_TICKET_WORKFLOW_MUTATION, {
+    onError: onGraphQLError({ title: "Could not supersede ticket" }),
+    onCompleted: (mutationData) => {
+      onMutationComplete<{ supersedeTicketWorkflow: Ticket }>({
+        title: "Ticket superseded — continue on the new ticket",
+      })(mutationData);
+      history.push(
+        urlResolver.ticket.view(
+          urlParams.orgId,
+          mutationData.supersedeTicketWorkflow.id,
+        ),
+      );
+    },
+  });
+
   const onChangeWorkflow = (workflowId: number) => {
     changeTicketWorkflow({ variables: { ticketId: ticket.id, workflowId } });
+  };
+
+  const onSupersedeWorkflow = (workflowId: number) => {
+    supersedeTicketWorkflow({ variables: { ticketId: ticket.id, workflowId } });
   };
 
   const onTicketStageChange = (stage: ModelStage) => {
@@ -272,6 +301,7 @@ export const TicketView: FCWithFragments = () => {
               onTicketStatusChange={onTicketStatusChange}
               onMarkTicketNotDone={onMarkTicketNotDone}
               onChangeWorkflow={onChangeWorkflow}
+              onSupersedeWorkflow={onSupersedeWorkflow}
             />
             <div className="mt-4 border-t-2 border-gray-200" />
             <TicketInfo ticket={ticket} className="mt-4" />
@@ -403,6 +433,19 @@ const CHANGE_TICKET_WORKFLOW_MUTATION = gql`
     $workflowId: Int!
   ) {
     changeTicketWorkflow(ticketId: $ticketId, workflowId: $workflowId) {
+      id
+      ...TicketViewFragment
+    }
+  }
+  ${TicketView.fragments.TicketViewFragment}
+`;
+
+const SUPERSEDE_TICKET_WORKFLOW_MUTATION = gql`
+  mutation SupersedeTicketWorkflowForTicketView(
+    $ticketId: Int!
+    $workflowId: Int!
+  ) {
+    supersedeTicketWorkflow(ticketId: $ticketId, workflowId: $workflowId) {
       id
       ...TicketViewFragment
     }

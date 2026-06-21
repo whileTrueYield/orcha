@@ -83,6 +83,30 @@ export const TicketRef = builder.prismaObject("Ticket", {
     organization: t.relation("organization"),
     ancestors: t.relation("ancestors"),
     successors: t.relation("successors"),
+    // Supersession lineage (ADR 0010, #110): "this became that", distinct from
+    // the ancestors/successors dependency DAG. `supersededBy` is this ticket's
+    // successor (set when a worked ticket's workflow changes); `supersedes` is
+    // the reverse — the originals this ticket continues.
+    supersededById: t.exposeInt("supersededById", { nullable: true }),
+    supersededBy: t.relation("supersededBy", { nullable: true }),
+    supersedes: t.relation("supersedes"),
+    // Total elapsed logged work in seconds across every ScheduleItem (an open
+    // session is counted up to now). The UI reads this to choose, on a workflow
+    // change, between the in-place reset and the supersede path (any logged work
+    // means supersede — ADR 0010); the resolver remains the authoritative gate.
+    loggedWorkSeconds: t.int({
+      resolve: async (ticket, _args, ctx) => {
+        const items = await ctx.prisma.scheduleItem.findMany({
+          where: { ticketId: ticket.id },
+          select: { startedAt: true, stoppedAt: true },
+        });
+        const millis = items.reduce((sum, item) => {
+          const end = item.stoppedAt ?? new Date();
+          return sum + Math.max(0, end.getTime() - item.startedAt.getTime());
+        }, 0);
+        return Math.round(millis / 1000);
+      },
+    }),
     // ticketText is internal — its Markdown body is exposed through
     // ticketBody.resolver.ts, not as a relation here.
     //
