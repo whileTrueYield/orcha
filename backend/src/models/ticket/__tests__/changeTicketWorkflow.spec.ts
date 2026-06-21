@@ -212,6 +212,67 @@ describe("changeTicketWorkflow", () => {
     );
   });
 
+  // Regression for the deactivate-don't-delete interaction (ADR 0010): after a
+  // workflow change the ticket is UNSCHEDULED and carries the old workflow's
+  // deactivated stages alongside the new ones. The `ticketWorkflowStates` field
+  // (which shows every state on an UNSCHEDULED ticket so the assignee/skip form
+  // can toggle them) must NOT surface those old-workflow tombstones — only the
+  // current workflow's stages are part of the live plan. A current-workflow
+  // stage that the user has skipped (isActive=false) must still appear.
+  it("exposes only the current workflow's stages after a change, never the deactivated old ones", async () => {
+    const { organization, session, role } = await getTestSessionWithRole(
+      RoleType.MEMBER,
+    );
+
+    const { ticket, product } = await createRandomTicket(organization, role);
+    const target = await createRandomWorkflow(organization, {
+      products: { connect: [{ id: product.id }] },
+    });
+
+    const change = await graphqlRequest({
+      source: changeTicketWorkflowMutation,
+      variableValues: { ticketId: ticket.id, workflowId: target.id },
+      session,
+    });
+    expect(change.errors).not.toBeDefined();
+
+    // Skip one of the new workflow's stages (isActive=false) to prove a skipped
+    // *current* stage is still exposed — only *old-workflow* rows must be hidden.
+    const newStates = await prisma.ticketWorkflowState.findMany({
+      where: { ticketId: ticket.id, isActive: true },
+    });
+    await prisma.ticketWorkflowState.update({
+      where: { id: newStates[0].id },
+      data: { isActive: false },
+    });
+
+    const response = await graphqlRequest({
+      source: `
+        query Ticket($id: Int!) {
+          ticket(id: $id) {
+            id
+            ticketWorkflowStates {
+              id
+              isActive
+              workflowState { workflowId }
+            }
+          }
+        }`,
+      variableValues: { id: ticket.id },
+      session,
+    });
+    expect(response.errors).not.toBeDefined();
+
+    const exposed = response.data!.ticket.ticketWorkflowStates as Array<{
+      workflowState: { workflowId: number } | null;
+    }>;
+    // Every exposed stage belongs to the new workflow; none from the old one.
+    expect(exposed.length).toBe(newStates.length);
+    expect(
+      exposed.every((s) => s.workflowState?.workflowId === target.id),
+    ).toBe(true);
+  });
+
   it("rejects changing to the workflow the ticket already uses", async () => {
     const { organization, session, role } = await getTestSessionWithRole(
       RoleType.MEMBER,
