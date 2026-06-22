@@ -350,6 +350,34 @@ export const openApiSpec = {
             description: "Tickets that depend on this ticket.",
             items: { $ref: "#/components/schemas/TicketSummary" },
           },
+          linkedPullRequests: {
+            type: "array",
+            description:
+              "GitHub pull requests mirrored onto this ticket (read-only).",
+            items: { $ref: "#/components/schemas/LinkedPullRequest" },
+          },
+        },
+      },
+      LinkedPullRequest: {
+        type: "object",
+        properties: {
+          number: { type: "integer", description: "The PR number on GitHub." },
+          title: { type: "string" },
+          state: {
+            type: "string",
+            enum: ["OPEN", "MERGED", "CLOSED"],
+          },
+          isDraft: { type: "boolean" },
+          authorLogin: {
+            type: "string",
+            nullable: true,
+            description: "GitHub login of the PR author.",
+          },
+          htmlUrl: {
+            type: "string",
+            description: "Direct link to the pull request on GitHub.",
+          },
+          githubUpdatedAt: { type: "string", format: "date-time" },
         },
       },
       ProjectSummary: {

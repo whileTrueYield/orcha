@@ -10,8 +10,11 @@ import request from "supertest";
 import { createHmac, randomUUID } from "crypto";
 import prisma from "../../prisma";
 import {
+  buildPullRequestPayload,
   createRandomOrganization,
+  createRandomOrgAndUser,
   createRandomRepositoryLink,
+  createRandomTicket,
 } from "../../utils/testing";
 import { githubRouter } from "../router";
 
@@ -104,5 +107,64 @@ describe("POST /github/webhook/:token", () => {
       where: { id: squatter.link.id },
     });
     expect(reloaded.status).toBe("PENDING");
+  });
+
+  it("mirrors a pull_request onto the ticket its branch references", async () => {
+    const { organization, role } = await createRandomOrgAndUser();
+    const { webhookToken, webhookSecret } =
+      await createRandomRepositoryLink(organization);
+    const { ticket, product } = await createRandomTicket(organization, role);
+
+    const repo = `octo/${randomUUID()}`;
+    const body = JSON.stringify(
+      buildPullRequestPayload(repo, {
+        number: 7,
+        head: { ref: `feature/${product.code}-${ticket.localId}` },
+        title: "Implement the thing",
+      }),
+    );
+
+    const res = await request(app)
+      .post(`/github/webhook/${webhookToken}`)
+      .set("x-github-event", "pull_request")
+      .set("x-hub-signature-256", sign(webhookSecret, body))
+      .set("content-type", "application/json")
+      .send(body);
+
+    expect(res.status).toBe(200);
+    const row = await prisma.linkedPullRequest.findUniqueOrThrow({
+      where: { repoFullName_number: { repoFullName: repo, number: 7 } },
+      include: { tickets: true },
+    });
+    expect(row.tickets.map((t) => t.id)).toEqual([ticket.id]);
+  });
+
+  it("ignores a synchronize action (activates but mirrors nothing)", async () => {
+    const { organization, role } = await createRandomOrgAndUser();
+    const { webhookToken, webhookSecret } =
+      await createRandomRepositoryLink(organization);
+    const { ticket, product } = await createRandomTicket(organization, role);
+
+    const repo = `octo/${randomUUID()}`;
+    const body = JSON.stringify(
+      buildPullRequestPayload(repo, {
+        action: "synchronize",
+        number: 8,
+        head: { ref: `feature/${product.code}-${ticket.localId}` },
+      }),
+    );
+
+    const res = await request(app)
+      .post(`/github/webhook/${webhookToken}`)
+      .set("x-github-event", "pull_request")
+      .set("x-hub-signature-256", sign(webhookSecret, body))
+      .set("content-type", "application/json")
+      .send(body);
+
+    expect(res.status).toBe(200);
+    const row = await prisma.linkedPullRequest.findUnique({
+      where: { repoFullName_number: { repoFullName: repo, number: 8 } },
+    });
+    expect(row).toBeNull();
   });
 });

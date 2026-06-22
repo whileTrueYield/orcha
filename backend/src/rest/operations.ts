@@ -132,10 +132,11 @@ export const TICKETS_OPERATION = /* GraphQL */ `
 
 // GET /v1/tickets/:id — a single ticket with the detail an agent needs to act:
 // the Markdown body (+ its version), estimate/ETA, its workflow states (with
-// their three-point estimates), and its dependency edges (ancestors it waits
-// on, successors waiting on it). The body is the Markdown source of truth (ADR
-// 0007); the dedicated GET/PUT /v1/tickets/:id/body endpoints add the ETag /
-// If-Match optimistic-concurrency contract for editing it.
+// their three-point estimates), its dependency edges (ancestors it waits on,
+// successors waiting on it), and the GitHub pull requests mirrored onto it (ADR
+// 0011). The body is the Markdown source of truth (ADR 0007); the dedicated
+// GET/PUT /v1/tickets/:id/body endpoints add the ETag / If-Match
+// optimistic-concurrency contract for editing it.
 export const TICKET_OPERATION = /* GraphQL */ `
   query RestTicket($id: Int!) {
     ticket(id: $id) {
@@ -175,6 +176,15 @@ export const TICKET_OPERATION = /* GraphQL */ `
         title
         status
         url
+      }
+      linkedPullRequests {
+        number
+        title
+        state
+        isDraft
+        authorLogin
+        htmlUrl
+        githubUpdatedAt
       }
     }
   }

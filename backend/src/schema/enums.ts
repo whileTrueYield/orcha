@@ -82,6 +82,11 @@ export const ReportWidgetTypeEnum = builder.enumType(
   { name: "ReportWidgetType" },
 );
 
+export const PullRequestStateEnum = builder.enumType(
+  PrismaEnums.PullRequestState,
+  { name: "PullRequestState" },
+);
+
 export const RepositoryLinkStatusEnum = builder.enumType(
   PrismaEnums.RepositoryLinkStatus,
   { name: "RepositoryLinkStatus" },

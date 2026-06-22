@@ -793,6 +793,7 @@ model Organization {
   oauthAccessTokens       OAuthAccessToken[]
   oauthRefreshTokens      OAuthRefreshToken[]
   repositoryLinks         RepositoryLink[]
+  linkedPullRequests      LinkedPullRequest[]
 
   // settings
   showOnboarding Boolean @default(true)
@@ -836,6 +837,8 @@ model RepositoryLink {
   organizationId Int
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  linkedPullRequests LinkedPullRequest[]
+
   // indices, table map and constraints
   @@index([organizationId])
   @@map("repository_link")
@@ -844,6 +847,54 @@ model RepositoryLink {
 enum RepositoryLinkStatus {
   PENDING
   ACTIVE
+}
+
+// A GitHub pull request mirrored onto the Ticket(s) it references (ADR 0011).
+// Read-only: GitHub is the source of truth, we only reflect its current state.
+// The link set is re-derived from the PR's branch + title on every delivery, so
+// a title edit that adds or drops a Ticket ref reconciles the associations.
+model LinkedPullRequest {
+  id Int @id @default(autoincrement())
+
+  // GitHub identity. (repoFullName, number) is the natural upsert key — one row
+  // per PR per repo, re-derived on every delivery.
+  repoFullName String @db.VarChar
+  number       Int
+
+  // Mirrored PR state.
+  title       String           @db.VarChar
+  state       PullRequestState @default(OPEN)
+  isDraft     Boolean          @default(false)
+  authorLogin String?          @db.VarChar
+  htmlUrl     String           @db.VarChar
+
+  // The payload's own updated_at. A delivery older than the stored value is a
+  // stale/out-of-order redelivery and must not regress the row — the mirror
+  // guards writes against this, not against the local updatedAt.
+  githubUpdatedAt DateTime @db.Timestamptz(6)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  organizationId   Int
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  repositoryLinkId Int
+  repositoryLink   RepositoryLink @relation(fields: [repositoryLinkId], references: [id], onDelete: Cascade)
+  tickets          Ticket[]
+
+  // indices, table map and constraints
+  @@unique([repoFullName, number])
+  @@index([organizationId])
+  @@index([repositoryLinkId])
+  @@map("linked_pull_request")
+}
+
+enum PullRequestState {
+  OPEN
+  MERGED
+  CLOSED
 }
 
 model OrganizationUpload {
@@ -1897,6 +1948,7 @@ model Ticket {
   scheduleItems          ScheduleItem[]
   scheduleConfigs        ScheduleConfig[]
   cases                  Issue[]
+  linkedPullRequests     LinkedPullRequest[]
   reportQueries          ReportQuery[]         @relation("primaryTicketFilter")
   reportSecondaryQueries ReportQuery[]         @relation("secondaryTicketFilter")
 
