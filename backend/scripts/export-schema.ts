@@ -27,6 +27,10 @@ const stubbedFiles = [
   "/src/emails/",
   "/src/cron/",
   "/src/notifications/",
+  // crypto parses ORCHA_ENCRYPTION_KEY at module load (crash-early-on-bad-key);
+  // stub it like config so the schema builds without env, the same way the rest
+  // of the runtime layer is stubbed here.
+  "/src/utils/crypto",
 ];
 
 const originalLoad = Module._load;

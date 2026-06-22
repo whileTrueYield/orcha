@@ -284,6 +284,17 @@ export type CreateReportQueryInput = {
   workflowStateIds?: InputMaybe<Array<Scalars['Int']['input']>>;
 };
 
+export type CreateRepositoryLinkInput = {
+  name?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type CreateRepositoryLinkResult = {
+  __typename?: 'CreateRepositoryLinkResult';
+  link: RepositoryLink;
+  webhookSecret: Scalars['String']['output'];
+  webhookUrl: Scalars['String']['output'];
+};
+
 export type CreateScheduleItemInput = {
   startedAt?: InputMaybe<Scalars['String']['input']>;
   stoppedAt?: InputMaybe<Scalars['String']['input']>;
@@ -796,6 +807,7 @@ export type Mutation = {
   createRecurringBlackoutTime: RecurringBlackoutTime;
   createReport: Report;
   createReportQuery: ReportQuery;
+  createRepositoryLink: CreateRepositoryLinkResult;
   createScheduleItem: ScheduleItem;
   createTag: Tag;
   createTeam: Team;
@@ -824,6 +836,7 @@ export type Mutation = {
   deleteReply: Scalars['Int']['output'];
   deleteReport: Report;
   deleteReportQuery: Report;
+  deleteRepositoryLink: RepositoryLink;
   deleteRole: Role;
   deleteScheduleItem: Scalars['Boolean']['output'];
   deleteTag: Scalars['Boolean']['output'];
@@ -1184,6 +1197,11 @@ export type MutationCreateReportQueryArgs = {
 };
 
 
+export type MutationCreateRepositoryLinkArgs = {
+  input: CreateRepositoryLinkInput;
+};
+
+
 export type MutationCreateScheduleItemArgs = {
   input: CreateScheduleItemInput;
 };
@@ -1318,6 +1336,11 @@ export type MutationDeleteReportArgs = {
 
 export type MutationDeleteReportQueryArgs = {
   reportQueryId: Scalars['Int']['input'];
+};
+
+
+export type MutationDeleteRepositoryLinkArgs = {
+  id: Scalars['Int']['input'];
 };
 
 
@@ -2617,6 +2640,7 @@ export type Query = {
   report: Report;
   reportQuery: ReportQuery;
   reports: PaginatedReports;
+  repositoryLinks: Array<RepositoryLink>;
   role: Role;
   roles: PaginatedRoles;
   scheduleConfig: ScheduleConfig;
@@ -3522,6 +3546,21 @@ export enum ReportWidgetType {
   ValuesBrokenDownNow = 'VALUES_BROKEN_DOWN_NOW',
   ValuesNow = 'VALUES_NOW',
   ValuesThroughTime = 'VALUES_THROUGH_TIME'
+}
+
+export type RepositoryLink = {
+  __typename?: 'RepositoryLink';
+  activatedAt?: Maybe<Scalars['DateTime']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['Int']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  repoFullName?: Maybe<Scalars['String']['output']>;
+  status: RepositoryLinkStatus;
+};
+
+export enum RepositoryLinkStatus {
+  Active = 'ACTIVE',
+  Pending = 'PENDING'
 }
 
 export type RequestDemoInput = {

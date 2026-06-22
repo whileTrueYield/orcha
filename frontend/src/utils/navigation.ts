@@ -167,8 +167,14 @@ export const urlResolver = {
       urlResolver.admin.paths.sidebar.replace(":orgId", orgId.toString()),
     billing: (orgId: string | number) =>
       urlResolver.admin.paths.billing.replace(":orgId", orgId.toString()),
+    repositoryLinks: (orgId: string | number) =>
+      urlResolver.admin.paths.repositoryLinks.replace(
+        ":orgId",
+        orgId.toString(),
+      ),
     paths: {
       billing: "/org/:orgId/admin/billing",
+      repositoryLinks: "/org/:orgId/admin/repository-links",
       sidebar: "/org/:orgId/admin",
     },
   },

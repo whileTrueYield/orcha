@@ -87,6 +87,10 @@ import "../models/feature/resolvers";
 // featureFlag — resolvers/index.ts imports ../entity internally
 import "../models/featureFlag/resolvers";
 
+// github
+import "../models/github/entity";
+import "../models/github/resolvers";
+
 // issue
 import "../models/issue/entity";
 import "../models/issue/resolvers";
