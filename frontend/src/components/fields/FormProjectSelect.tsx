@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Combobox } from "@headlessui/react";
+import {
+  Combobox,
+  ComboboxButton,
+  ComboboxInput,
+  ComboboxOption,
+  ComboboxOptions,
+} from "@headlessui/react";
 import { gql, useQuery } from "@apollo/client";
 import { MiniProject } from "types/graphql";
 import { CheckIcon, FolderIcon, SelectorIcon } from "@heroicons/react/solid";
@@ -33,7 +39,7 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
     GET_MINI_PROJECTS_QUERY,
     {
       fetchPolicy: "cache-and-network",
-    }
+    },
   );
 
   useEffect(() => {
@@ -81,14 +87,14 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
   const renderIfNoExactMatch = () => {
     if (query && filteredProjects.length === 0) {
       return (
-        <Combobox.Option
+        <ComboboxOption
           value={query}
           className={({ focus }) =>
             classNames(
               "relative flex cursor-default select-none flex-row justify-between py-2 pl-3 pr-9",
               focus
                 ? "bg-brand-600 text-white focus:ring-opacity-25"
-                : "text-gray-900"
+                : "text-gray-900",
             )
           }
         >
@@ -97,7 +103,7 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
               <span
                 className={classNames(
                   "block truncate",
-                  selected && "font-semibold"
+                  selected && "font-semibold",
                 )}
               >
                 {query}
@@ -107,14 +113,14 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
                   "rounded px-1 py-0.5 text-xs font-bold tracking-wide ",
                   selected || focus
                     ? "bg-brand-700 text-gray-50"
-                    : "bg-gray-100 text-gray-600"
+                    : "bg-gray-100 text-gray-600",
                 )}
               >
                 New
               </span>
             </>
           )}
-        </Combobox.Option>
+        </ComboboxOption>
       );
     }
 
@@ -133,15 +139,15 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
       </Combobox.Label>
 
       <div className="relative mt-1">
-        <Combobox.Input
+        <ComboboxInput
           className="w-full rounded-md border border-gray-300 bg-white py-2 pl-8 pr-10 text-gray-600 shadow-sm focus:border-brand-500 focus:outline-none focus:ring focus:ring-brand-400 focus:ring-opacity-25 sm:text-sm"
           onChange={(event) => setQuery(event.target.value)}
           displayValue={(value: string) => value}
           spellCheck={false}
         />
-        <Combobox.Button className="right-l absolute inset-y-0 flex items-center rounded-r-md px-2 focus:outline-none">
+        <ComboboxButton className="right-l absolute inset-y-0 flex items-center rounded-r-md px-2 focus:outline-none">
           <FolderIcon className="h-5 w-5 text-yellow-400" />
-        </Combobox.Button>
+        </ComboboxButton>
         {!value || projectExists(value) ? null : (
           <div className="absolute inset-y-0 right-8 flex items-center">
             <div className="rounded bg-gray-100 px-2 py-0.5 text-xs font-bold tracking-wide text-gray-600">
@@ -149,13 +155,13 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
             </div>
           </div>
         )}
-        <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
+        <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
           <SelectorIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-        </Combobox.Button>
+        </ComboboxButton>
 
-        <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+        <ComboboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
           {filteredProjects.map((project) => (
-            <Combobox.Option
+            <ComboboxOption
               key={project.id}
               value={project}
               className={({ focus }) =>
@@ -163,7 +169,7 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
                   "relative cursor-default select-none py-2 pl-3 pr-9",
                   focus
                     ? "bg-brand-600 text-white focus:ring-opacity-25"
-                    : "text-gray-900"
+                    : "text-gray-900",
                 )
               }
             >
@@ -172,7 +178,7 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
                   <span
                     className={classNames(
                       "block truncate",
-                      selected && "font-semibold"
+                      selected && "font-semibold",
                     )}
                   >
                     {project.path}
@@ -184,7 +190,7 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
                         "absolute inset-y-0 right-0 flex items-center pr-4",
                         focus
                           ? "text-white"
-                          : "text-brand-600 focus:ring-opacity-25"
+                          : "text-brand-600 focus:ring-opacity-25",
                       )}
                     >
                       <CheckIcon className="h-5 w-5" aria-hidden="true" />
@@ -192,10 +198,10 @@ export const FormProjectSelect: React.FC<Props> = (props) => {
                   )}
                 </>
               )}
-            </Combobox.Option>
+            </ComboboxOption>
           ))}
           {renderIfNoExactMatch()}
-        </Combobox.Options>
+        </ComboboxOptions>
       </div>
     </Combobox>
   );

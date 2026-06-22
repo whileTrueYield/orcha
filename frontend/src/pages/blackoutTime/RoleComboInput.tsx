@@ -1,7 +1,12 @@
 import { useRef, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { MiniRole } from "types/graphql";
-import { Combobox } from "@headlessui/react";
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxOption,
+  ComboboxOptions,
+} from "@headlessui/react";
 import { difference, every, find, orderBy, union, without } from "lodash";
 import { plural } from "utils/string";
 import { Tag } from "components/tags/Tag";
@@ -68,7 +73,7 @@ export const RoleComboInput: React.FC<Props> = (props) => {
           return `${miniRole.name} ${miniRole.title}`
             .toLowerCase()
             .includes(query.toLowerCase());
-        })
+        }),
       );
     } else {
       setDisplayedRoles(miniRoles);
@@ -98,7 +103,7 @@ export const RoleComboInput: React.FC<Props> = (props) => {
           });
 
       return filteredRoles.map((miniRole) => (
-        <Combobox.Option
+        <ComboboxOption
           value={miniRole}
           key={miniRole.id}
           className={getClassName(miniRole.id)}
@@ -108,7 +113,7 @@ export const RoleComboInput: React.FC<Props> = (props) => {
               <span
                 className={classNames(
                   "block truncate",
-                  isSelected(miniRole.id) && "font-semibold"
+                  isSelected(miniRole.id) && "font-semibold",
                 )}
               >
                 {miniRole.name}
@@ -131,7 +136,7 @@ export const RoleComboInput: React.FC<Props> = (props) => {
               </div>
             </div>
           )}
-        </Combobox.Option>
+        </ComboboxOption>
       ));
     } else {
       return (
@@ -166,26 +171,29 @@ export const RoleComboInput: React.FC<Props> = (props) => {
       onChange(
         difference(
           roleIds,
-          displayedRoles.map((role) => role.id)
-        )
+          displayedRoles.map((role) => role.id),
+        ),
       );
     } else {
       onChange(
         union(
           roleIds,
-          displayedRoles.map((role) => role.id)
-        )
+          displayedRoles.map((role) => role.id),
+        ),
       );
     }
   };
 
   return (
-    <Combobox value={selectedRole} onChange={(role) => role && toggleRole(role)}>
+    <Combobox
+      value={selectedRole}
+      onChange={(role) => role && toggleRole(role)}
+    >
       {() => (
         <>
-          <Combobox.Label className="block text-left">
+          <Label className="block text-left">
             <Label className="mb-1">People</Label>
-          </Combobox.Label>
+          </Label>
           <div
             onClick={(event) => {
               event.currentTarget.querySelector("input")?.focus();
@@ -195,7 +203,7 @@ export const RoleComboInput: React.FC<Props> = (props) => {
           >
             {roleIds.map(renderRole)}
 
-            <Combobox.Input
+            <ComboboxInput
               placeholder="Search..."
               className="mb-2 ml-2 inline-block border-0 p-0 py-0.5 pl-1 text-sm text-gray-600 outline-none  placeholder:text-gray-400 focus:border-0 focus:outline-none focus:ring-0 sm:mb-1.5"
               onChange={(event) => setQuery(event.target.value)}
@@ -207,7 +215,7 @@ export const RoleComboInput: React.FC<Props> = (props) => {
 
             {focus && (
               <div className="relative">
-                <Combobox.Options
+                <ComboboxOptions
                   static
                   className="absolute z-10 mt-1 w-full rounded-md bg-white text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
                 >
@@ -222,7 +230,7 @@ export const RoleComboInput: React.FC<Props> = (props) => {
                       Toggle All
                     </Button>
                   </div>
-                </Combobox.Options>
+                </ComboboxOptions>
               </div>
             )}
           </div>

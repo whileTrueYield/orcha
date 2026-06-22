@@ -9,7 +9,13 @@ import {
   MiniTag,
 } from "types/graphql";
 import { onGraphQLError, onMutationComplete } from "utils/GQLClient";
-import { Combobox } from "@headlessui/react";
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxOption,
+  ComboboxOptions,
+  Label,
+} from "@headlessui/react";
 import { find } from "lodash";
 import { CheckIcon } from "@heroicons/react/outline";
 import { Button } from "components/fields/Button";
@@ -94,13 +100,13 @@ export const TicketTagInput: FCWithFragments<Props> = (props) => {
   const renderOptions = (filteredTags: MiniTag[]) => {
     if (filteredTags.length) {
       return filteredTags.map((miniTag) => (
-        <Combobox.Option
+        <ComboboxOption
           value={miniTag}
           key={miniTag.id}
           className={({ focus }) =>
             classNames(
               "relative cursor-default select-none py-2 pl-3 pr-9",
-              focus ? "bg-brand-600 text-white" : "text-gray-900"
+              focus ? "bg-brand-600 text-white" : "text-gray-900",
             )
           }
         >
@@ -109,7 +115,7 @@ export const TicketTagInput: FCWithFragments<Props> = (props) => {
               <span
                 className={classNames(
                   "block truncate",
-                  isSelected(miniTag.id) && "font-semibold"
+                  isSelected(miniTag.id) && "font-semibold",
                 )}
               >
                 {miniTag.name}
@@ -119,7 +125,7 @@ export const TicketTagInput: FCWithFragments<Props> = (props) => {
                 <span
                   className={classNames(
                     "absolute inset-y-0 right-0 flex items-center pr-4",
-                    focus ? "text-white" : "text-indigo-600"
+                    focus ? "text-white" : "text-indigo-600",
                   )}
                 >
                   <CheckIcon className="h-5 w-5" aria-hidden="true" />
@@ -127,7 +133,7 @@ export const TicketTagInput: FCWithFragments<Props> = (props) => {
               )}
             </>
           )}
-        </Combobox.Option>
+        </ComboboxOption>
       ));
     } else {
       return (
@@ -148,9 +154,9 @@ export const TicketTagInput: FCWithFragments<Props> = (props) => {
       />
 
       <Combobox value={selectedTag} onChange={(tag) => tag && toggleTag(tag)}>
-        <Combobox.Label>
+        <Label>
           <div className="mb-1 text-lg text-gray-700">Tags</div>
-        </Combobox.Label>
+        </Label>
         <div
           onClick={(event) => {
             event.currentTarget.querySelector("input")?.focus();
@@ -171,7 +177,7 @@ export const TicketTagInput: FCWithFragments<Props> = (props) => {
               </Tag>
             );
           })}
-          <Combobox.Input
+          <ComboboxInput
             placeholder="Search..."
             className="mr-2 mt-2 inline-block border-0 p-0 py-0.5 pl-1 text-sm text-gray-600  outline-none placeholder:text-gray-400 focus:border-0 focus:outline-none focus:ring-0 sm:mt-1.5"
             onChange={(event) => setQuery(event.target.value)}
@@ -179,7 +185,7 @@ export const TicketTagInput: FCWithFragments<Props> = (props) => {
           />
 
           <div className="relative">
-            <Combobox.Options className="absolute z-10 mt-3 w-full rounded-md bg-white text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+            <ComboboxOptions className="absolute z-10 mt-3 w-full rounded-md bg-white text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
               <div className="max-h-60 overflow-auto py-1">
                 {renderOptions(filteredTags)}
               </div>
@@ -196,7 +202,7 @@ export const TicketTagInput: FCWithFragments<Props> = (props) => {
                   Create Tag
                 </Button>
               </div>
-            </Combobox.Options>
+            </ComboboxOptions>
           </div>
         </div>
       </Combobox>

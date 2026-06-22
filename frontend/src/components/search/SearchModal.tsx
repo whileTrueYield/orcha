@@ -1,5 +1,12 @@
 import { gql, useLazyQuery } from "@apollo/client";
-import { Combobox, Dialog, Transition } from "@headlessui/react";
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxOption,
+  ComboboxOptions,
+  Dialog,
+  Transition,
+} from "@headlessui/react";
 import { SearchIcon } from "@heroicons/react/outline";
 import { FolderIcon } from "@heroicons/react/solid";
 import {
@@ -73,7 +80,7 @@ export const SearchModal: React.FC<Props> = (props) => {
         setResults(data.search);
       },
       onError: onGraphQLError({ title: "Search failed" }),
-    }
+    },
   );
 
   useEffect(() => {
@@ -143,25 +150,25 @@ export const SearchModal: React.FC<Props> = (props) => {
     }
 
     return (
-      <Combobox.Options
+      <ComboboxOptions
         static
         className="max-h-96 scroll-py-2 overflow-y-auto py-2 text-sm text-gray-800"
       >
         {results.map((result) => (
-          <Combobox.Option
+          <ComboboxOption
             key={result.id}
             value={result}
             className={({ focus }) =>
               cn(
                 "group flex cursor-default select-none flex-row items-center px-4 py-2",
-                { "is-active bg-brand-100 text-brand-800": focus }
+                { "is-active bg-brand-100 text-brand-800": focus },
               )
             }
           >
             {renderResult(result)}
-          </Combobox.Option>
+          </ComboboxOption>
         ))}
-      </Combobox.Options>
+      </ComboboxOptions>
     );
   };
 
@@ -173,33 +180,33 @@ export const SearchModal: React.FC<Props> = (props) => {
     return (
       <div>
         <div className="bg-gray-50 py-4 text-center text-sm font-medium text-gray-700">
-          Recent Visited
+          Recently Visited
         </div>
-        <Combobox.Options
+        <ComboboxOptions
           static
           className="max-h-96 scroll-py-2 overflow-y-auto pb-2 text-sm text-gray-800"
         >
           {recentlyVisited.map(decodeSearchResult).map((result) => {
             if (result) {
               return (
-                <Combobox.Option
+                <ComboboxOption
                   key={result.id}
                   value={result}
                   className={({ focus }) =>
                     cn(
                       "group flex cursor-default select-none flex-row items-center px-4 py-2",
-                      { "is-active bg-brand-100 text-brand-800": focus }
+                      { "is-active bg-brand-100 text-brand-800": focus },
                     )
                   }
                 >
                   {renderResult(result)}
-                </Combobox.Option>
+                </ComboboxOption>
               );
             } else {
               return null;
             }
           })}
-        </Combobox.Options>
+        </ComboboxOptions>
       </div>
     );
   };
@@ -248,7 +255,7 @@ export const SearchModal: React.FC<Props> = (props) => {
                       aria-hidden="true"
                     />
                   )}
-                  <Combobox.Input
+                  <ComboboxInput
                     className="h-12 w-full border-0 bg-transparent pl-11 pr-4 text-gray-800 placeholder-gray-400 focus:ring-0 sm:text-sm"
                     placeholder="Search tickets and projects..."
                     onChange={(event) => debouncedSetQuery(event.target.value)}

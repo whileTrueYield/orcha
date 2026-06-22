@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { Combobox } from "@headlessui/react";
+import {
+  Combobox,
+  ComboboxButton,
+  ComboboxInput,
+  ComboboxOptions,
+} from "@headlessui/react";
 import { gql, useLazyQuery } from "@apollo/client";
 import { QueryTicketsArgs, Ticket, TicketStatus } from "types/graphql";
 import { SelectorIcon } from "@heroicons/react/solid";
@@ -53,7 +58,7 @@ export const MyScheduledTicketCombobox: React.FC<Props> = (props) => {
 
   const inputClassName = cn(
     "w-full rounded-md border border-gray-300 bg-white py-2 pr-10 text-gray-600 shadow-sm focus:border-brand-500 focus:outline-none focus:ring focus:ring-brand-400 focus:ring-opacity-25 sm:text-sm",
-    props.inputClassName
+    props.inputClassName,
   );
 
   const className = cn("relative", props.className);
@@ -81,7 +86,7 @@ export const MyScheduledTicketCombobox: React.FC<Props> = (props) => {
           ) : null}
 
           <div className={`${className} ${open && "z-30"}`}>
-            <Combobox.Input
+            <ComboboxInput
               aria-label="Search and Select a ticket"
               className={inputClassName}
               onChange={(event) => setSearch(event.target.value)}
@@ -93,7 +98,7 @@ export const MyScheduledTicketCombobox: React.FC<Props> = (props) => {
               autoComplete="off"
             />
 
-            <Combobox.Button
+            <ComboboxButton
               aria-label="Open list of tickets"
               className="absolute inset-y-0 right-0 flex items-center px-2 focus:outline-none"
             >
@@ -113,9 +118,9 @@ export const MyScheduledTicketCombobox: React.FC<Props> = (props) => {
                 className="h-5 w-5 text-gray-400"
                 aria-hidden="true"
               />
-            </Combobox.Button>
+            </ComboboxButton>
 
-            <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+            <ComboboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
               {tickets.length
                 ? tickets.map((ticket, index) => (
                     <Combobox.Option
@@ -126,7 +131,7 @@ export const MyScheduledTicketCombobox: React.FC<Props> = (props) => {
                           "relative cursor-default select-none py-2 px-3",
                           focus
                             ? "bg-brand-600 text-white focus:ring-opacity-25"
-                            : "text-gray-900"
+                            : "text-gray-900",
                         )
                       }
                     >
@@ -135,7 +140,7 @@ export const MyScheduledTicketCombobox: React.FC<Props> = (props) => {
                           <div
                             className={classNames(
                               "flex min-w-0 items-center justify-between space-x-1 truncate",
-                              selected && "font-semibold"
+                              selected && "font-semibold",
                             )}
                           >
                             <div className="flex-1 truncate">
@@ -152,7 +157,7 @@ export const MyScheduledTicketCombobox: React.FC<Props> = (props) => {
                     </Combobox.Option>
                   ))
                 : renderNoMatch()}
-            </Combobox.Options>
+            </ComboboxOptions>
           </div>
         </>
       )}
