@@ -22,6 +22,7 @@ import {
   Organization,
   OrganizationStatus,
   Product,
+  RepositoryLink,
   Role,
   RoleStatus,
   Ticket,
@@ -46,6 +47,8 @@ import prisma from "../prisma";
 import { DEFAULT_WORK_WEEK } from "../models/entities";
 import { buildMeContext } from "../middlewares/isAuthenticated";
 import { generateToken } from "../models/apiToken/token";
+import { generateWebhookCredentials } from "../github/credentials";
+import { encryptSecret } from "./crypto";
 import { formatGraphQLError } from "./graphqlErrors";
 import { PendingRedis } from "../mcp/oauth/pendingStore";
 
@@ -562,6 +565,31 @@ export const createRandomProduct = (
   };
 
   return prisma.product.create({ data: newProduct });
+};
+
+// Create a PENDING Repository link with freshly minted credentials. Returns the
+// plaintext webhookSecret too, so a test can sign a webhook delivery the way
+// GitHub would (the stored secret is encrypted and not otherwise recoverable).
+export const createRandomRepositoryLink = async (
+  organization: Organization,
+  values: Partial<Prisma.RepositoryLinkUncheckedCreateInput> = {},
+): Promise<{
+  link: RepositoryLink;
+  webhookToken: string;
+  webhookSecret: string;
+}> => {
+  const { webhookToken, webhookSecret } = generateWebhookCredentials();
+
+  const link = await prisma.repositoryLink.create({
+    data: {
+      webhookToken,
+      webhookSecretEnc: encryptSecret(webhookSecret),
+      organizationId: organization.id,
+      ...values,
+    },
+  });
+
+  return { link, webhookToken, webhookSecret };
 };
 
 export const createRandomProject = (

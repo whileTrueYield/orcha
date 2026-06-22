@@ -3,6 +3,7 @@ import {
   CollectionIcon,
   CreditCardIcon,
   CubeIcon,
+  LinkIcon,
   TagIcon,
   UploadIcon,
   UserIcon,
@@ -14,6 +15,7 @@ import { ProductRouter } from "pages/product/Router";
 import { UserRouter } from "pages/user/Router";
 import { WorkflowRouter } from "pages/workflow/Router";
 import { BillingRouter } from "pages/billing/Router";
+import { RepositoryLinksRouter } from "pages/repositoryLinks/Router";
 import { ImportRouter } from "pages/import/Router";
 import { BlackoutTimeRouter } from "pages/blackoutTime/Router";
 import { TagRouter } from "pages/tag/Router";
@@ -70,6 +72,11 @@ const subNavigation: SubNavigation[] = [
     Icon: CreditCardIcon,
   },
   {
+    name: "Repository Links",
+    href: (orgId: string) => urlResolver.admin.repositoryLinks(orgId),
+    Icon: LinkIcon,
+  },
+  {
     name: "Import",
     href: (orgId: string) => urlResolver.import.importTicket(orgId),
     Icon: UploadIcon,
@@ -117,6 +124,7 @@ export const AdminSidebar: React.FC = (props) => {
               {/* <TeamRouter /> */}
               <UserRouter />
               <BillingRouter />
+              <RepositoryLinksRouter />
               <ImportRouter />
               <TagRouter />
               <BlackoutTimeRouter />

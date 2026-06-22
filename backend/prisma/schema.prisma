@@ -792,6 +792,7 @@ model Organization {
   oauthAuthorizationCodes OAuthAuthorizationCode[]
   oauthAccessTokens       OAuthAccessToken[]
   oauthRefreshTokens      OAuthRefreshToken[]
+  repositoryLinks         RepositoryLink[]
 
   // settings
   showOnboarding Boolean @default(true)
@@ -801,6 +802,48 @@ model Organization {
   @@index([mailingAddressId])
   @@index([billingAddressId])
   @@map("organization")
+}
+
+// A GitHub repository bound to an Organization for read-only PR mirroring.
+// Created PENDING; promoted to ACTIVE only by a signed webhook delivery that
+// proves repo control. `repoFullName` is written solely on activation (null
+// while pending, so Postgres nulls don't collide and a repo can have many
+// pending links) and its @unique means an ACTIVE link reserves the repo
+// globally — making binding-squatting impossible. See ADR 0011.
+model RepositoryLink {
+  // required fields
+  id   Int     @id @default(autoincrement())
+  // Optional label so an admin can tell pending links apart before the repo is known.
+  name String? @db.VarChar
+
+  // enums
+  status RepositoryLinkStatus @default(PENDING)
+
+  // Opaque token carried in the webhook URL path: /github/webhook/:webhookToken.
+  webhookToken String @unique @db.VarChar
+  // AES-256-GCM blob from encryptSecret(); decrypted only to verify a delivery's HMAC.
+  webhookSecretEnc String @db.VarChar
+
+  // Set only on activation, from the verified payload's repository.full_name.
+  repoFullName String?   @unique @db.VarChar
+  activatedAt  DateTime? @db.Timestamptz(6)
+
+  // timestamps
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // relations
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // indices, table map and constraints
+  @@index([organizationId])
+  @@map("repository_link")
+}
+
+enum RepositoryLinkStatus {
+  PENDING
+  ACTIVE
 }
 
 model OrganizationUpload {

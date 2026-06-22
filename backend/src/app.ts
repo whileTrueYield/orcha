@@ -4,6 +4,7 @@ import { router } from "./routes";
 import { v1Router } from "./rest/router";
 import { mcpRouter } from "./mcp/router";
 import { oauthRouter } from "./mcp/oauth/router";
+import { githubRouter } from "./github/router";
 
 /**
  * Automate the creation of the express application and
@@ -29,6 +30,11 @@ export function createExpressApp(middlewares: any[] = []) {
   // The MCP endpoint rides the same bearer-only, session-free stack, for the
   // same reason: it is a PAT-authenticated, machine-to-machine surface.
   app.use(`${config.apiPathPrefix}/mcp`, mcpRouter);
+
+  // Inbound GitHub webhooks are HMAC-authenticated, session-free, and need the
+  // raw request body for signature verification — so they too mount ahead of the
+  // global session/JSON middleware, with the router supplying its own raw parser.
+  app.use(`${config.apiPathPrefix}/github`, githubRouter);
 
   for (const middleware of middlewares) {
     app.use(middleware);
