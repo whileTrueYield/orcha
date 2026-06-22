@@ -675,6 +675,21 @@ export type IssueUpdateNoteInput = {
   note: Scalars['String']['input'];
 };
 
+export type LinkedPullRequest = {
+  __typename?: 'LinkedPullRequest';
+  authorLogin?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  githubUpdatedAt: Scalars['DateTime']['output'];
+  htmlUrl: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  isDraft: Scalars['Boolean']['output'];
+  number: Scalars['Int']['output'];
+  repoFullName: Scalars['String']['output'];
+  state: PullRequestState;
+  title: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
+
 export type LoginInput = {
   email: Scalars['String']['input'];
   hash: Scalars['String']['input'];
@@ -2531,6 +2546,12 @@ export enum ProjectTicketQueryCategory {
   Unestimated = 'Unestimated'
 }
 
+export enum PullRequestState {
+  Closed = 'CLOSED',
+  Merged = 'MERGED',
+  Open = 'OPEN'
+}
+
 export type Query = {
   __typename?: 'Query';
   activeScheduleItems: Array<ScheduleItem>;
@@ -3866,6 +3887,7 @@ export type Ticket = {
   isWatching: Scalars['Boolean']['output'];
   issues: Array<Issue>;
   lastScheduleItem?: Maybe<ScheduleItem>;
+  linkedPullRequests: Array<LinkedPullRequest>;
   localId?: Maybe<Scalars['Int']['output']>;
   loggedWorkSeconds: Scalars['Int']['output'];
   milestone: Scalars['Boolean']['output'];
