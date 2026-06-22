@@ -171,6 +171,11 @@ export const TicketRef = builder.prismaObject("Ticket", {
     cases: t.relation("cases"),
     // issues is an alias for the `cases` relation — the old schema exposed it as `issues`
     issues: t.relation("cases"),
+    // GitHub pull requests mirrored onto this ticket (ADR 0011, #121). Newest
+    // GitHub activity first so the Changes tab leads with the latest movement.
+    linkedPullRequests: t.relation("linkedPullRequests", {
+      query: { orderBy: { githubUpdatedAt: "desc" } },
+    }),
     // checklist is exposed as a computed field in ticketWorkflowState.resolver.ts
   }),
 });

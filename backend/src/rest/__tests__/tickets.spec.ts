@@ -14,6 +14,8 @@ import {
   getTestApiToken,
   createRandomTicket,
   createRandomProject,
+  createRandomRepositoryLink,
+  createRandomLinkedPullRequest,
 } from "../../utils/testing";
 import { saveBody } from "../../markdown/bodyRepository";
 
@@ -153,6 +155,30 @@ describe("GET /v1/tickets/:id", () => {
       .expect(200);
 
     expect(res.body.body).toEqual({ markdown: "# Detail body\n", version: 1 });
+  });
+
+  it("includes mirrored GitHub pull requests in the detail response", async () => {
+    const token = await getTestApiToken();
+    const { ticket } = await createRandomTicket(token.organization, token.role);
+    const { link } = await createRandomRepositoryLink(token.organization, {
+      status: "ACTIVE",
+      repoFullName: `octo/${token.organization.id}-repo`,
+      activatedAt: new Date(),
+    });
+    await createRandomLinkedPullRequest(token.organization, link, [ticket], {
+      number: 99,
+      title: "Wire it up",
+      state: "MERGED",
+    });
+
+    const res = await request(app())
+      .get(`/v1/tickets/${ticket.id}`)
+      .set("Authorization", auth(token.plaintext))
+      .expect(200);
+
+    expect(res.body.linkedPullRequests).toEqual([
+      expect.objectContaining({ number: 99, title: "Wire it up", state: "MERGED" }),
+    ]);
   });
 
   it("returns 404 for a ticket in another organization", async () => {

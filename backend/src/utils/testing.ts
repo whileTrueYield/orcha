@@ -19,6 +19,7 @@ import {
   Feature,
   FeatureFlag,
   FeatureGroup,
+  LinkedPullRequest,
   Organization,
   OrganizationStatus,
   Product,
@@ -590,6 +591,60 @@ export const createRandomRepositoryLink = async (
   });
 
   return { link, webhookToken, webhookSecret };
+};
+
+// Build a GitHub `pull_request` webhook payload the way a delivery would carry
+// it. `action` and `number` sit on the root (the handler reads action there);
+// every other override shallow-merges onto the nested pull_request, so a test
+// sets just the parts it exercises (title, head.ref, state, merged, draft,
+// updated_at).
+export const buildPullRequestPayload = (
+  repoFullName: string,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> => {
+  const { action, number: numberOverride, ...prOverrides } = overrides;
+  const number = typeof numberOverride === "number" ? numberOverride : 1;
+  return {
+    action: typeof action === "string" ? action : "opened",
+    number,
+    repository: { full_name: repoFullName },
+    pull_request: {
+      number,
+      state: "open",
+      title: "A pull request",
+      draft: false,
+      merged: false,
+      html_url: `https://github.com/${repoFullName}/pull/${number}`,
+      updated_at: "2026-06-21T10:00:00Z",
+      head: { ref: "feature/branch" },
+      user: { login: "octocat" },
+      ...prOverrides,
+    },
+  };
+};
+
+// Seed a mirrored pull request already linked to the given tickets. Used by the
+// exposure tests; the mirror logic itself is exercised through mirrorPullRequest.
+export const createRandomLinkedPullRequest = async (
+  organization: Organization,
+  repositoryLink: RepositoryLink,
+  tickets: Ticket[] = [],
+  values: Partial<Prisma.LinkedPullRequestCreateInput> = {},
+): Promise<LinkedPullRequest> => {
+  const number = Math.floor(Math.random() * 1_000_000_000);
+  return prisma.linkedPullRequest.create({
+    data: {
+      repoFullName: repositoryLink.repoFullName ?? `octo/${randomUUID()}`,
+      number,
+      title: faker.commerce.productName(),
+      htmlUrl: `https://github.com/octo/repo/pull/${number}`,
+      githubUpdatedAt: new Date("2026-06-21T10:00:00Z"),
+      organization: { connect: { id: organization.id } },
+      repositoryLink: { connect: { id: repositoryLink.id } },
+      tickets: { connect: tickets.map((ticket) => ({ id: ticket.id })) },
+      ...values,
+    },
+  });
 };
 
 export const createRandomProject = (
