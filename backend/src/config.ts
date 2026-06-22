@@ -156,6 +156,24 @@ if (!env.DOCS_BUCKET) {
   throw Error("DOCS_BUCKET env variable is undefined");
 }
 
+// Bucket names must be bare identifiers (e.g. "orcha-uploads"), never URLs. A
+// URL-shaped value gets url-encoded into the upload path by the S3 SDK,
+// producing unreachable presigned POST targets like
+// "<endpoint>/https%3A%2F%2F...". Crash loudly here rather than serve broken
+// upload URLs to browsers (which fail later as opaque CORS/403 errors).
+for (const [name, value] of [
+  ["UPLOADS_BUCKET", env.UPLOADS_BUCKET],
+  ["DOCS_BUCKET", env.DOCS_BUCKET],
+] as const) {
+  if (value.includes("://")) {
+    throw Error(
+      `${name} must be a bare bucket name, not a URL. Got: "${value}". ` +
+        `Set it to the bucket name only (e.g. "orcha-uploads"); configure the ` +
+        `endpoint via S3_ENDPOINT / S3_PUBLIC_ENDPOINT and the read URL via ${name === "UPLOADS_BUCKET" ? "UPLOADS_CDN_URL" : "DOCS_CDN_URL"}.`
+    );
+  }
+}
+
 if (!env.UPLOADS_CDN_URL) {
   throw Error("UPLOADS_CDN_URL env variable is undefined");
 }

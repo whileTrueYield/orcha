@@ -202,6 +202,9 @@ services:
       - UPLOADS_CDN_URL=https://${ORCHA_DOMAIN}/uploads
       - DOCS_CDN_URL=https://${ORCHA_DOMAIN}/uploads
       - S3_ENDPOINT=http://minio:9000
+      # Browser-facing origin for presigned upload POSTs. Internally MinIO is
+      # `minio:9000`; the browser reaches it through Traefik's /uploads route.
+      - S3_PUBLIC_ENDPOINT=https://${ORCHA_DOMAIN}/uploads
       - S3_ACCESS_KEY=${MINIO_ROOT_USER}
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - S3_REGION=us-west-1
@@ -264,6 +267,9 @@ services:
       - UPLOADS_CDN_URL=https://${ORCHA_DOMAIN}/uploads
       - DOCS_CDN_URL=https://${ORCHA_DOMAIN}/uploads
       - S3_ENDPOINT=http://minio:9000
+      # Browser-facing origin for presigned upload POSTs. Internally MinIO is
+      # `minio:9000`; the browser reaches it through Traefik's /uploads route.
+      - S3_PUBLIC_ENDPOINT=https://${ORCHA_DOMAIN}/uploads
       - S3_ACCESS_KEY=${MINIO_ROOT_USER}
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - S3_REGION=us-west-1
