@@ -42,6 +42,7 @@ import { TicketIssues } from "./TicketIssues";
 import { ProjectCrumbs } from "pages/project/ProjectView/ProjectCrumbs";
 import { useRefetchOnVisible } from "components/taskManager/hooks";
 import { TicketNotes } from "./TicketNotes";
+import { TicketChanges } from "./TicketChanges";
 import { MutationReturnValue, QueryReturnValue } from "types/queryTypes";
 import { TicketDependencyWarning } from "./TicketDependencyWarning";
 import { useAddToRecentlyVisitedTicket } from "utils/preferences";
@@ -61,9 +62,9 @@ export const TicketView: FCWithFragments = () => {
   const ticketId = parseInt(urlParams.ticketId);
   const history = useHistory();
   const addToRecentlyVisitedTicket = useAddToRecentlyVisitedTicket();
-  const [subTab, setSubTab] = useState<"comments" | "dependencies" | "notes">(
-    "comments",
-  );
+  const [subTab, setSubTab] = useState<
+    "comments" | "dependencies" | "notes" | "changes"
+  >("comments");
   usePageTitle("Ticket View");
 
   const { data, loading } = useQuery<QueryReturnValue["ticket"]>(
@@ -197,6 +198,8 @@ export const TicketView: FCWithFragments = () => {
         );
       case "notes":
         return <TicketNotes ticketId={ticketId} />;
+      case "changes":
+        return <TicketChanges pullRequests={ticket.linkedPullRequests} />;
       default:
         return null;
     }
@@ -273,6 +276,17 @@ export const TicketView: FCWithFragments = () => {
                 active={subTab === "notes"}
               >
                 Notes
+              </Tab>
+              <Tab
+                onClick={() => setSubTab("changes")}
+                active={subTab === "changes"}
+              >
+                {plural(
+                  "{} Change",
+                  "{} Changes",
+                  ticket.linkedPullRequests.length,
+                  "Changes",
+                )}
               </Tab>
             </Tabs>
             {renderSubTabs()}
@@ -379,6 +393,7 @@ TicketView.fragments = {
       ...TicketTagInputFragment
       ...TicketMilestoneFragment
       ...TicketIssuesFragment
+      ...TicketChangesFragment
     }
     ${TicketTitle.fragments.TicketTitleFragment}
     ${TicketSupersededByBanner.fragments.TicketSupersededByBannerFragment}
@@ -398,6 +413,7 @@ TicketView.fragments = {
     ${TicketTagInput.fragments.TicketTagInputFragment}
     ${TicketMilestone.fragments.TicketMilestoneFragment}
     ${TicketIssues.fragments.TicketIssuesFragment}
+    ${TicketChanges.fragments.TicketChangesFragment}
   `,
 };
 
